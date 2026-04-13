@@ -1,0 +1,100 @@
+import { z } from 'zod'
+
+// Re-export OBRAS_SOCIALES from ordenes
+export { OBRAS_SOCIALES } from '@/features/ordenes/types/ordenes'
+
+// --- Enums ---
+
+export const ESTADOS_CIRUGIA = ['borrador', 'presentada', 'aprobada', 'debitada'] as const
+export type EstadoCirugia = (typeof ESTADOS_CIRUGIA)[number]
+
+export const TIPOS_ANESTESIA = [
+  'Local',
+  'Regional',
+  'General',
+  'Sedacion',
+  'Raquidea',
+  'Peridural',
+] as const
+export type TipoAnestesia = (typeof TIPOS_ANESTESIA)[number]
+
+// --- Interfaces ---
+
+export interface PracticaAdicional {
+  codigo: string
+  detalle: string
+  honorarios: number
+  gastos: number
+  total: number
+}
+
+export interface Cirugia {
+  id: string
+  medico_id: string
+  nombre_paciente: string
+  fecha: string
+  obra_social: string
+  codigo_practica: string
+  nombre_practica: string
+  honorarios: number
+  gastos: number
+  total: number
+  estado: EstadoCirugia
+  observaciones: string | null
+  ayudante: string | null
+  anestesiologo: string | null
+  instrumentador: string | null
+  tipo_anestesia: string | null
+  duracion_minutos: number | null
+  sanatorio: string | null
+  sala: string | null
+  practicas_adicionales: PracticaAdicional[]
+  total_calculado: number
+  created_at: string
+  updated_at: string
+}
+
+// --- Filters ---
+
+export interface CirugiaFilters {
+  obra_social?: string
+  estado?: EstadoCirugia
+  fecha_desde?: string
+  fecha_hasta?: string
+  busqueda?: string
+}
+
+// --- Zod Schema ---
+
+const practicaAdicionalSchema = z.object({
+  codigo: z.string(),
+  detalle: z.string(),
+  honorarios: z.coerce.number().min(0),
+  gastos: z.coerce.number().min(0),
+  total: z.coerce.number().min(0),
+})
+
+export const cirugiaSchema = z.object({
+  nombre_paciente: z.string().min(2, 'Nombre del paciente requerido'),
+  fecha: z.string().min(1, 'Fecha requerida'),
+  obra_social: z.string().min(1, 'Obra social requerida'),
+  codigo_practica: z.string().min(1, 'Practica principal requerida'),
+  nombre_practica: z.string().optional(),
+  honorarios: z.coerce.number().min(0).default(0),
+  gastos: z.coerce.number().min(0).default(0),
+  total: z.coerce.number().min(0).default(0),
+  observaciones: z.string().optional(),
+  // Equipo quirurgico (opcionales)
+  ayudante: z.string().optional(),
+  anestesiologo: z.string().optional(),
+  instrumentador: z.string().optional(),
+  // Anestesia y lugar (opcionales)
+  tipo_anestesia: z.string().optional(),
+  duracion_minutos: z.coerce.number().min(0).optional(),
+  sanatorio: z.string().optional(),
+  sala: z.string().optional(),
+  // Practicas adicionales
+  practicas_adicionales: z.array(practicaAdicionalSchema).default([]),
+})
+
+export type CirugiaFormData = z.infer<typeof cirugiaSchema>

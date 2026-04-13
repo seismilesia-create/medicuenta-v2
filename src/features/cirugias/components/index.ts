@@ -1,0 +1,7 @@
+export { CollapsibleSection } from './CollapsibleSection'
+export { PracticasAdicionalesField } from './PracticasAdicionalesField'
+export { CirugiaStatusBadge } from './CirugiaStatusBadge'
+export { CirugiaFilters } from './CirugiaFilters'
+export { CirugiasTable } from './CirugiasTable'
+export { NuevaCirugiaForm } from './NuevaCirugiaForm'
+export { EditarCirugiaForm } from './EditarCirugiaForm'

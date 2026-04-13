@@ -1,0 +1,105 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e5]:
+        - img [ref=e6]
+        - generic [ref=e9]:
+          - heading "MediCuenta" [level=1] [ref=e10]
+          - paragraph [ref=e11]: Facturacion Medica
+      - navigation [ref=e12]:
+        - generic [ref=e13]:
+          - heading "Principal" [level=2] [ref=e14]
+          - list [ref=e15]:
+            - listitem [ref=e16]:
+              - link "Dashboard" [ref=e17] [cursor=pointer]:
+                - /url: /dashboard
+                - img [ref=e18]
+                - generic [ref=e20]: Dashboard
+            - listitem [ref=e21]:
+              - link "Ordenes" [ref=e22] [cursor=pointer]:
+                - /url: /ordenes
+                - img [ref=e23]
+                - generic [ref=e25]: Ordenes
+            - listitem [ref=e26]:
+              - link "Liquidaciones" [ref=e27] [cursor=pointer]:
+                - /url: /liquidaciones
+                - img [ref=e28]
+                - generic [ref=e30]: Liquidaciones
+            - listitem [ref=e31]:
+              - link "Debitos" [ref=e32] [cursor=pointer]:
+                - /url: /debitos
+                - img [ref=e33]
+                - generic [ref=e35]: Debitos
+        - generic [ref=e36]:
+          - heading "Avanzado" [level=2] [ref=e37]
+          - list [ref=e38]:
+            - listitem [ref=e39]:
+              - link "Nomenclador" [ref=e40] [cursor=pointer]:
+                - /url: /nomenclador
+                - img [ref=e41]
+                - generic [ref=e43]: Nomenclador
+            - listitem [ref=e44]:
+              - link "Cirugias" [ref=e45] [cursor=pointer]:
+                - /url: /cirugias
+                - img [ref=e46]
+                - generic [ref=e48]: Cirugias
+      - list [ref=e52]:
+        - listitem [ref=e53]:
+          - link "Perfil" [ref=e54] [cursor=pointer]:
+            - /url: /perfil
+            - img [ref=e55]
+            - generic [ref=e57]: Perfil
+        - listitem [ref=e58]:
+          - button "Cerrar sesion" [ref=e59] [cursor=pointer]:
+            - img [ref=e60]
+            - generic [ref=e62]: Cerrar sesion
+    - main [ref=e63]:
+      - generic [ref=e64]:
+        - generic [ref=e65]:
+          - heading "Buenas tardes, Doctor" [level=1] [ref=e66]
+          - paragraph [ref=e67]: Resumen de tu facturacion medica
+        - generic [ref=e68]:
+          - generic [ref=e70]:
+            - img [ref=e72]
+            - generic [ref=e74]:
+              - paragraph [ref=e75]: Facturado este mes
+              - paragraph [ref=e76]: $ 0
+          - generic [ref=e78]:
+            - img [ref=e80]
+            - generic [ref=e82]:
+              - paragraph [ref=e83]: Cobrado
+              - paragraph [ref=e84]: $ 0
+          - generic [ref=e86]:
+            - img [ref=e88]
+            - generic [ref=e90]:
+              - paragraph [ref=e91]: Pendiente
+              - paragraph [ref=e92]: $ 0
+          - generic [ref=e94]:
+            - img [ref=e96]
+            - generic [ref=e98]:
+              - paragraph [ref=e99]: Perdido (debitos)
+              - paragraph [ref=e100]: $ 0
+        - generic [ref=e101]:
+          - heading "Tendencia ultimos 6 meses" [level=2] [ref=e102]
+          - paragraph [ref=e103]: No hay datos suficientes para mostrar la tendencia. Carga ordenes para ver el grafico.
+        - generic [ref=e104]:
+          - generic [ref=e105]:
+            - heading "Alertas activas" [level=2] [ref=e106]
+            - paragraph [ref=e107]: Sin alertas por el momento. Todo esta en orden.
+          - generic [ref=e108]:
+            - heading "Acciones rapidas" [level=2] [ref=e109]
+            - generic [ref=e110]:
+              - link "+ Nueva orden" [ref=e111] [cursor=pointer]:
+                - /url: /ordenes/nueva
+              - link "+ Nueva liquidacion" [ref=e112] [cursor=pointer]:
+                - /url: /liquidaciones/nueva
+              - link "+ Nuevo debito" [ref=e113] [cursor=pointer]:
+                - /url: /debitos/nuevo
+              - link "+ Nueva cirugia" [ref=e114] [cursor=pointer]:
+                - /url: /cirugias/nueva
+              - link "Ver ordenes (0)" [ref=e115] [cursor=pointer]:
+                - /url: /ordenes
+    - button "Abrir asistente" [ref=e116] [cursor=pointer]:
+      - img [ref=e117]
+  - button "Open Next.js Dev Tools" [ref=e124] [cursor=pointer]:
+    - img [ref=e125]

@@ -1,0 +1,44 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - img [ref=e9]
+          - generic [ref=e12]: MediCuenta
+        - heading "Tu facturacion medica, simplificada" [level=1] [ref=e13]
+        - paragraph [ref=e14]: La plataforma de facturacion y control financiero disenada para medicos del Circulo Medico de Catamarca.
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - img [ref=e18]
+          - generic [ref=e20]: Control total de ordenes y liquidaciones
+        - generic [ref=e21]:
+          - img [ref=e23]
+          - generic [ref=e25]: Seguimiento de debitos y rechazos
+        - generic [ref=e26]:
+          - img [ref=e28]
+          - generic [ref=e30]: Reportes y estadisticas en tiempo real
+    - generic [ref=e35]:
+      - generic [ref=e36]:
+        - heading "Bienvenido de vuelta" [level=1] [ref=e37]
+        - paragraph [ref=e38]: Inicia sesión en tu cuenta para continuar
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - generic [ref=e41]: Correo electrónico
+          - textbox "Correo electrónico" [ref=e42]:
+            - /placeholder: tu@email.com
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - generic [ref=e45]: Contraseña
+            - textbox "Contraseña" [ref=e46]:
+              - /placeholder: ••••••••
+          - button "Mostrar contraseña" [ref=e47] [cursor=pointer]:
+            - img [ref=e48]
+        - button "Iniciar Sesión" [ref=e51] [cursor=pointer]
+        - paragraph [ref=e52]:
+          - link "¿Olvidaste tu contraseña?" [ref=e53] [cursor=pointer]:
+            - /url: /forgot-password
+      - paragraph [ref=e54]:
+        - text: ¿No tienes una cuenta?
+        - link "Regístrate" [ref=e55] [cursor=pointer]:
+          - /url: /signup
+  - alert [ref=e56]

@@ -1,0 +1,6 @@
+export { OrdenesTable } from './OrdenesTable'
+export { OrdenStatusBadge } from './OrdenStatusBadge'
+export { OrdenFilters } from './OrdenFilters'
+export { NuevaOrdenForm } from './NuevaOrdenForm'
+export { EditarOrdenForm } from './EditarOrdenForm'
+export { PracticaAutocomplete } from './PracticaAutocomplete'

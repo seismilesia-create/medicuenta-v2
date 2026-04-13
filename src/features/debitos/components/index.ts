@@ -1,0 +1,5 @@
+export { DebitosStats } from './DebitosStats'
+export { DebitosTable } from './DebitosTable'
+export { NuevoDebitoForm } from './NuevoDebitoForm'
+export { MotivoDebitoBadge } from './MotivoDebitoBadge'
+export { EditarDebitoForm } from './EditarDebitoForm'

@@ -1,0 +1,361 @@
+/* Google Fonts - Inter (body fallback) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   DESIGN SYSTEM: MEDICUENTA
+   Estetica: Apple-inspired Premium Minimal
+   Paleta: Neutros + Blue accent
+   ============================================ */
+
+/* ── Light Theme (Day mode) ── */
+:root {
+  /* Primary - Apple Blue */
+  --color-primary: #0071E3;
+  --color-primary-50: #F5F8FF;
+  --color-primary-100: #E8F0FE;
+  --color-primary-200: #D0E1FD;
+  --color-primary-300: #A8C7FA;
+  --color-primary-400: #7CACF8;
+  --color-primary-500: #0071E3;
+  --color-primary-600: #0060C0;
+  --color-primary-700: #004F9E;
+  --color-primary-800: #003D7A;
+  --color-primary-900: #002C59;
+
+  /* Secondary - Cyan */
+  --color-secondary: #06B6D4;
+  --color-secondary-50: #ECFEFF;
+  --color-secondary-100: #CFFAFE;
+  --color-secondary-200: #A5F3FC;
+  --color-secondary-300: #67E8F9;
+  --color-secondary-400: #22D3EE;
+  --color-secondary-500: #06B6D4;
+  --color-secondary-600: #0891B2;
+  --color-secondary-700: #0E7490;
+  --color-secondary-800: #155E75;
+  --color-secondary-900: #164E63;
+
+  /* Accent */
+  --color-accent: #0071E3;
+  --color-accent-50: #F5F8FF;
+  --color-accent-100: #E8F0FE;
+  --color-accent-200: #D0E1FD;
+  --color-accent-300: #A8C7FA;
+  --color-accent-400: #7CACF8;
+  --color-accent-500: #0071E3;
+  --color-accent-600: #0060C0;
+  --color-accent-700: #004F9E;
+
+  /* Status - Apple system colors */
+  --color-success: #30D158;
+  --color-success-light: #E8FAF0;
+  --color-warning: #FF9F0A;
+  --color-warning-light: #FFF8EC;
+  --color-error: #FF3B30;
+  --color-error-light: #FFF0EF;
+  --color-info: #0071E3;
+  --color-info-light: #F0F5FF;
+
+  /* Billing order statuses */
+  --color-borrador: #8E8E93;
+  --color-presentada: #0071E3;
+  --color-aprobada: #30D158;
+  --color-debitada: #FF3B30;
+
+  /* Surfaces - Apple Light */
+  --color-background: #F5F5F7;
+  --color-surface: #FFFFFF;
+  --color-surface-elevated: #FFFFFF;
+  --color-foreground: #1D1D1F;
+  --color-foreground-secondary: #6E6E73;
+  --color-foreground-muted: #86868B;
+  --color-muted: #86868B;
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-border-light: rgba(0, 0, 0, 0.05);
+
+  /* Sidebar */
+  --color-sidebar-bg: #FFFFFF;
+  --color-sidebar-text: #1D1D1F;
+  --color-sidebar-hover: rgba(0, 0, 0, 0.04);
+  --color-sidebar-active: rgba(0, 113, 227, 0.08);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 8px 0 rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 16px 0 rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  --shadow-glass: 0 2px 12px 0 rgba(0, 0, 0, 0.04);
+}
+
+/* ── Dark Theme (Night mode - DEFAULT) ── */
+html.dark {
+  --color-primary: #0A84FF;
+  --color-primary-50: #001A33;
+  --color-primary-100: #002952;
+  --color-primary-200: #003A75;
+  --color-primary-300: #004D9E;
+  --color-primary-400: #0066CC;
+  --color-primary-500: #0A84FF;
+  --color-primary-600: #409CFF;
+  --color-primary-700: #70B5FF;
+  --color-primary-800: #A0CDFF;
+  --color-primary-900: #D0E6FF;
+
+  --color-secondary: #64D2FF;
+  --color-secondary-50: #083344;
+  --color-secondary-100: #164E63;
+  --color-secondary-200: #155E75;
+  --color-secondary-300: #0E7490;
+  --color-secondary-400: #0891B2;
+  --color-secondary-500: #64D2FF;
+  --color-secondary-600: #67E8F9;
+  --color-secondary-700: #A5F3FC;
+  --color-secondary-800: #CFFAFE;
+  --color-secondary-900: #ECFEFF;
+
+  /* Status - Apple dark */
+  --color-success: #30D158;
+  --color-success-light: rgba(48, 209, 88, 0.12);
+  --color-warning: #FF9F0A;
+  --color-warning-light: rgba(255, 159, 10, 0.12);
+  --color-error: #FF453A;
+  --color-error-light: rgba(255, 69, 58, 0.12);
+  --color-info: #0A84FF;
+  --color-info-light: rgba(10, 132, 255, 0.12);
+
+  --color-borrador: #636366;
+  --color-presentada: #0A84FF;
+  --color-aprobada: #30D158;
+  --color-debitada: #FF453A;
+
+  /* Surfaces - True Apple Dark */
+  --color-background: #000000;
+  --color-surface: #1C1C1E;
+  --color-surface-elevated: #2C2C2E;
+  --color-foreground: #F5F5F7;
+  --color-foreground-secondary: #98989D;
+  --color-foreground-muted: #636366;
+  --color-muted: #636366;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-light: rgba(255, 255, 255, 0.05);
+
+  /* Sidebar */
+  --color-sidebar-bg: #1C1C1E;
+  --color-sidebar-text: #F5F5F7;
+  --color-sidebar-hover: rgba(255, 255, 255, 0.06);
+  --color-sidebar-active: rgba(10, 132, 255, 0.15);
+
+  /* Shadows - None in dark mode (Apple style) */
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+  --shadow-glass: none;
+}
+
+/* ── Base Styles ── */
+html {
+  font-family: -apple-system, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  line-height: 1.5;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+::selection {
+  background-color: rgba(0, 113, 227, 0.3);
+  color: inherit;
+}
+
+html.dark ::selection {
+  background-color: rgba(10, 132, 255, 0.3);
+  color: inherit;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C7C7CC;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8E8E93;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #48484A;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #636366;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6, .heading {
+  font-family: -apple-system, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+/* ── Base Layer ── */
+@layer base {
+  .status-borrador { color: var(--color-borrador); }
+  .status-presentada { color: var(--color-presentada); }
+  .status-aprobada { color: var(--color-aprobada); }
+  .status-debitada { color: var(--color-debitada); }
+}
+
+/* ── Components Layer ── */
+@layer components {
+  .card-glass {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+  }
+  html.dark .card-glass {
+    background: var(--color-surface);
+    border: none;
+    box-shadow: none;
+  }
+
+  .card-elevated {
+    background: var(--color-surface);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--color-border-light);
+  }
+
+  .badge-borrador {
+    background-color: rgba(142, 142, 147, 0.12);
+    color: var(--color-borrador);
+  }
+  .badge-presentada {
+    background-color: rgba(0, 113, 227, 0.1);
+    color: var(--color-presentada);
+  }
+  .badge-aprobada {
+    background-color: rgba(48, 209, 88, 0.1);
+    color: var(--color-aprobada);
+  }
+  .badge-debitada {
+    background-color: rgba(255, 59, 48, 0.1);
+    color: var(--color-debitada);
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: background-color 0.15s ease;
+  }
+  .nav-item:hover {
+    background: var(--color-sidebar-hover);
+  }
+  .nav-item.active {
+    background: var(--color-sidebar-active);
+    color: var(--color-primary);
+  }
+
+  .stat-card {
+    background: var(--color-surface);
+    border-radius: 12px;
+    padding: 28px;
+    transition: background-color 0.2s ease;
+  }
+  .stat-card:hover {
+    background: var(--color-surface-elevated);
+  }
+}
+
+/* ── Utilities Layer ── */
+@layer utilities {
+  .glass { background: var(--color-surface); }
+  .glass-dark { background: var(--color-surface); }
+  .glass-adaptive { background: var(--color-surface); }
+  html.dark .glass-adaptive { background: var(--color-surface); }
+
+  .medical-accent {
+    position: relative;
+    padding-left: 16px;
+  }
+  .medical-accent::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 3px;
+    background: var(--color-primary);
+    border-radius: 2px;
+  }
+
+  .gradient-medical { background: var(--color-primary); }
+  .gradient-primary { background: var(--color-primary); }
+  .text-gradient-medical { color: var(--color-primary); }
+
+  .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+  .animate-slide-up { animation: slideUp 0.4s ease-out; }
+  .animate-scale-in { animation: scaleIn 0.3s ease-out; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 0.3s ease-out;
+  }
+  @keyframes slideInRight {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+}
