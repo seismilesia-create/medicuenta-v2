@@ -64,3 +64,4 @@ Thumbs.db
 supabase/.branches
 supabase/.temp
 .playwright-mcp/
+tsconfig.tsbuildinfo
