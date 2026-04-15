@@ -1,12 +1,26 @@
 import { z } from 'zod'
 
-// Re-export OBRAS_SOCIALES from ordenes
-export { OBRAS_SOCIALES } from '@/features/ordenes/types/ordenes'
+// Re-export from ordenes
+export {
+  OBRAS_SOCIALES,
+  AGENTES_FACTURADORES,
+  AGENTE_LABELS,
+  type AgenteFacturador,
+} from '@/features/ordenes/types/ordenes'
+import { AGENTES_FACTURADORES, type AgenteFacturador } from '@/features/ordenes/types/ordenes'
 
 // --- Enums ---
 
 export const ESTADOS_CIRUGIA = ['borrador', 'presentada', 'aprobada', 'debitada'] as const
 export type EstadoCirugia = (typeof ESTADOS_CIRUGIA)[number]
+
+export const NIVELES_CIRUGIA = [1, 2] as const
+export type NivelCirugia = (typeof NIVELES_CIRUGIA)[number]
+
+export const NIVEL_LABELS: Record<NivelCirugia, string> = {
+  1: '1° Nivel (ambulatoria en consultorio)',
+  2: '2° Nivel (en institución)',
+}
 
 export const TIPOS_ANESTESIA = [
   'Local',
@@ -40,13 +54,15 @@ export interface Cirugia {
   gastos: number
   total: number
   estado: EstadoCirugia
+  nivel: NivelCirugia
+  agente_facturador: AgenteFacturador
   observaciones: string | null
   ayudante: string | null
   anestesiologo: string | null
   instrumentador: string | null
   tipo_anestesia: string | null
   duracion_minutos: number | null
-  sanatorio: string | null
+  institucion: string | null
   sala: string | null
   practicas_adicionales: PracticaAdicional[]
   total_calculado: number
@@ -84,6 +100,9 @@ export const cirugiaSchema = z.object({
   gastos: z.coerce.number().min(0).default(0),
   total: z.coerce.number().min(0).default(0),
   observaciones: z.string().optional(),
+  // Nivel y agente facturador
+  nivel: z.coerce.number().pipe(z.union([z.literal(1), z.literal(2)])).default(2),
+  agente_facturador: z.enum(AGENTES_FACTURADORES).default('circulo_medico'),
   // Equipo quirurgico (opcionales)
   ayudante: z.string().optional(),
   anestesiologo: z.string().optional(),
@@ -91,10 +110,13 @@ export const cirugiaSchema = z.object({
   // Anestesia y lugar (opcionales)
   tipo_anestesia: z.string().optional(),
   duracion_minutos: z.coerce.number().min(0).optional(),
-  sanatorio: z.string().optional(),
+  institucion: z.string().optional(),
   sala: z.string().optional(),
   // Practicas adicionales
   practicas_adicionales: z.array(practicaAdicionalSchema).default([]),
-})
+}).refine(
+  (data) => data.nivel !== 2 || (data.institucion && data.institucion.trim().length > 0),
+  { message: 'Institución es requerida para cirugías de 2° Nivel', path: ['institucion'] },
+)
 
 export type CirugiaFormData = z.infer<typeof cirugiaSchema>

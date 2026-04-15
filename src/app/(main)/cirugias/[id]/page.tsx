@@ -110,7 +110,7 @@ export default async function CirugiaDetallePage({
   const c = cirugia as Cirugia
   const practicas = (c.practicas_adicionales ?? []) as PracticaAdicional[]
   const hasEquipo = c.ayudante || c.anestesiologo || c.instrumentador
-  const hasAnestesia = c.tipo_anestesia || c.duracion_minutos || c.sanatorio || c.sala
+  const hasAnestesia = c.tipo_anestesia || c.duracion_minutos || c.institucion || c.sala
 
   // ---- Main layout -----------------------------------------------------------
   return (
@@ -283,7 +283,7 @@ export default async function CirugiaDetallePage({
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {c.tipo_anestesia && <Field label="Tipo de anestesia" value={c.tipo_anestesia} />}
             {c.duracion_minutos && <Field label="Duracion" value={`${c.duracion_minutos} minutos`} />}
-            {c.sanatorio && <Field label="Sanatorio" value={c.sanatorio} />}
+            {c.institucion && <Field label="Institución" value={c.institucion} />}
             {c.sala && <Field label="Sala" value={c.sala} />}
           </dl>
         </section>

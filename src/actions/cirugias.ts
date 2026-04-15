@@ -77,10 +77,12 @@ export async function createCirugia(formData: CirugiaFormData) {
     instrumentador: data.instrumentador ?? null,
     tipo_anestesia: data.tipo_anestesia ?? null,
     duracion_minutos: data.duracion_minutos ?? null,
-    sanatorio: data.sanatorio ?? null,
+    institucion: data.institucion ?? null,
     sala: data.sala ?? null,
     practicas_adicionales: data.practicas_adicionales,
     total_calculado: totalCalculado,
+    nivel: data.nivel,
+    agente_facturador: data.agente_facturador,
   }
 
   const { error } = await supabase.from('cirugias').insert(insertData)
@@ -127,10 +129,12 @@ export async function updateCirugia(cirugiaId: string, formData: CirugiaFormData
     instrumentador: data.instrumentador ?? null,
     tipo_anestesia: data.tipo_anestesia ?? null,
     duracion_minutos: data.duracion_minutos ?? null,
-    sanatorio: data.sanatorio ?? null,
+    institucion: data.institucion ?? null,
     sala: data.sala ?? null,
     practicas_adicionales: data.practicas_adicionales,
     total_calculado: totalCalculado,
+    nivel: data.nivel,
+    agente_facturador: data.agente_facturador,
     updated_at: new Date().toISOString(),
   }
 

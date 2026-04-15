@@ -55,6 +55,15 @@ export function Sidebar() {
         </svg>
       ),
     },
+    {
+      label: 'Reportes',
+      href: '/reportes',
+      icon: (
+        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3v18h18M7 14l4-4 4 4 5-5" />
+        </svg>
+      ),
+    },
   ];
 
   const advancedNavItems: NavItem[] = [

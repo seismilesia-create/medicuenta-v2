@@ -8,6 +8,15 @@ export type TipoAtencion = (typeof TIPOS_ATENCION)[number]
 export const ESTADOS_ORDEN = ['borrador', 'presentada', 'aprobada', 'debitada'] as const
 export type EstadoOrden = (typeof ESTADOS_ORDEN)[number]
 
+export const AGENTES_FACTURADORES = ['circulo_medico', 'medical_group', 'comunidad'] as const
+export type AgenteFacturador = (typeof AGENTES_FACTURADORES)[number]
+
+export const AGENTE_LABELS: Record<AgenteFacturador, string> = {
+  circulo_medico: 'Círculo Médico',
+  medical_group: 'Medical Group',
+  comunidad: 'Nosocomio de la Comunidad',
+}
+
 export const OBRAS_SOCIALES = [
   'OSEP',
   'PAMI',
@@ -40,6 +49,7 @@ export interface Orden {
   monto_particular: number
   monto_plus: number
   estado: EstadoOrden
+  agente_facturador: AgenteFacturador
   fecha_atencion: string
   observaciones: string | null
   created_at: string
@@ -86,6 +96,7 @@ export const ordenBaseSchema = z.object({
   fecha_atencion: z.string().min(1, 'Fecha requerida'),
   observaciones: z.string().optional(),
   monto_plus: z.coerce.number().min(0).default(0),
+  agente_facturador: z.enum(AGENTES_FACTURADORES).default('circulo_medico'),
 })
 
 export const ordenObraSocialSchema = ordenBaseSchema.extend({

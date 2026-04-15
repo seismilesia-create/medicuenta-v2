@@ -2,7 +2,16 @@
 
 import { useState } from 'react'
 import { updateOrden } from '@/actions/ordenes'
-import { OBRAS_SOCIALES, type TipoAtencion, type Prestacion, type OrdenFormData, type Orden } from '../types/ordenes'
+import {
+  OBRAS_SOCIALES,
+  AGENTES_FACTURADORES,
+  AGENTE_LABELS,
+  type TipoAtencion,
+  type Prestacion,
+  type OrdenFormData,
+  type Orden,
+  type AgenteFacturador,
+} from '../types/ordenes'
 import { PracticaAutocomplete } from './PracticaAutocomplete'
 
 interface Props {
@@ -12,6 +21,7 @@ interface Props {
 export function EditarOrdenForm({ orden }: Props) {
   const [tipo, setTipo] = useState<TipoAtencion>(orden.tipo)
   const [obraSocial, setObraSocial] = useState(orden.obra_social ?? '')
+  const [agenteFacturador, setAgenteFacturador] = useState<AgenteFacturador>(orden.agente_facturador ?? 'circulo_medico')
   const [prestacionSeleccionada, setPrestacionSeleccionada] = useState<Prestacion | null>(
     orden.codigo_practica
       ? {
@@ -48,6 +58,7 @@ export function EditarOrdenForm({ orden }: Props) {
           fecha_atencion: form.get('fecha_atencion') as string,
           observaciones: (form.get('observaciones') as string) || undefined,
           monto_plus: Number(form.get('monto_plus') || 0),
+          agente_facturador: agenteFacturador,
           obra_social: obraSocial,
           nro_afiliado: form.get('nro_afiliado') as string,
           token_osep: (form.get('token_osep') as string) || undefined,
@@ -65,6 +76,7 @@ export function EditarOrdenForm({ orden }: Props) {
           fecha_atencion: form.get('fecha_atencion') as string,
           observaciones: (form.get('observaciones') as string) || undefined,
           monto_plus: Number(form.get('monto_plus') || 0),
+          agente_facturador: agenteFacturador,
           nombre_practica: form.get('nombre_practica') as string,
           monto_particular: Number(form.get('monto_particular') || 0),
         }
@@ -129,6 +141,31 @@ export function EditarOrdenForm({ orden }: Props) {
             Particular
           </button>
         </div>
+      </div>
+
+      {/* Agente facturador */}
+      <div>
+        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-foreground)' }}>
+          Agente facturador *
+        </label>
+        <select
+          value={agenteFacturador}
+          onChange={(e) => setAgenteFacturador(e.target.value as AgenteFacturador)}
+          required
+          className="w-full px-4 py-3 rounded-lg text-sm"
+          style={{
+            background: 'var(--color-background)',
+            border: '1px solid var(--color-border)',
+            color: 'var(--color-foreground)',
+          }}
+        >
+          {AGENTES_FACTURADORES.map((a) => (
+            <option key={a} value={a}>{AGENTE_LABELS[a]}</option>
+          ))}
+        </select>
+        <p className="text-xs mt-1.5" style={{ color: 'var(--color-muted)' }}>
+          Quién factura esta orden según el convenio de la OS del paciente.
+        </p>
       </div>
 
       {/* Datos del paciente */}

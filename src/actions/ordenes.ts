@@ -37,6 +37,7 @@ export async function createOrden(formData: OrdenFormData) {
     fecha_atencion: data.fecha_atencion,
     observaciones: data.observaciones ?? null,
     monto_plus: data.monto_plus ?? 0,
+    agente_facturador: data.agente_facturador,
     // OS fields
     obra_social: data.tipo === 'obra_social' ? data.obra_social : null,
     nro_afiliado: data.tipo === 'obra_social' ? data.nro_afiliado : null,
@@ -93,6 +94,7 @@ export async function updateOrden(ordenId: string, formData: OrdenFormData) {
     fecha_atencion: data.fecha_atencion,
     observaciones: data.observaciones ?? null,
     monto_plus: data.monto_plus ?? 0,
+    agente_facturador: data.agente_facturador,
     obra_social: data.tipo === 'obra_social' ? data.obra_social : null,
     nro_afiliado: data.tipo === 'obra_social' ? data.nro_afiliado : null,
     token_osep: data.tipo === 'obra_social' ? (data.token_osep ?? null) : null,

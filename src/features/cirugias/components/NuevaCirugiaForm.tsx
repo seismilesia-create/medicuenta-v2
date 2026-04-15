@@ -2,7 +2,18 @@
 
 import { useState } from 'react'
 import { createCirugia } from '@/actions/cirugias'
-import { OBRAS_SOCIALES, TIPOS_ANESTESIA, type CirugiaFormData, type PracticaAdicional } from '../types/cirugias'
+import {
+  OBRAS_SOCIALES,
+  TIPOS_ANESTESIA,
+  AGENTES_FACTURADORES,
+  AGENTE_LABELS,
+  NIVELES_CIRUGIA,
+  NIVEL_LABELS,
+  type CirugiaFormData,
+  type PracticaAdicional,
+  type NivelCirugia,
+  type AgenteFacturador,
+} from '../types/cirugias'
 import type { Prestacion } from '@/features/ordenes/types/ordenes'
 import { PracticaAutocomplete } from '@/features/ordenes/components/PracticaAutocomplete'
 import { CollapsibleSection } from './CollapsibleSection'
@@ -10,6 +21,8 @@ import { PracticasAdicionalesField } from './PracticasAdicionalesField'
 
 export function NuevaCirugiaForm() {
   const [obraSocial, setObraSocial] = useState('')
+  const [nivel, setNivel] = useState<NivelCirugia>(2)
+  const [agenteFacturador, setAgenteFacturador] = useState<AgenteFacturador>('circulo_medico')
   const [prestacion, setPrestacion] = useState<Prestacion | null>(null)
   const [practicasAdicionales, setPracticasAdicionales] = useState<PracticaAdicional[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -47,9 +60,11 @@ export function NuevaCirugiaForm() {
       instrumentador: (form.get('instrumentador') as string) || undefined,
       tipo_anestesia: (form.get('tipo_anestesia') as string) || undefined,
       duracion_minutos: form.get('duracion_minutos') ? Number(form.get('duracion_minutos')) : undefined,
-      sanatorio: (form.get('sanatorio') as string) || undefined,
+      institucion: (form.get('institucion') as string) || undefined,
       sala: (form.get('sala') as string) || undefined,
       practicas_adicionales: practicasAdicionales,
+      nivel,
+      agente_facturador: agenteFacturador,
     }
 
     const result = await createCirugia(formData)
@@ -73,6 +88,50 @@ export function NuevaCirugiaForm() {
           {error}
         </div>
       )}
+
+      {/* === NIVEL + AGENTE FACTURADOR === */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+            Nivel *
+          </label>
+          <select
+            value={nivel}
+            onChange={(e) => setNivel(Number(e.target.value) as NivelCirugia)}
+            required
+            className="w-full px-4 py-3 rounded-lg text-sm"
+            style={{
+              background: 'var(--color-background)',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-foreground)',
+            }}
+          >
+            {NIVELES_CIRUGIA.map((n) => (
+              <option key={n} value={n}>{NIVEL_LABELS[n]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+            Agente facturador *
+          </label>
+          <select
+            value={agenteFacturador}
+            onChange={(e) => setAgenteFacturador(e.target.value as AgenteFacturador)}
+            required
+            className="w-full px-4 py-3 rounded-lg text-sm"
+            style={{
+              background: 'var(--color-background)',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-foreground)',
+            }}
+          >
+            {AGENTES_FACTURADORES.map((a) => (
+              <option key={a} value={a}>{AGENTE_LABELS[a]}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {/* === CAMPOS BASICOS (siempre visibles) === */}
       <div className="space-y-4">
@@ -287,12 +346,13 @@ export function NuevaCirugiaForm() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-              Sanatorio
+              Institución {nivel === 2 && '*'}
             </label>
             <input
-              name="sanatorio"
+              name="institucion"
               type="text"
-              placeholder="Nombre del sanatorio"
+              required={nivel === 2}
+              placeholder="Ej: Sanatorio Pasteur, Nosocomio de la Comunidad"
               className="w-full px-4 py-3 rounded-lg text-sm"
               style={{
                 background: 'var(--color-background)',

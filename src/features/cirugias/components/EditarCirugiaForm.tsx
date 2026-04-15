@@ -2,7 +2,19 @@
 
 import { useState } from 'react'
 import { updateCirugia } from '@/actions/cirugias'
-import { OBRAS_SOCIALES, TIPOS_ANESTESIA, type CirugiaFormData, type PracticaAdicional, type Cirugia } from '../types/cirugias'
+import {
+  OBRAS_SOCIALES,
+  TIPOS_ANESTESIA,
+  AGENTES_FACTURADORES,
+  AGENTE_LABELS,
+  NIVELES_CIRUGIA,
+  NIVEL_LABELS,
+  type CirugiaFormData,
+  type PracticaAdicional,
+  type Cirugia,
+  type NivelCirugia,
+  type AgenteFacturador,
+} from '../types/cirugias'
 import type { Prestacion } from '@/features/ordenes/types/ordenes'
 import { PracticaAutocomplete } from '@/features/ordenes/components/PracticaAutocomplete'
 import { CollapsibleSection } from './CollapsibleSection'
@@ -14,6 +26,8 @@ interface Props {
 
 export function EditarCirugiaForm({ cirugia }: Props) {
   const [obraSocial, setObraSocial] = useState(cirugia.obra_social)
+  const [nivel, setNivel] = useState<NivelCirugia>(cirugia.nivel ?? 2)
+  const [agenteFacturador, setAgenteFacturador] = useState<AgenteFacturador>(cirugia.agente_facturador ?? 'circulo_medico')
   const [prestacion, setPrestacion] = useState<Prestacion | null>(
     cirugia.codigo_practica
       ? {
@@ -36,7 +50,7 @@ export function EditarCirugiaForm({ cirugia }: Props) {
   const [loading, setLoading] = useState(false)
 
   const hasEquipo = cirugia.ayudante || cirugia.anestesiologo || cirugia.instrumentador
-  const hasAnestesia = cirugia.tipo_anestesia || cirugia.duracion_minutos || cirugia.sanatorio || cirugia.sala
+  const hasAnestesia = cirugia.tipo_anestesia || cirugia.duracion_minutos || cirugia.institucion || cirugia.sala
   const hasPracticas = (cirugia.practicas_adicionales ?? []).length > 0
 
   function handlePrestacionSelect(p: Prestacion) {
@@ -69,9 +83,11 @@ export function EditarCirugiaForm({ cirugia }: Props) {
       instrumentador: (form.get('instrumentador') as string) || undefined,
       tipo_anestesia: (form.get('tipo_anestesia') as string) || undefined,
       duracion_minutos: form.get('duracion_minutos') ? Number(form.get('duracion_minutos')) : undefined,
-      sanatorio: (form.get('sanatorio') as string) || undefined,
+      institucion: (form.get('institucion') as string) || undefined,
       sala: (form.get('sala') as string) || undefined,
       practicas_adicionales: practicasAdicionales,
+      nivel,
+      agente_facturador: agenteFacturador,
     }
 
     const result = await updateCirugia(cirugia.id, formData)
@@ -95,6 +111,50 @@ export function EditarCirugiaForm({ cirugia }: Props) {
           {error}
         </div>
       )}
+
+      {/* === NIVEL + AGENTE FACTURADOR === */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+            Nivel *
+          </label>
+          <select
+            value={nivel}
+            onChange={(e) => setNivel(Number(e.target.value) as NivelCirugia)}
+            required
+            className="w-full px-4 py-3 rounded-lg text-sm"
+            style={{
+              background: 'var(--color-background)',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-foreground)',
+            }}
+          >
+            {NIVELES_CIRUGIA.map((n) => (
+              <option key={n} value={n}>{NIVEL_LABELS[n]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+            Agente facturador *
+          </label>
+          <select
+            value={agenteFacturador}
+            onChange={(e) => setAgenteFacturador(e.target.value as AgenteFacturador)}
+            required
+            className="w-full px-4 py-3 rounded-lg text-sm"
+            style={{
+              background: 'var(--color-background)',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-foreground)',
+            }}
+          >
+            {AGENTES_FACTURADORES.map((a) => (
+              <option key={a} value={a}>{AGENTE_LABELS[a]}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {/* === CAMPOS BASICOS === */}
       <div className="space-y-4">
@@ -316,13 +376,14 @@ export function EditarCirugiaForm({ cirugia }: Props) {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-              Sanatorio
+              Institución {nivel === 2 && '*'}
             </label>
             <input
-              name="sanatorio"
+              name="institucion"
               type="text"
-              defaultValue={cirugia.sanatorio ?? ''}
-              placeholder="Nombre del sanatorio"
+              required={nivel === 2}
+              defaultValue={cirugia.institucion ?? ''}
+              placeholder="Ej: Sanatorio Pasteur, Nosocomio de la Comunidad"
               className="w-full px-4 py-3 rounded-lg text-sm"
               style={{
                 background: 'var(--color-background)',
