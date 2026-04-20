@@ -244,37 +244,76 @@ Los motivos falta_token/falta_firma/falta_diagnostico/error_codigo se marcan aut
 // ============================================================================
 // Tool 4: consultar_nomenclador
 // ============================================================================
+const STOPWORDS = new Set(['de', 'la', 'el', 'los', 'las', 'del', 'un', 'una', 'y', 'o', 'en', 'por', 'para', 'con'])
+
+function sanitizeTerm(raw: string): string {
+  return raw.replace(/[%,()]/g, ' ').trim()
+}
+
 export const consultarNomencladorTool = tool({
-  description: `Busca prácticas en el nomenclador OSEP por código o por texto. Devuelve hasta 10 resultados.
-Usá esta tool cuando el médico pregunte "cuánto paga X", "qué código es Y", "buscame la consulta oftalmológica", etc.`,
+  description: `Busca prácticas en el nomenclador OSEP por código o por texto. Devuelve hasta 10 resultados ordenados por relevancia.
+Usá esta tool cuando el médico pregunte "cuánto paga X", "qué código es Y", "buscame la consulta oftalmológica", etc.
+La búsqueda parte el texto en palabras clave y busca cualquier coincidencia — no necesita texto exacto.`,
   inputSchema: z.object({
-    busqueda: z.string().min(1).describe('Código (ej: "420101") o nombre de práctica (ej: "consulta")'),
+    busqueda: z.string().min(1).describe('Código (ej: "420101") o palabras clave (ej: "consulta oftalmológica", "cirugía vesícula")'),
   }),
   execute: async (input) => {
     try {
       const { supabase } = await requireMedicoId()
 
-      const term = input.busqueda.trim()
-      const { data, error } = await supabase
+      const term = sanitizeTerm(input.busqueda)
+      const words = term
+        .split(/\s+/)
+        .filter((w) => w.length > 2 && !STOPWORDS.has(w.toLowerCase()))
+
+      let query = supabase
         .from('prestaciones')
         .select('codigo, detalle, honorarios, gastos, total, seccion, categoria')
-        .or(`codigo.ilike.%${term}%,detalle.ilike.%${term}%`)
-        .limit(10)
+
+      if (words.length <= 1 || term.length <= 4) {
+        query = query.or(`codigo.ilike.%${term}%,detalle.ilike.%${term}%`)
+      } else {
+        const filters = [
+          `codigo.ilike.%${term}%`,
+          ...words.map((w) => `detalle.ilike.%${w}%`),
+        ].join(',')
+        query = query.or(filters)
+      }
+
+      const { data, error } = await query.limit(40)
 
       if (error) return { success: false, error: error.message, resultados: [] }
 
-      return {
-        success: true,
-        busqueda: term,
-        cantidad: data?.length ?? 0,
-        resultados: (data ?? []).map((p) => ({
+      const lcWords = words.map((w) => w.toLowerCase())
+      const ranked = (data ?? [])
+        .map((p) => {
+          const detalle = (p.detalle ?? '').toLowerCase()
+          const codigo = (p.codigo ?? '').toLowerCase()
+          let score = 0
+          for (const w of lcWords) {
+            if (detalle.includes(w)) score += 2
+            if (codigo.includes(w)) score += 3
+          }
+          if (codigo === term.toLowerCase()) score += 10
+          if (detalle === term.toLowerCase()) score += 8
+          return { p, score }
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10)
+        .map(({ p }) => ({
           codigo: p.codigo,
           detalle: p.detalle,
           honorarios: Number(p.honorarios ?? 0),
           gastos: Number(p.gastos ?? 0),
           total: Number(p.total ?? 0),
           seccion: p.seccion,
-        })),
+        }))
+
+      return {
+        success: true,
+        busqueda: term,
+        cantidad: ranked.length,
+        resultados: ranked,
       }
     } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : 'Error desconocido', resultados: [] }
