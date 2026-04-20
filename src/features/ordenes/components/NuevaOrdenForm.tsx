@@ -12,6 +12,19 @@ import {
   type AgenteFacturador,
 } from '../types/ordenes'
 import { PracticaAutocomplete } from './PracticaAutocomplete'
+import { EscanearOrdenButton, type OrdenEscaneada } from './EscanearOrdenButton'
+
+function matchesOsFromScan(scanned: string | null): string {
+  if (!scanned) return ''
+  const low = scanned.toLowerCase()
+  for (const os of OBRAS_SOCIALES) {
+    if (os.toLowerCase() === low) return os
+  }
+  for (const os of OBRAS_SOCIALES) {
+    if (low.includes(os.toLowerCase()) || os.toLowerCase().includes(low)) return os
+  }
+  return ''
+}
 
 export function NuevaOrdenForm() {
   const [tipo, setTipo] = useState<TipoAtencion>('obra_social')
@@ -20,6 +33,24 @@ export function NuevaOrdenForm() {
   const [prestacionSeleccionada, setPrestacionSeleccionada] = useState<Prestacion | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [ocr, setOcr] = useState<OrdenEscaneada | null>(null)
+  const [formKey, setFormKey] = useState(0)
+
+  function handleOcrExtracted(data: OrdenEscaneada) {
+    setOcr(data)
+    setTipo('obra_social')
+    const matched = matchesOsFromScan(data.obra_social)
+    if (matched) setObraSocial(matched)
+    setFormKey((k) => k + 1)
+  }
+
+  function isDudoso(campo: string): boolean {
+    return !!ocr?.campos_dudosos?.includes(campo)
+  }
+
+  function dudosoStyle(campo: string) {
+    return isDudoso(campo) ? { outline: '2px solid var(--color-warning)' } : {}
+  }
 
   function handlePrestacionSelect(prestacion: Prestacion) {
     setPrestacionSeleccionada(prestacion)
@@ -74,7 +105,26 @@ export function NuevaOrdenForm() {
   const today = new Date().toISOString().split('T')[0]
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8 max-w-2xl">
+    <div className="max-w-2xl">
+      <EscanearOrdenButton onExtracted={handleOcrExtracted} />
+
+      {ocr && (
+        <div
+          className="mb-6 rounded-lg px-4 py-3 text-sm"
+          style={{ backgroundColor: 'var(--color-success-light, rgba(34,197,94,0.1))', border: '1px solid var(--color-success)' }}
+        >
+          <p style={{ color: 'var(--color-success)' }}>
+            ✓ Datos extraídos (confianza: {ocr.confianza})
+            {ocr.campos_dudosos.length > 0 && (
+              <span className="block text-xs mt-1" style={{ color: 'var(--color-warning)' }}>
+                Verificá: {ocr.campos_dudosos.join(', ')}
+              </span>
+            )}
+          </p>
+        </div>
+      )}
+
+      <form key={formKey} onSubmit={handleSubmit} className="space-y-8">
       {/* Error message */}
       {error && (
         <div className="p-3 rounded-lg text-sm bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400" style={{ border: '1px solid var(--color-error)' }}>
@@ -159,11 +209,13 @@ export function NuevaOrdenForm() {
             type="text"
             required
             placeholder="Juan Perez"
+            defaultValue={ocr?.paciente ?? ''}
             className="w-full px-4 py-3 rounded-lg text-sm"
             style={{
               background: 'var(--color-background)',
               border: '1px solid var(--color-border)',
               color: 'var(--color-foreground)',
+              ...dudosoStyle('paciente'),
             }}
           />
         </div>
@@ -175,7 +227,7 @@ export function NuevaOrdenForm() {
             name="fecha_atencion"
             type="date"
             required
-            defaultValue={today}
+            defaultValue={ocr?.fecha ?? today}
             max={today}
             className="w-full px-4 py-3 rounded-lg text-sm"
             style={{
@@ -226,11 +278,13 @@ export function NuevaOrdenForm() {
                 type="text"
                 required
                 placeholder="000000"
+                defaultValue={ocr?.nro_afiliado ?? ''}
                 className="w-full px-4 py-3 rounded-lg text-sm"
                 style={{
                   background: 'var(--color-background)',
                   border: '1px solid var(--color-border)',
                   color: 'var(--color-foreground)',
+                  ...dudosoStyle('nro_afiliado'),
                 }}
               />
             </div>
@@ -250,11 +304,13 @@ export function NuevaOrdenForm() {
                   maxLength={6}
                   pattern="[0-9]{6}"
                   placeholder="123456"
+                  defaultValue={ocr?.token_osep ?? ''}
                   className="w-full px-4 py-3 rounded-lg text-sm font-mono"
                   style={{
                     background: 'var(--color-background)',
                     border: '1px solid var(--color-border)',
                     color: 'var(--color-foreground)',
+                    ...dudosoStyle('token_osep'),
                   }}
                 />
               </div>
@@ -263,6 +319,7 @@ export function NuevaOrdenForm() {
                   <input
                     name="firma_paciente"
                     type="checkbox"
+                    defaultChecked={!!ocr?.firma_paciente}
                     className="w-4 h-4 rounded"
                     style={{ accentColor: 'var(--color-primary)' }}
                   />
@@ -289,11 +346,13 @@ export function NuevaOrdenForm() {
               name="diagnostico_cie10"
               type="text"
               placeholder="Codigo CIE-10 (opcional)"
+              defaultValue={ocr?.diagnostico ?? ''}
               className="w-full px-4 py-3 rounded-lg text-sm"
               style={{
                 background: 'var(--color-background)',
                 border: '1px solid var(--color-border)',
                 color: 'var(--color-foreground)',
+                ...dudosoStyle('diagnostico'),
               }}
             />
           </div>
@@ -435,6 +494,7 @@ export function NuevaOrdenForm() {
           Cancelar
         </a>
       </div>
-    </form>
+      </form>
+    </div>
   )
 }

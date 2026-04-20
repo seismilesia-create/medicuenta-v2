@@ -5,19 +5,19 @@ export interface SuggestedQuestion {
 
 export const SUGGESTED_QUESTIONS: SuggestedQuestion[] = [
   {
-    label: 'Multiples practicas',
-    text: 'Como funciona el calculo de multiples practicas OSEP?',
+    label: '📋 Registrá una orden',
+    text: 'Registrá una orden de consulta para Juan Pérez hoy, OSEP, código 420101',
   },
   {
-    label: 'Estados de orden',
-    text: 'Cuales son los estados de una orden y que significa cada uno?',
+    label: '📖 Consultá el nomenclador',
+    text: 'Buscame el código de consulta de especialista',
   },
   {
-    label: 'Debitos comunes',
-    text: 'Cuales son los motivos de debito mas comunes y como prevenirlos?',
+    label: '📊 Múltiples prácticas',
+    text: 'Cómo funciona el cálculo de múltiples prácticas OSEP?',
   },
   {
-    label: 'Liquidaciones',
-    text: 'Como armo una liquidacion para presentar a la obra social?',
+    label: '💸 Motivos de débito',
+    text: 'Cuáles son los motivos de débito más comunes y cómo prevenirlos?',
   },
 ]

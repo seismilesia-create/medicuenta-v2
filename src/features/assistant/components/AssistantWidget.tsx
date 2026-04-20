@@ -12,8 +12,8 @@ export function AssistantWidget() {
 
   const isLoading = status === 'submitted' || status === 'streaming'
 
-  function handleSend(text: string) {
-    sendMessage({ text })
+  function handleSend(payload: { text: string; files?: FileList }) {
+    sendMessage({ text: payload.text, files: payload.files })
   }
 
   return (
@@ -97,7 +97,7 @@ export function AssistantWidget() {
                 {SUGGESTED_QUESTIONS.map((q) => (
                   <button
                     key={q.label}
-                    onClick={() => handleSend(q.text)}
+                    onClick={() => handleSend({ text: q.text })}
                     className="w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
                     style={{
                       border: '1px solid var(--color-border)',

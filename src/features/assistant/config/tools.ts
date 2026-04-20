@@ -1,0 +1,398 @@
+import { tool } from 'ai'
+import { z } from 'zod'
+import { createClient } from '@/lib/supabase/server'
+import { openrouter, MODELS } from '@/lib/ai/openrouter'
+import { generateObject } from 'ai'
+
+const AGENTE_ENUM = z.enum(['circulo_medico', 'medical_group', 'comunidad'])
+const NIVEL_ENUM = z.union([z.literal(1), z.literal(2)])
+
+async function requireMedicoId() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('No autenticado')
+  return { supabase, medicoId: user.id }
+}
+
+// ============================================================================
+// Tool 1: registrar_orden
+// ============================================================================
+export const registrarOrdenTool = tool({
+  description: `Registra una nueva orden de consulta o prestación menor (1° Nivel). Se guarda en estado 'borrador'.
+Usá esta tool cuando el médico diga "registrá una orden", "agregá una consulta", "cargá esta atención", etc.
+IMPORTANTE: Siempre confirmá los datos con el médico antes de ejecutar la tool.
+
+Ejemplo OS: { tipo: 'obra_social', nombre_paciente: 'Juan Pérez', fecha_atencion: '2026-04-16', obra_social: 'OSEP', nro_afiliado: '1234', agente_facturador: 'circulo_medico', codigo_practica: '420101', honorario_calculado: 5000, monto_plus: 0 }
+
+Ejemplo particular: { tipo: 'particular', nombre_paciente: 'María Gómez', fecha_atencion: '2026-04-16', nombre_practica: 'Consulta particular', monto_particular: 8000, monto_plus: 0, agente_facturador: 'circulo_medico' }`,
+  inputSchema: z.object({
+    tipo: z.enum(['obra_social', 'particular']),
+    nombre_paciente: z.string().min(2),
+    fecha_atencion: z.string().describe('YYYY-MM-DD'),
+    agente_facturador: AGENTE_ENUM.default('circulo_medico'),
+    monto_plus: z.number().min(0).default(0),
+    observaciones: z.string().optional(),
+
+    // OS specific (required when tipo='obra_social')
+    obra_social: z.string().optional(),
+    nro_afiliado: z.string().optional(),
+    token_osep: z.string().optional(),
+    firma_paciente: z.boolean().optional(),
+    codigo_practica: z.string().optional(),
+    nombre_practica: z.string().optional(),
+    diagnostico_cie10: z.string().optional(),
+    honorario_calculado: z.number().min(0).optional(),
+
+    // Particular specific (required when tipo='particular')
+    monto_particular: z.number().min(0).optional(),
+  }),
+  execute: async (input) => {
+    try {
+      const { supabase, medicoId } = await requireMedicoId()
+
+      if (input.tipo === 'obra_social') {
+        if (!input.obra_social || !input.nro_afiliado || !input.codigo_practica) {
+          return { success: false, error: 'Obra social, número de afiliado y código de práctica son requeridos' }
+        }
+      } else {
+        if (!input.nombre_practica || !input.monto_particular) {
+          return { success: false, error: 'Descripción y monto son requeridos para particular' }
+        }
+      }
+
+      const insertData = {
+        medico_id: medicoId,
+        tipo: input.tipo,
+        nombre_paciente: input.nombre_paciente,
+        fecha_atencion: input.fecha_atencion,
+        observaciones: input.observaciones ?? null,
+        monto_plus: input.monto_plus ?? 0,
+        agente_facturador: input.agente_facturador,
+        obra_social: input.tipo === 'obra_social' ? input.obra_social : null,
+        nro_afiliado: input.tipo === 'obra_social' ? input.nro_afiliado : null,
+        token_osep: input.tipo === 'obra_social' ? (input.token_osep ?? null) : null,
+        firma_paciente: input.tipo === 'obra_social' ? !!input.firma_paciente : false,
+        codigo_practica: input.tipo === 'obra_social' ? input.codigo_practica : null,
+        nombre_practica: input.nombre_practica ?? null,
+        diagnostico_cie10: input.tipo === 'obra_social' ? (input.diagnostico_cie10 ?? null) : null,
+        honorario_calculado: input.tipo === 'obra_social' ? (input.honorario_calculado ?? 0) : 0,
+        monto_particular: input.tipo === 'particular' ? input.monto_particular : 0,
+        estado: 'borrador',
+      }
+
+      const { data, error } = await supabase
+        .from('ordenes')
+        .insert(insertData)
+        .select('id')
+        .single()
+
+      if (error) return { success: false, error: error.message }
+
+      const monto = (input.honorario_calculado ?? 0) + (input.monto_particular ?? 0) + (input.monto_plus ?? 0)
+      return {
+        success: true,
+        id: data.id,
+        paciente: input.nombre_paciente,
+        obra_social: input.obra_social ?? 'Particular',
+        monto_total: monto,
+        estado: 'borrador',
+      }
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Error desconocido' }
+    }
+  },
+})
+
+// ============================================================================
+// Tool 2: registrar_cirugia
+// ============================================================================
+export const registrarCirugiaTool = tool({
+  description: `Registra una cirugía. Puede ser 1° Nivel (ambulatoria en consultorio) o 2° Nivel (en institución como sanatorio).
+Para 2° Nivel, la institución es requerida (Pasteur, Junín, Privado, Nosocomio de la Comunidad, etc.).
+fecha_alta_paciente es opcional — solo completarlo si el paciente queda internado más de un día. Si el alta es el mismo día, dejalo vacío.
+Estado inicial: 'borrador'.`,
+  inputSchema: z.object({
+    nombre_paciente: z.string().min(2),
+    fecha: z.string().describe('Fecha de la cirugía, YYYY-MM-DD'),
+    obra_social: z.string(),
+    codigo_practica: z.string(),
+    nombre_practica: z.string().optional(),
+    honorarios: z.number().min(0).default(0),
+    gastos: z.number().min(0).default(0),
+    nivel: NIVEL_ENUM.default(2),
+    agente_facturador: AGENTE_ENUM.default('circulo_medico'),
+    institucion: z.string().optional().describe('Requerida si nivel=2'),
+    fecha_alta_paciente: z.string().optional().describe('YYYY-MM-DD, opcional. Solo si el paciente quedó internado'),
+    observaciones: z.string().optional(),
+    ayudante: z.string().optional(),
+    anestesiologo: z.string().optional(),
+    tipo_anestesia: z.string().optional(),
+    duracion_minutos: z.number().int().min(0).optional(),
+    sala: z.string().optional(),
+  }),
+  execute: async (input) => {
+    try {
+      const { supabase, medicoId } = await requireMedicoId()
+
+      if (input.nivel === 2 && (!input.institucion || !input.institucion.trim())) {
+        return { success: false, error: 'Institución es requerida para cirugías de 2° Nivel' }
+      }
+
+      const total = input.honorarios + input.gastos
+      const insertData = {
+        medico_id: medicoId,
+        nombre_paciente: input.nombre_paciente,
+        fecha: input.fecha,
+        obra_social: input.obra_social,
+        codigo_practica: input.codigo_practica,
+        nombre_practica: input.nombre_practica ?? null,
+        honorarios: input.honorarios,
+        gastos: input.gastos,
+        total,
+        total_calculado: total,
+        estado: 'borrador',
+        nivel: input.nivel,
+        agente_facturador: input.agente_facturador,
+        institucion: input.institucion?.trim() || null,
+        fecha_alta_paciente: input.fecha_alta_paciente || null,
+        observaciones: input.observaciones ?? null,
+        ayudante: input.ayudante ?? null,
+        anestesiologo: input.anestesiologo ?? null,
+        tipo_anestesia: input.tipo_anestesia ?? null,
+        duracion_minutos: input.duracion_minutos ?? null,
+        sala: input.sala ?? null,
+        practicas_adicionales: [],
+      }
+
+      const { data, error } = await supabase
+        .from('cirugias')
+        .insert(insertData)
+        .select('id')
+        .single()
+
+      if (error) return { success: false, error: error.message }
+
+      return {
+        success: true,
+        id: data.id,
+        paciente: input.nombre_paciente,
+        nivel: input.nivel === 1 ? '1° Nivel' : '2° Nivel',
+        obra_social: input.obra_social,
+        institucion: input.institucion ?? null,
+        total,
+        estado: 'borrador',
+      }
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Error desconocido' }
+    }
+  },
+})
+
+// ============================================================================
+// Tool 3: registrar_debito
+// ============================================================================
+export const registrarDebitoTool = tool({
+  description: `Registra un débito (descuento aplicado por una OS, CM, MG, Comunidad o institución).
+Motivos: falta_token, falta_firma, falta_diagnostico, no_autorizada, error_codigo, otro.
+aplicado_por indica quién aplicó el descuento — útil para reportes.
+Los motivos falta_token/falta_firma/falta_diagnostico/error_codigo se marcan automáticamente como refacturables.`,
+  inputSchema: z.object({
+    motivo: z.enum(['falta_token', 'falta_firma', 'falta_diagnostico', 'no_autorizada', 'error_codigo', 'otro']),
+    monto: z.number().min(0),
+    fecha: z.string().describe('YYYY-MM-DD'),
+    motivo_detalle: z.string().optional(),
+    aplicado_por: z.enum(['circulo_medico', 'institucion', 'medical_group', 'comunidad', 'obra_social']).optional(),
+  }),
+  execute: async (input) => {
+    try {
+      const { supabase, medicoId } = await requireMedicoId()
+      const refacturables = ['falta_token', 'falta_firma', 'falta_diagnostico', 'error_codigo']
+      const refacturable = refacturables.includes(input.motivo)
+
+      const { data, error } = await supabase
+        .from('debitos')
+        .insert({
+          medico_id: medicoId,
+          motivo: input.motivo,
+          motivo_detalle: input.motivo_detalle ?? null,
+          monto: input.monto,
+          fecha: input.fecha,
+          refacturable,
+          refacturado: false,
+          aplicado_por: input.aplicado_por ?? null,
+          orden_id: null,
+          liquidacion_id: null,
+        })
+        .select('id')
+        .single()
+
+      if (error) return { success: false, error: error.message }
+
+      return {
+        success: true,
+        id: data.id,
+        motivo: input.motivo,
+        monto: input.monto,
+        refacturable,
+      }
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Error desconocido' }
+    }
+  },
+})
+
+// ============================================================================
+// Tool 4: consultar_nomenclador
+// ============================================================================
+export const consultarNomencladorTool = tool({
+  description: `Busca prácticas en el nomenclador OSEP por código o por texto. Devuelve hasta 10 resultados.
+Usá esta tool cuando el médico pregunte "cuánto paga X", "qué código es Y", "buscame la consulta oftalmológica", etc.`,
+  inputSchema: z.object({
+    busqueda: z.string().min(1).describe('Código (ej: "420101") o nombre de práctica (ej: "consulta")'),
+  }),
+  execute: async (input) => {
+    try {
+      const { supabase } = await requireMedicoId()
+
+      const term = input.busqueda.trim()
+      const { data, error } = await supabase
+        .from('prestaciones')
+        .select('codigo, detalle, honorarios, gastos, total, seccion, categoria')
+        .or(`codigo.ilike.%${term}%,detalle.ilike.%${term}%`)
+        .limit(10)
+
+      if (error) return { success: false, error: error.message, resultados: [] }
+
+      return {
+        success: true,
+        busqueda: term,
+        cantidad: data?.length ?? 0,
+        resultados: (data ?? []).map((p) => ({
+          codigo: p.codigo,
+          detalle: p.detalle,
+          honorarios: Number(p.honorarios ?? 0),
+          gastos: Number(p.gastos ?? 0),
+          total: Number(p.total ?? 0),
+          seccion: p.seccion,
+        })),
+      }
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Error desconocido', resultados: [] }
+    }
+  },
+})
+
+// ============================================================================
+// Tool 5: analizar_imagen_orden (OCR con Gemini Vision)
+// ============================================================================
+const ordenExtraidaSchema = z.object({
+  es_orden_medica: z.boolean(),
+  motivo_rechazo: z.string().nullable().describe('Si es_orden_medica=false, por qué no lo es'),
+  paciente: z.string().nullable(),
+  obra_social: z.string().nullable(),
+  nro_afiliado: z.string().nullable(),
+  codigo_practica: z.string().nullable(),
+  nombre_practica: z.string().nullable(),
+  diagnostico: z.string().nullable(),
+  fecha: z.string().nullable().describe('YYYY-MM-DD si se puede inferir'),
+  medico_solicitante: z.string().nullable(),
+  token_osep: z.string().nullable().describe('6 dígitos si aplica'),
+  firma_paciente: z.boolean().nullable(),
+  horario_atencion: z.string().nullable().describe('HH:MM si figura'),
+  observaciones: z.string().nullable(),
+  confianza: z.enum(['alta', 'media', 'baja']),
+  campos_dudosos: z.array(z.string()).describe('Lista de campos con baja confianza'),
+})
+
+export const analizarImagenOrdenTool = tool({
+  description: `Analiza una foto de una orden médica en papel (OCR multimodal con Gemini Vision).
+Extrae: paciente, OS, nro de afiliado, código/nombre de práctica, diagnóstico, fecha, médico solicitante, token OSEP, firma, horario.
+Ejecutá esta tool AUTOMÁTICAMENTE cuando el médico adjunte una imagen.
+Devuelve estructura con nivel de confianza y lista de campos dudosos.`,
+  inputSchema: z.object({
+    imagen_url: z.string().describe('URL o data URL (base64) de la imagen a analizar'),
+  }),
+  execute: async (input) => {
+    try {
+      const { object } = await generateObject({
+        model: openrouter(MODELS.vision),
+        schema: ordenExtraidaSchema,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Analizá esta imagen de una orden médica argentina. Extraé todos los campos que puedas.
+
+Reglas:
+- Token OSEP = 6 dígitos numéricos
+- Obras sociales comunes en Catamarca: OSEP, PAMI, Swiss Medical, OSDE, Galeno, Medife, Accord Salud, OSPAT, OSPIA
+- Intentá leer letra manuscrita
+- Para cada campo que no esté seguro, incluilo en campos_dudosos
+- Confianza "alta" = podés leer casi todo sin ambigüedad
+- Confianza "media" = algunos campos requieren verificación
+- Confianza "baja" = mucha incertidumbre
+- Si la imagen NO es una orden médica: es_orden_medica=false + motivo_rechazo con explicación breve.`,
+              },
+              {
+                type: 'image',
+                image: input.imagen_url,
+              },
+            ],
+          },
+        ],
+      })
+
+      return {
+        success: true,
+        ...object,
+      }
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Error analizando imagen' }
+    }
+  },
+})
+
+// ============================================================================
+// Tool 6: ayuda_plataforma
+// ============================================================================
+export const ayudaPlataformaTool = tool({
+  description: `Responde dudas del médico sobre cómo usar MediCuenta.
+Usá esta tool solo si el médico pregunta explícitamente sobre la plataforma (cómo hacer X, dónde está Y, etc.).
+Devuelve la respuesta ya formulada — vos después la explicás en tus palabras al médico.`,
+  inputSchema: z.object({
+    tema: z.string().describe('Tema sobre el que el médico pregunta (ej: "cómo presentar órdenes", "exportar a Excel", "dónde veo mis débitos")'),
+  }),
+  execute: async (input) => {
+    const tema = input.tema.toLowerCase()
+    const tips: Record<string, string> = {
+      presentar: 'En /ordenes, tildá el checkbox del header para seleccionar todos los borradores visibles, después click en "Marcar como presentadas". También podés filtrar por agente facturador antes del batch.',
+      exportar: 'Botón "Exportar" en /ordenes o /cirugias baja un Excel con los filtros aplicados.',
+      cobrado: 'En /dashboard tenés el KPI "Cobrado" del mes. En /reportes podés ver la evolución mensual y filtrar por OS o agente facturador.',
+      nomenclador: 'Dos opciones: ir a /nomenclador o pedírmelo a mí directamente con una búsqueda.',
+      debito: 'Cargá el débito en /debitos/nuevo o pedime que lo registre. Motivos como falta_token o falta_firma se marcan automáticamente como refacturables.',
+      cirugia: 'En /cirugias/nueva cargás la cirugía con nivel (1° o 2°), agente facturador e institución. Si el paciente queda internado, completá fecha_alta_paciente.',
+      reporte: 'En /reportes tenés KPIs, 6 gráficos y tabla 12 meses. Filtros por período, OS, tipo, nivel, agente e institución.',
+    }
+    const matched = Object.entries(tips).find(([k]) => tema.includes(k))
+    return {
+      success: true,
+      respuesta: matched ? matched[1] : 'Preguntame algo más específico (ej: cómo presentar órdenes, cómo exportar a Excel, etc.) y te explico.',
+    }
+  },
+})
+
+// ============================================================================
+// Export registry
+// ============================================================================
+export const assistantTools = {
+  registrar_orden: registrarOrdenTool,
+  registrar_cirugia: registrarCirugiaTool,
+  registrar_debito: registrarDebitoTool,
+  consultar_nomenclador: consultarNomencladorTool,
+  analizar_imagen_orden: analizarImagenOrdenTool,
+  ayuda_plataforma: ayudaPlataformaTool,
+}
+
+export type AssistantToolName = keyof typeof assistantTools
