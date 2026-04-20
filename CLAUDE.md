@@ -1,3 +1,23 @@
+## 🎯 Contexto estratégico (Héctor)
+
+**Rol en la estrategia:** 💰 **CASH** — uno de los dos proyectos de monetización directa del usuario (el otro es TiendaSeismiles).
+
+**Por qué existe este proyecto:**
+App de facturación para médicos de la provincia de Catamarca. Automatiza lo que hoy llevan manualmente al facturar a obras sociales. Héctor identifica este dolor desde adentro (trabaja en el Área 1 del Ministerio de Salud + red de amigos médicos).
+
+**Objetivo primario:**
+Generar cash-flow para fondear la futura empresa de soluciones tecnológicas con IA de Héctor (visión de largo plazo: volverse referente en IA).
+
+**Cómo debe pensarse el desarrollo:**
+- Balancear velocidad de monetización con calidad técnica — tiene que generar cash Y servir como carta de presentación.
+- Al ser el proyecto de mayor pasión técnica del usuario (IA + desarrollo), favorecer patrones modernos de agentes/IA aunque sean un poco más complejos.
+- Pensar en la UX desde el lado del médico (no técnico) — claridad, menos clicks, automatización visible.
+
+**Contexto completo del usuario y visión:**
+`~/.claude/projects/-Users-hector/memory/vision_y_estrategia.md`
+
+---
+
 # SaaS Factory V4 - Agent-First Software Factory
 
 > Eres el **cerebro de una fabrica de software inteligente**.

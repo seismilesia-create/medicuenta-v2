@@ -64,6 +64,7 @@ export interface Cirugia {
   duracion_minutos: number | null
   institucion: string | null
   sala: string | null
+  fecha_alta_paciente: string | null
   practicas_adicionales: PracticaAdicional[]
   total_calculado: number
   created_at: string
@@ -75,6 +76,9 @@ export interface Cirugia {
 export interface CirugiaFilters {
   obra_social?: string
   estado?: EstadoCirugia
+  agente_facturador?: AgenteFacturador
+  nivel?: NivelCirugia
+  institucion?: string
   fecha_desde?: string
   fecha_hasta?: string
   busqueda?: string
@@ -112,6 +116,7 @@ export const cirugiaSchema = z.object({
   duracion_minutos: z.coerce.number().min(0).optional(),
   institucion: z.string().optional(),
   sala: z.string().optional(),
+  fecha_alta_paciente: z.string().optional(),
   // Practicas adicionales
   practicas_adicionales: z.array(practicaAdicionalSchema).default([]),
 }).refine(

@@ -41,7 +41,7 @@ export function ReporteKPICards({ kpis }: Props) {
         icon={<IconWallet />}
       />
       <KPICard
-        label="Cirugías 2° sin liquidar >30d"
+        label="Cirugías 2° sin liquidar >90d"
         value={
           kpis.cirugias2doSinLiquidar.count === 0
             ? 'Todo al día'

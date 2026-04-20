@@ -18,7 +18,7 @@ export async function fetchReportesData(filters: ReportesFilters): Promise<Repor
       .select('estado, honorario_calculado, monto_particular, monto_plus, fecha_atencion, obra_social, agente_facturador, tipo'),
     supabase
       .from('cirugias')
-      .select('estado, total_calculado, honorarios, gastos, fecha, obra_social, nivel, agente_facturador, institucion'),
+      .select('estado, total_calculado, honorarios, gastos, fecha, fecha_alta_paciente, obra_social, nivel, agente_facturador, institucion'),
     supabase
       .from('debitos')
       .select('monto, fecha, motivo, aplicado_por'),

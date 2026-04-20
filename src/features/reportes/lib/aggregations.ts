@@ -119,17 +119,20 @@ export function computeKPIs(
     }
   }
 
-  // Cirugías 2° Nivel sin liquidar > 30 días
-  const limite30 = new Date(now)
-  limite30.setDate(limite30.getDate() - 30)
-  const limite30Str = `${limite30.getFullYear()}-${String(limite30.getMonth() + 1).padStart(2, '0')}-${String(limite30.getDate()).padStart(2, '0')}`
+  // Cirugías 2° Nivel sin liquidar > 90 días
+  // El reloj cuenta desde fecha_alta_paciente (si existe) o fecha de cirugía.
+  // Los plazos reales son 3 meses OSEP, 5-6 meses MG/Comunidad.
+  const limite90 = new Date(now)
+  limite90.setDate(limite90.getDate() - 90)
+  const limite90Str = `${limite90.getFullYear()}-${String(limite90.getMonth() + 1).padStart(2, '0')}-${String(limite90.getDate()).padStart(2, '0')}`
 
   let sinLiquidarCount = 0
   let sinLiquidarMonto = 0
   for (const c of cirugias) {
     if (c.nivel !== 2) continue
     if (c.estado === 'aprobada' || c.estado === 'debitada') continue
-    if (c.fecha > limite30Str) continue
+    const fechaReferencia = c.fecha_alta_paciente || c.fecha
+    if (fechaReferencia > limite90Str) continue
     sinLiquidarCount += 1
     sinLiquidarMonto += cirugiaFacturado(c)
   }
@@ -290,15 +293,16 @@ export function computeInstitucionPendiente(
   cirugias: CirugiaRow[],
   now: Date = new Date(),
 ): InstitucionPendientePoint[] {
-  const limite30 = new Date(now)
-  limite30.setDate(limite30.getDate() - 30)
-  const limite30Str = `${limite30.getFullYear()}-${String(limite30.getMonth() + 1).padStart(2, '0')}-${String(limite30.getDate()).padStart(2, '0')}`
+  const limite90 = new Date(now)
+  limite90.setDate(limite90.getDate() - 90)
+  const limite90Str = `${limite90.getFullYear()}-${String(limite90.getMonth() + 1).padStart(2, '0')}-${String(limite90.getDate()).padStart(2, '0')}`
 
   const map = new Map<string, { monto: number; count: number }>()
   for (const c of cirugias) {
     if (c.nivel !== 2) continue
     if (c.estado === 'aprobada' || c.estado === 'debitada') continue
-    if (c.fecha > limite30Str) continue
+    const fechaReferencia = c.fecha_alta_paciente || c.fecha
+    if (fechaReferencia > limite90Str) continue
     const inst = c.institucion?.trim() || 'Sin institución'
     const prev = map.get(inst) ?? { monto: 0, count: 0 }
     map.set(inst, { monto: prev.monto + cirugiaFacturado(c), count: prev.count + 1 })

@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/client'
 import { batchUpdateOrdenesEstado } from '@/actions/ordenes'
 import type { Orden, OrdenFilters as FilterType } from '../types/ordenes'
+import { AGENTE_LABELS } from '../types/ordenes'
 import { OrdenStatusBadge } from './OrdenStatusBadge'
 import { OrdenFilters } from './OrdenFilters'
 
@@ -55,6 +56,7 @@ export function OrdenesTable() {
     if (currentFilters.tipo) query = query.eq('tipo', currentFilters.tipo)
     if (currentFilters.obra_social) query = query.eq('obra_social', currentFilters.obra_social)
     if (currentFilters.estado) query = query.eq('estado', currentFilters.estado)
+    if (currentFilters.agente_facturador) query = query.eq('agente_facturador', currentFilters.agente_facturador)
     if (currentFilters.fecha_desde) query = query.gte('fecha_atencion', currentFilters.fecha_desde)
     if (currentFilters.fecha_hasta) query = query.lte('fecha_atencion', currentFilters.fecha_hasta)
     if (currentFilters.busqueda) query = query.ilike('nombre_paciente', `%${currentFilters.busqueda}%`)
@@ -148,6 +150,7 @@ export function OrdenesTable() {
       'Paciente': orden.nombre_paciente,
       'Tipo': orden.tipo === 'obra_social' ? 'Obra Social' : 'Particular',
       'Obra Social': orden.obra_social ?? '-',
+      'Agente': AGENTE_LABELS[orden.agente_facturador] ?? orden.agente_facturador,
       'Codigo': orden.codigo_practica ?? '-',
       'Practica': orden.nombre_practica ?? '-',
       'Honorario': Number(orden.honorario_calculado),
@@ -287,6 +290,7 @@ export function OrdenesTable() {
                 <th className="text-left px-3 md:px-5 py-3.5 font-medium" style={{ color: 'var(--color-muted)' }}>Paciente</th>
                 <th className="text-left px-3 md:px-5 py-3.5 font-medium hidden lg:table-cell" style={{ color: 'var(--color-muted)' }}>Tipo</th>
                 <th className="text-left px-3 md:px-5 py-3.5 font-medium hidden lg:table-cell" style={{ color: 'var(--color-muted)' }}>OS</th>
+                <th className="text-left px-3 md:px-5 py-3.5 font-medium hidden xl:table-cell" style={{ color: 'var(--color-muted)' }}>Agente</th>
                 <th className="text-left px-3 md:px-5 py-3.5 font-medium hidden lg:table-cell" style={{ color: 'var(--color-muted)' }}>Practica</th>
                 <th className="text-right px-3 md:px-5 py-3.5 font-medium" style={{ color: 'var(--color-muted)' }}>Monto</th>
                 <th className="text-left px-3 md:px-5 py-3.5 font-medium" style={{ color: 'var(--color-muted)' }}>Estado</th>
@@ -336,6 +340,11 @@ export function OrdenesTable() {
                     </td>
                     <td className="px-3 md:px-5 py-4 hidden lg:table-cell" style={{ color: 'var(--color-muted)' }}>
                       {orden.obra_social ?? '-'}
+                    </td>
+                    <td className="px-3 md:px-5 py-4 hidden xl:table-cell" style={{ color: 'var(--color-muted)' }}>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-900/40 dark:text-slate-300">
+                        {orden.agente_facturador === 'circulo_medico' ? 'CM' : orden.agente_facturador === 'medical_group' ? 'MG' : 'Com.'}
+                      </span>
                     </td>
                     <td className="px-3 md:px-5 py-4 hidden lg:table-cell" style={{ color: 'var(--color-muted)' }}>
                       <div className="max-w-[200px] truncate">

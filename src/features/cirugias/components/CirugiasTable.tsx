@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/client'
 import { batchUpdateCirugiasEstado } from '@/actions/cirugias'
 import type { Cirugia, CirugiaFilters as FilterType } from '../types/cirugias'
+import { AGENTE_LABELS } from '../types/cirugias'
 import { CirugiaStatusBadge } from './CirugiaStatusBadge'
 import { CirugiaFilters } from './CirugiaFilters'
 
@@ -50,6 +51,9 @@ export function CirugiasTable() {
 
     if (currentFilters.obra_social) query = query.eq('obra_social', currentFilters.obra_social)
     if (currentFilters.estado) query = query.eq('estado', currentFilters.estado)
+    if (currentFilters.agente_facturador) query = query.eq('agente_facturador', currentFilters.agente_facturador)
+    if (currentFilters.nivel) query = query.eq('nivel', currentFilters.nivel)
+    if (currentFilters.institucion) query = query.eq('institucion', currentFilters.institucion)
     if (currentFilters.fecha_desde) query = query.gte('fecha', currentFilters.fecha_desde)
     if (currentFilters.fecha_hasta) query = query.lte('fecha', currentFilters.fecha_hasta)
     if (currentFilters.busqueda) query = query.ilike('nombre_paciente', `%${currentFilters.busqueda}%`)
@@ -142,6 +146,9 @@ export function CirugiasTable() {
       'Fecha': new Date(cirugia.fecha + 'T00:00:00').toLocaleDateString('es-AR'),
       'Paciente': cirugia.nombre_paciente,
       'Obra Social': cirugia.obra_social,
+      'Nivel': cirugia.nivel === 1 ? '1°' : '2°',
+      'Agente': AGENTE_LABELS[cirugia.agente_facturador] ?? cirugia.agente_facturador,
+      'Institucion': cirugia.institucion ?? '-',
       'Codigo': cirugia.codigo_practica ?? '-',
       'Practica': cirugia.nombre_practica ?? '-',
       'Honorarios': Number(cirugia.honorarios),
@@ -278,7 +285,10 @@ export function CirugiasTable() {
                 </th>
                 <th className="text-left px-3 md:px-5 py-3.5 font-medium" style={{ color: 'var(--color-muted)' }}>Fecha</th>
                 <th className="text-left px-3 md:px-5 py-3.5 font-medium" style={{ color: 'var(--color-muted)' }}>Paciente</th>
+                <th className="text-left px-3 md:px-5 py-3.5 font-medium hidden md:table-cell" style={{ color: 'var(--color-muted)' }}>Nv</th>
                 <th className="text-left px-3 md:px-5 py-3.5 font-medium hidden lg:table-cell" style={{ color: 'var(--color-muted)' }}>OS</th>
+                <th className="text-left px-3 md:px-5 py-3.5 font-medium hidden xl:table-cell" style={{ color: 'var(--color-muted)' }}>Agente</th>
+                <th className="text-left px-3 md:px-5 py-3.5 font-medium hidden xl:table-cell" style={{ color: 'var(--color-muted)' }}>Institución</th>
                 <th className="text-left px-3 md:px-5 py-3.5 font-medium hidden lg:table-cell" style={{ color: 'var(--color-muted)' }}>Practica</th>
                 <th className="text-right px-3 md:px-5 py-3.5 font-medium" style={{ color: 'var(--color-muted)' }}>Total Calc.</th>
                 <th className="text-left px-3 md:px-5 py-3.5 font-medium" style={{ color: 'var(--color-muted)' }}>Estado</th>
@@ -317,8 +327,27 @@ export function CirugiasTable() {
                     <td className="px-3 md:px-5 py-4 font-medium" style={{ color: 'var(--color-foreground)' }}>
                       {cirugia.nombre_paciente}
                     </td>
+                    <td className="px-3 md:px-5 py-4 hidden md:table-cell">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                        cirugia.nivel === 1
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                      }`}>
+                        {cirugia.nivel === 1 ? '1°' : '2°'}
+                      </span>
+                    </td>
                     <td className="px-3 md:px-5 py-4 hidden lg:table-cell" style={{ color: 'var(--color-muted)' }}>
                       {cirugia.obra_social}
+                    </td>
+                    <td className="px-3 md:px-5 py-4 hidden xl:table-cell" style={{ color: 'var(--color-muted)' }}>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-900/40 dark:text-slate-300">
+                        {cirugia.agente_facturador === 'circulo_medico' ? 'CM' : cirugia.agente_facturador === 'medical_group' ? 'MG' : 'Com.'}
+                      </span>
+                    </td>
+                    <td className="px-3 md:px-5 py-4 hidden xl:table-cell" style={{ color: 'var(--color-muted)' }}>
+                      <div className="max-w-[150px] truncate">
+                        {cirugia.institucion ?? '—'}
+                      </div>
                     </td>
                     <td className="px-3 md:px-5 py-4 hidden lg:table-cell" style={{ color: 'var(--color-muted)' }}>
                       <div className="max-w-[200px] truncate">

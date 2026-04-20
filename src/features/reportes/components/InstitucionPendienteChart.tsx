@@ -15,7 +15,7 @@ export function InstitucionPendienteChart({ data }: Props) {
         Institución con más pendiente
       </h3>
       <p className="text-xs mb-4" style={{ color: 'var(--color-foreground-muted)' }}>
-        Cirugías de 2° Nivel sin liquidar hace más de 30 días.
+        Cirugías de 2° Nivel sin liquidar hace más de 90 días (contando desde el alta del paciente si aplica).
       </p>
       {data.length > 0 ? (
         <ResponsiveContainer width="100%" height={300}>

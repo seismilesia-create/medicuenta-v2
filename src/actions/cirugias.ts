@@ -83,6 +83,7 @@ export async function createCirugia(formData: CirugiaFormData) {
     total_calculado: totalCalculado,
     nivel: data.nivel,
     agente_facturador: data.agente_facturador,
+    fecha_alta_paciente: data.fecha_alta_paciente || null,
   }
 
   const { error } = await supabase.from('cirugias').insert(insertData)
@@ -135,6 +136,7 @@ export async function updateCirugia(cirugiaId: string, formData: CirugiaFormData
     total_calculado: totalCalculado,
     nivel: data.nivel,
     agente_facturador: data.agente_facturador,
+    fecha_alta_paciente: data.fecha_alta_paciente || null,
     updated_at: new Date().toISOString(),
   }
 

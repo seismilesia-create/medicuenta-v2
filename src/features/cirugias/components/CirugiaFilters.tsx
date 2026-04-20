@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import type { CirugiaFilters as FilterType, EstadoCirugia } from '../types/cirugias'
-import { ESTADOS_CIRUGIA, OBRAS_SOCIALES } from '../types/cirugias'
+import type { CirugiaFilters as FilterType, EstadoCirugia, NivelCirugia } from '../types/cirugias'
+import { ESTADOS_CIRUGIA, OBRAS_SOCIALES, AGENTES_FACTURADORES, AGENTE_LABELS, NIVELES_CIRUGIA, NIVEL_LABELS } from '../types/cirugias'
 
 interface Props {
   onFilterChange: (filters: FilterType) => void
@@ -20,7 +20,8 @@ export function CirugiaFilters({ onFilterChange, initialFilters = {} }: Props) {
   const [filters, setFilters] = useState<FilterType>(initialFilters)
 
   function updateFilter(key: keyof FilterType, value: string) {
-    const updated = { ...filters, [key]: value || undefined }
+    const parsedValue = key === 'nivel' && value ? (Number(value) as NivelCirugia) : (value || undefined)
+    const updated = { ...filters, [key]: parsedValue } as FilterType
     setFilters(updated)
     onFilterChange(updated)
   }
@@ -74,6 +75,40 @@ export function CirugiaFilters({ onFilterChange, initialFilters = {} }: Props) {
         <option value="">Todos los estados</option>
         {ESTADOS_CIRUGIA.map((estado) => (
           <option key={estado} value={estado}>{ESTADO_LABELS[estado]}</option>
+        ))}
+      </select>
+
+      {/* Nivel */}
+      <select
+        value={filters.nivel ?? ''}
+        onChange={(e) => updateFilter('nivel', e.target.value)}
+        className="px-3.5 py-2.5 rounded-lg text-sm"
+        style={{
+          background: 'var(--color-background)',
+          border: '1px solid var(--color-border)',
+          color: 'var(--color-foreground)',
+        }}
+      >
+        <option value="">Todos los niveles</option>
+        {NIVELES_CIRUGIA.map((n) => (
+          <option key={n} value={n}>{NIVEL_LABELS[n]}</option>
+        ))}
+      </select>
+
+      {/* Agente facturador */}
+      <select
+        value={filters.agente_facturador ?? ''}
+        onChange={(e) => updateFilter('agente_facturador', e.target.value)}
+        className="px-3.5 py-2.5 rounded-lg text-sm"
+        style={{
+          background: 'var(--color-background)',
+          border: '1px solid var(--color-border)',
+          color: 'var(--color-foreground)',
+        }}
+      >
+        <option value="">Todos los agentes</option>
+        {AGENTES_FACTURADORES.map((a) => (
+          <option key={a} value={a}>{AGENTE_LABELS[a]}</option>
         ))}
       </select>
 

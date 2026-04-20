@@ -74,6 +74,7 @@ export interface OrdenFilters {
   tipo?: TipoAtencion
   obra_social?: string
   estado?: EstadoOrden
+  agente_facturador?: AgenteFacturador
   fecha_desde?: string
   fecha_hasta?: string
   busqueda?: string

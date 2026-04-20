@@ -146,6 +146,7 @@ export interface CirugiaRow {
   honorarios: number
   gastos: number
   fecha: string
+  fecha_alta_paciente: string | null
   obra_social: string
   nivel: number
   agente_facturador: AgenteFacturador

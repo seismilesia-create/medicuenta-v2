@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { OrdenFilters as FilterType, TipoAtencion, EstadoOrden } from '../types/ordenes'
-import { TIPOS_ATENCION, ESTADOS_ORDEN, OBRAS_SOCIALES } from '../types/ordenes'
+import { TIPOS_ATENCION, ESTADOS_ORDEN, OBRAS_SOCIALES, AGENTES_FACTURADORES, AGENTE_LABELS } from '../types/ordenes'
 
 interface Props {
   onFilterChange: (filters: FilterType) => void
@@ -96,6 +96,23 @@ export function OrdenFilters({ onFilterChange, initialFilters = {} }: Props) {
         <option value="">Todos los estados</option>
         {ESTADOS_ORDEN.map((estado) => (
           <option key={estado} value={estado}>{ESTADO_LABELS[estado]}</option>
+        ))}
+      </select>
+
+      {/* Agente facturador */}
+      <select
+        value={filters.agente_facturador ?? ''}
+        onChange={(e) => updateFilter('agente_facturador', e.target.value)}
+        className="px-3.5 py-2.5 rounded-lg text-sm"
+        style={{
+          background: 'var(--color-background)',
+          border: '1px solid var(--color-border)',
+          color: 'var(--color-foreground)',
+        }}
+      >
+        <option value="">Todos los agentes</option>
+        {AGENTES_FACTURADORES.map((a) => (
+          <option key={a} value={a}>{AGENTE_LABELS[a]}</option>
         ))}
       </select>
 

@@ -65,6 +65,7 @@ export function NuevaCirugiaForm() {
       practicas_adicionales: practicasAdicionales,
       nivel,
       agente_facturador: agenteFacturador,
+      fecha_alta_paciente: (form.get('fecha_alta_paciente') as string) || undefined,
     }
 
     const result = await createCirugia(formData)
@@ -376,6 +377,24 @@ export function NuevaCirugiaForm() {
                 color: 'var(--color-foreground)',
               }}
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+              Fecha de alta del paciente
+            </label>
+            <input
+              name="fecha_alta_paciente"
+              type="date"
+              className="w-full px-4 py-3 rounded-lg text-sm"
+              style={{
+                background: 'var(--color-background)',
+                border: '1px solid var(--color-border)',
+                color: 'var(--color-foreground)',
+              }}
+            />
+            <p className="text-xs mt-1" style={{ color: 'var(--color-foreground-muted)' }}>
+              Solo si quedó internado. Si se fue el mismo día de la cirugía, dejá vacío.
+            </p>
           </div>
         </div>
       </CollapsibleSection>
