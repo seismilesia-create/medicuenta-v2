@@ -246,6 +246,21 @@ Los motivos falta_token/falta_firma/falta_diagnostico/error_codigo se marcan aut
 // ============================================================================
 const STOPWORDS = new Set(['de', 'la', 'el', 'los', 'las', 'del', 'un', 'una', 'y', 'o', 'en', 'por', 'para', 'con'])
 
+// Solo secciones de prestaciones médicas (confirmado con owner 2026-04-20).
+// Se excluyen: bioquimica (laboratorio), odontologia, fonoaudiologia, terapia_ocupacional,
+// psicologia, kinesiologia, nutricion, psicomotricidad, psicopedagogia, estimulacion_temprana,
+// enfermeria_domicilio, discapacidad_centro_dia, ive, rehabilitacion, psicoterapia_internacion,
+// traslados. Si se detecta que falta alguna, se suma a esta lista.
+const SECCIONES_MEDICAS = [
+  'ambulatorias',
+  'modulos_sanatoriales',
+  'consultas',
+  'internaciones_especiales',
+  'radioterapia',
+  'psiquiatria',
+  'paliativos',
+] as const
+
 function sanitizeTerm(raw: string): string {
   return raw.replace(/[%,()]/g, ' ').trim()
 }
@@ -269,6 +284,7 @@ La búsqueda parte el texto en palabras clave y busca cualquier coincidencia —
       let query = supabase
         .from('prestaciones')
         .select('codigo, detalle, honorarios, gastos, total, seccion, categoria')
+        .in('seccion', SECCIONES_MEDICAS as unknown as string[])
 
       if (words.length <= 1 || term.length <= 4) {
         query = query.or(`codigo.ilike.%${term}%,detalle.ilike.%${term}%`)
