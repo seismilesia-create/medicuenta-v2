@@ -65,3 +65,4 @@ supabase/.branches
 supabase/.temp
 .playwright-mcp/
 tsconfig.tsbuildinfo
+.claude/worktrees/
