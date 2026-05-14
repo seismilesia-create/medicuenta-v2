@@ -98,7 +98,7 @@ export function EscanearOrdenButton({ onExtracted }: Props) {
             <p className="text-sm font-medium" style={{ color: 'var(--color-foreground)' }}>
               Escanear orden desde foto
             </p>
-            <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+            <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
               Sacá una foto y completamos el formulario automáticamente.
             </p>
           </div>

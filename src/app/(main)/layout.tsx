@@ -8,9 +8,9 @@ export default function MainLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background)' }}>
+    <div className="min-h-screen bg-background">
       <Sidebar />
-      <main className="pt-14 pb-20 md:pt-0 md:pb-0 md:ml-64">
+      <main className="pt-14 pb-20 md:pt-0 md:pb-0 md:ml-72">
         {children}
       </main>
       <BottomNav />

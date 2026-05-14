@@ -32,11 +32,11 @@ export function AssistantMessages({ messages, isLoading }: Props) {
             }}
           >
             <div className="flex gap-1">
-              <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: 'var(--color-muted)', animationDelay: '0ms' }} />
-              <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: 'var(--color-muted)', animationDelay: '150ms' }} />
-              <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: 'var(--color-muted)', animationDelay: '300ms' }} />
+              <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: 'var(--color-muted-foreground)', animationDelay: '0ms' }} />
+              <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: 'var(--color-muted-foreground)', animationDelay: '150ms' }} />
+              <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: 'var(--color-muted-foreground)', animationDelay: '300ms' }} />
             </div>
-            <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+            <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
               Pensando...
             </span>
           </div>

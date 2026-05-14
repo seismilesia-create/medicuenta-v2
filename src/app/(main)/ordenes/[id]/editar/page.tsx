@@ -35,7 +35,7 @@ export default async function EditarOrdenPage({ params }: { params: Promise<{ id
         <Link
           href={`/ordenes/${id}`}
           className="inline-flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
-          style={{ color: 'var(--color-muted)' }}
+          style={{ color: 'var(--color-muted-foreground)' }}
         >
           <svg
             width="16"
@@ -62,7 +62,7 @@ export default async function EditarOrdenPage({ params }: { params: Promise<{ id
         >
           Editar orden
         </h1>
-        <p className="mt-1.5 text-sm" style={{ color: 'var(--color-muted)' }}>
+        <p className="mt-1.5 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
           Modificando orden de {(orden as Orden).nombre_paciente}
         </p>
       </div>

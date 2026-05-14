@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Receipt, Calendar, Percent, Tag } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { MotivoDebito } from '../types/debitos'
 import { MOTIVO_LABELS } from '../types/debitos'
+import { MetricCard } from '@/features/dashboard/components/MetricCard'
 
 function formatMonto(valor: number): string {
   return new Intl.NumberFormat('es-AR', {
@@ -33,17 +35,11 @@ export function DebitosStats() {
     setLoading(true)
     const supabase = createClient()
 
-    // Get current date ranges
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
     const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().split('T')[0]
 
-    // Fetch debitos
-    const { data: debitos } = await supabase
-      .from('debitos')
-      .select('fecha, monto, motivo')
-
-    // Fetch ordenes to calculate total facturado
+    const { data: debitos } = await supabase.from('debitos').select('fecha, monto, motivo')
     const { data: ordenes } = await supabase
       .from('ordenes')
       .select('honorario_calculado, monto_particular, monto_plus, fecha_atencion')
@@ -54,29 +50,18 @@ export function DebitosStats() {
 
     for (const debito of debitos ?? []) {
       const monto = Number(debito.monto)
-
-      if (debito.fecha >= startOfMonth) {
-        totalEsteMes += monto
-      }
-      if (debito.fecha >= threeMonthsAgo) {
-        total3Meses += monto
-      }
-
+      if (debito.fecha >= startOfMonth) totalEsteMes += monto
+      if (debito.fecha >= threeMonthsAgo) total3Meses += monto
       motivoCount[debito.motivo] = (motivoCount[debito.motivo] || 0) + 1
     }
 
-    // Calculate total facturado from ordenes
     let totalFacturado = 0
     for (const orden of ordenes ?? []) {
       totalFacturado += Number(orden.honorario_calculado) + Number(orden.monto_particular) + Number(orden.monto_plus)
     }
 
-    // Calculate percentage
-    const porcentajeSobreFacturacion = totalFacturado > 0
-      ? (total3Meses / totalFacturado) * 100
-      : 0
+    const porcentajeSobreFacturacion = totalFacturado > 0 ? (total3Meses / totalFacturado) * 100 : 0
 
-    // Find most frequent motivo
     let motivoMasFrecuente = 'N/A'
     let maxCount = 0
     for (const [motivo, count] of Object.entries(motivoCount)) {
@@ -86,29 +71,15 @@ export function DebitosStats() {
       }
     }
 
-    setStats({
-      totalEsteMes,
-      total3Meses,
-      porcentajeSobreFacturacion,
-      motivoMasFrecuente,
-    })
+    setStats({ totalEsteMes, total3Meses, porcentajeSobreFacturacion, motivoMasFrecuente })
     setLoading(false)
   }
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {[1, 2, 3, 4].map((i) => (
-          <div
-            key={i}
-            className="p-5 md:p-7 rounded-xl"
-            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-          >
-            <div className="animate-pulse">
-              <div className="h-4 w-24 rounded" style={{ background: 'var(--color-border)' }} />
-              <div className="h-8 w-32 rounded mt-2" style={{ background: 'var(--color-border)' }} />
-            </div>
-          </div>
+          <div key={i} className="rounded-2xl border border-border bg-card p-6 h-[180px] animate-pulse" />
         ))}
       </div>
     )
@@ -116,45 +87,36 @@ export function DebitosStats() {
 
   if (!stats) return null
 
-  const statCards = [
-    {
-      label: 'Debitado este mes',
-      value: formatMonto(stats.totalEsteMes),
-      color: 'var(--color-error)',
-    },
-    {
-      label: 'Debitado últimos 3 meses',
-      value: formatMonto(stats.total3Meses),
-      color: 'var(--color-warning)',
-    },
-    {
-      label: '% sobre facturación',
-      value: `${stats.porcentajeSobreFacturacion.toFixed(1)}%`,
-      color: 'var(--color-primary)',
-    },
-    {
-      label: 'Motivo más frecuente',
-      value: stats.motivoMasFrecuente,
-      color: 'var(--color-muted)',
-    },
-  ]
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
-      {statCards.map((stat, index) => (
-        <div
-          key={index}
-          className="p-5 md:p-7 rounded-xl"
-          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-        >
-          <div className="text-sm font-medium mb-1" style={{ color: 'var(--color-muted)' }}>
-            {stat.label}
-          </div>
-          <div className="text-2xl md:text-3xl font-semibold tracking-tight" style={{ color: stat.color }}>
-            {stat.value}
-          </div>
-        </div>
-      ))}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+      <MetricCard
+        title="Debitado este mes"
+        value={formatMonto(stats.totalEsteMes)}
+        icon={Receipt}
+        variant="danger"
+        description="Descuentos del periodo actual"
+      />
+      <MetricCard
+        title="Ultimos 3 meses"
+        value={formatMonto(stats.total3Meses)}
+        icon={Calendar}
+        variant="danger"
+        description="Acumulado trimestral"
+      />
+      <MetricCard
+        title="% sobre facturacion"
+        value={`${stats.porcentajeSobreFacturacion.toFixed(1)}%`}
+        icon={Percent}
+        variant="warning"
+        description="Ratio de perdida"
+      />
+      <MetricCard
+        title="Motivo frecuente"
+        value={stats.motivoMasFrecuente}
+        icon={Tag}
+        variant="info"
+        description="Principal causa de debitos"
+      />
     </div>
   )
 }

@@ -11,7 +11,7 @@ export default function NuevaCirugiaPage() {
         <Link
           href="/cirugias"
           className="inline-flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
-          style={{ color: 'var(--color-muted)' }}
+          style={{ color: 'var(--color-muted-foreground)' }}
         >
           &larr; Volver a Cirugias
         </Link>
@@ -25,7 +25,7 @@ export default function NuevaCirugiaPage() {
         >
           Nueva cirugia
         </h1>
-        <p className="mt-1.5 text-sm" style={{ color: 'var(--color-muted)' }}>
+        <p className="mt-1.5 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
           Registra una nueva cirugia o procedimiento quirurgico
         </p>
       </div>

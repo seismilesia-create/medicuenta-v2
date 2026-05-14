@@ -47,10 +47,10 @@ export function ToolCallCard({ toolName, state, output, errorText }: Props) {
           {meta.label}
         </span>
         {isLoading && (
-          <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: 'var(--color-muted)' }}>
-            <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: 'var(--color-muted)', animationDelay: '0ms' }} />
-            <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: 'var(--color-muted)', animationDelay: '150ms' }} />
-            <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: 'var(--color-muted)', animationDelay: '300ms' }} />
+          <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: 'var(--color-muted-foreground)' }}>
+            <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: 'var(--color-muted-foreground)', animationDelay: '0ms' }} />
+            <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: 'var(--color-muted-foreground)', animationDelay: '150ms' }} />
+            <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: 'var(--color-muted-foreground)', animationDelay: '300ms' }} />
           </span>
         )}
         {state === 'output-available' && success && (
@@ -78,7 +78,7 @@ function ToolCardBody({
   errorText?: string
 }) {
   if (state === 'input-streaming' || state === 'input-available') {
-    return <p style={{ color: 'var(--color-muted)' }}>Procesando...</p>
+    return <p style={{ color: 'var(--color-muted-foreground)' }}>Procesando...</p>
   }
 
   if (errorText) {
@@ -90,7 +90,7 @@ function ToolCardBody({
   if (toolName === 'consultar_nomenclador') {
     const resultados = Array.isArray(output.resultados) ? output.resultados : []
     if (resultados.length === 0) {
-      return <p style={{ color: 'var(--color-muted)' }}>Sin resultados para &quot;{String(output.busqueda ?? '')}&quot;</p>
+      return <p style={{ color: 'var(--color-muted-foreground)' }}>Sin resultados para &quot;{String(output.busqueda ?? '')}&quot;</p>
     }
     return (
       <div className="space-y-1">
@@ -98,7 +98,7 @@ function ToolCardBody({
           <div key={i} className="flex justify-between gap-2 py-1" style={{ borderTop: i > 0 ? '1px solid var(--color-border)' : undefined }}>
             <div className="min-w-0 flex-1">
               <span className="font-mono font-semibold">{String(r.codigo ?? '')}</span>
-              <span className="ml-2" style={{ color: 'var(--color-muted)' }}>{String(r.detalle ?? '')}</span>
+              <span className="ml-2" style={{ color: 'var(--color-muted-foreground)' }}>{String(r.detalle ?? '')}</span>
             </div>
             <span className="font-mono" style={{ color: 'var(--color-success)' }}>
               ${Number(r.total ?? 0).toLocaleString('es-AR')}
@@ -121,7 +121,7 @@ function ToolCardBody({
             ${Number(output.monto_total ?? output.total ?? 0).toLocaleString('es-AR')}
           </span>
         </p>
-        <p style={{ color: 'var(--color-muted)' }}>Estado: borrador</p>
+        <p style={{ color: 'var(--color-muted-foreground)' }}>Estado: borrador</p>
       </div>
     )
   }
@@ -140,7 +140,7 @@ function ToolCardBody({
     const confianza = String(output.confianza ?? 'media')
     return (
       <div className="space-y-0.5">
-        <p style={{ color: 'var(--color-muted)' }}>Confianza: <span style={{ color: 'var(--color-foreground)' }}>{confianza}</span></p>
+        <p style={{ color: 'var(--color-muted-foreground)' }}>Confianza: <span style={{ color: 'var(--color-foreground)' }}>{confianza}</span></p>
         {output.paciente != null && <p>Paciente: {String(output.paciente)}</p>}
         {output.obra_social != null && <p>OS: {String(output.obra_social)}</p>}
         {output.codigo_practica != null && <p>Código: {String(output.codigo_practica)}</p>}

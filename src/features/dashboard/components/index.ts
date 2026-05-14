@@ -1,2 +1,4 @@
 export { DashboardTrendChart } from './DashboardTrendChart'
 export { DashboardAlerts } from './DashboardAlerts'
+export { MetricCard } from './MetricCard'
+export { QuickActions } from './QuickActions'

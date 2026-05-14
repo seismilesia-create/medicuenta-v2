@@ -85,7 +85,7 @@ export function RefacturadoToggle({
 
   if (!refacturable) {
     return (
-      <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+      <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
         Este debito no es refacturable.
       </p>
     )

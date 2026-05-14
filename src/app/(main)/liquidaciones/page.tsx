@@ -6,9 +6,5 @@ export const metadata: Metadata = {
 }
 
 export default function LiquidacionesPage() {
-  return (
-    <div className="p-4 md:p-6">
-      <LiquidacionesTable />
-    </div>
-  )
+  return <LiquidacionesTable />
 }

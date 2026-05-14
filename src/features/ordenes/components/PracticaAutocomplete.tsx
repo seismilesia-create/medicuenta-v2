@@ -122,7 +122,7 @@ export function PracticaAutocomplete({ obraSocial, onSelect, value = '' }: Props
                   <span className="text-xs font-mono font-bold" style={{ color: 'var(--color-primary)' }}>
                     {p.codigo}
                   </span>
-                  <span className="text-xs ml-2" style={{ color: 'var(--color-muted)' }}>
+                  <span className="text-xs ml-2" style={{ color: 'var(--color-muted-foreground)' }}>
                     {p.seccion}
                   </span>
                   <p className="text-sm truncate mt-0.5" style={{ color: 'var(--color-foreground)' }}>
@@ -144,7 +144,7 @@ export function PracticaAutocomplete({ obraSocial, onSelect, value = '' }: Props
           style={{
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
-            color: 'var(--color-muted)',
+            color: 'var(--color-muted-foreground)',
           }}
         >
           No se encontraron practicas

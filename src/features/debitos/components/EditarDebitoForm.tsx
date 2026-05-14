@@ -70,7 +70,7 @@ export function EditarDebitoForm({ debito }: Props) {
           className="w-full px-4 py-3 rounded-lg text-sm"
           style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
         />
-        <p className="text-xs mt-1.5" style={{ color: 'var(--color-muted)' }}>
+        <p className="text-xs mt-1.5" style={{ color: 'var(--color-muted-foreground)' }}>
           Describe mas detalles sobre el motivo del debito
         </p>
       </div>
@@ -105,13 +105,13 @@ export function EditarDebitoForm({ debito }: Props) {
             <div className="text-sm font-medium" style={{ color: 'var(--color-foreground)' }}>
               ¿Es refacturable?
             </div>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted-foreground)' }}>
               Marca esta opcion si el debito puede corregirse y refacturarse en el futuro
             </p>
           </div>
         </label>
         <div className="mt-3 p-3 rounded-lg" style={{ background: 'var(--color-background)', border: '1px dashed var(--color-border)' }}>
-          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+          <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
             <strong>Nota:</strong> Los debitos por falta de token, firma, diagnostico o error en codigo se marcan automaticamente como refacturables.
           </p>
         </div>

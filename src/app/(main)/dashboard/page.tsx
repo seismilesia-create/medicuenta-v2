@@ -1,24 +1,29 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { DashboardTrendChart } from '@/features/dashboard/components/DashboardTrendChart'
-import { DashboardAlerts } from '@/features/dashboard/components/DashboardAlerts'
+import { Activity, FileText, CheckCircle2, Clock, AlertTriangle } from 'lucide-react'
+import {
+  DashboardTrendChart,
+  DashboardAlerts,
+  MetricCard,
+  QuickActions,
+} from '@/features/dashboard/components'
 import type { TrendDataPoint } from '@/features/dashboard/components/DashboardTrendChart'
 import type { AlertItem } from '@/features/dashboard/components/DashboardAlerts'
 
 export const metadata = {
-  title: 'Dashboard | MediCuenta'
+  title: 'Dashboard | MediCuenta',
 }
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (!user) {
     redirect('/login')
   }
 
-  // Fetch data from all tables in parallel
   const [ordenesRes, debitosRes, liquidacionesRes, cirugiasRes] = await Promise.all([
     supabase.from('ordenes').select('estado, honorario_calculado, monto_particular, monto_plus, fecha_atencion'),
     supabase.from('debitos').select('monto, fecha, refacturable, refacturado'),
@@ -31,13 +36,10 @@ export default async function DashboardPage() {
   const liquidaciones = liquidacionesRes.data ?? []
   const cirugias = cirugiasRes.data ?? []
 
-  // Compute stats
   const stats = { facturado: 0, cobrado: 0, pendiente: 0, perdido: 0 }
-
   for (const orden of ordenes) {
     const monto = Number(orden.honorario_calculado) + Number(orden.monto_particular) + Number(orden.monto_plus)
     stats.facturado += monto
-
     switch (orden.estado) {
       case 'aprobada':
         stats.cobrado += monto
@@ -52,124 +54,76 @@ export default async function DashboardPage() {
     }
   }
 
-  // Compute trend data and alerts
   const trendData = computeTrendData(ordenes, debitos)
   const alerts = computeAlerts(ordenes, debitos, liquidaciones, cirugias)
   const greeting = getGreeting()
 
   return (
-    <div className="px-4 py-6 md:px-8 md:py-10 lg:px-12 lg:py-12 max-w-7xl mx-auto space-y-6 md:space-y-10">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight" style={{ color: 'var(--color-foreground)' }}>
-          {greeting}, Doctor
-        </h1>
-        <p className="mt-1.5 text-base" style={{ color: 'var(--color-foreground-secondary)' }}>
-          Resumen de tu facturacion medica
-        </p>
+    <div className="h-full overflow-y-auto">
+      {/* Header con gradient + blur orb */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+
+        <div className="relative px-4 md:px-8 pt-6 md:pt-8 pb-4 md:pb-6">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 ring-1 ring-primary/20">
+              <Activity className="h-6 w-6 text-primary" strokeWidth={1.5} />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+                {greeting}, Doctor
+              </h1>
+              <p className="text-sm md:text-base text-muted-foreground">
+                Resumen de tu facturacion medica
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard
-          label="Facturado este mes"
-          value={formatMonto(stats.facturado)}
-          color="var(--color-info)"
-          bgColor="var(--color-info-light)"
-          icon={
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          }
-        />
-        <StatCard
-          label="Cobrado"
-          value={formatMonto(stats.cobrado)}
-          color="var(--color-success)"
-          bgColor="var(--color-success-light)"
-          icon={
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          }
-        />
-        <StatCard
-          label="Pendiente"
-          value={formatMonto(stats.pendiente)}
-          color="var(--color-warning)"
-          bgColor="var(--color-warning-light)"
-          icon={
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
-        />
-        <StatCard
-          label="Perdido (debitos)"
-          value={formatMonto(stats.perdido)}
-          color="var(--color-error)"
-          bgColor="var(--color-error-light)"
-          icon={
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          }
-        />
-      </div>
-
-      {/* Trend Chart */}
-      <DashboardTrendChart data={trendData} />
-
-      {/* Alerts + Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 rounded-xl p-5 md:p-7" style={{ backgroundColor: 'var(--color-surface)' }}>
-          <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-foreground)' }}>
-            Alertas activas
-          </h2>
-          <DashboardAlerts alerts={alerts} />
+      <div className="px-4 md:px-8 pb-8 md:pb-12 space-y-6">
+        {/* Metrics Grid */}
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            title="Facturado este mes"
+            value={formatMonto(stats.facturado)}
+            icon={FileText}
+            variant="default"
+            description="Total presentado a obras sociales"
+          />
+          <MetricCard
+            title="Cobrado"
+            value={formatMonto(stats.cobrado)}
+            icon={CheckCircle2}
+            variant="success"
+            description="Pagos recibidos confirmados"
+          />
+          <MetricCard
+            title="Pendiente"
+            value={formatMonto(stats.pendiente)}
+            icon={Clock}
+            variant="warning"
+            description="Esperando aprobacion"
+          />
+          <MetricCard
+            title="Debitos"
+            value={formatMonto(stats.perdido)}
+            icon={AlertTriangle}
+            variant="danger"
+            description="Descuentos aplicados"
+          />
         </div>
 
-        <div className="rounded-xl p-5 md:p-7" style={{ backgroundColor: 'var(--color-surface)' }}>
-          <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-foreground)' }}>
-            Acciones rapidas
-          </h2>
-          <div className="space-y-3">
-            <Link
-              href="/ordenes/nueva"
-              className="block w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.04]"
-              style={{ backgroundColor: 'var(--color-surface-elevated)', color: 'var(--color-foreground)' }}
-            >
-              + Nueva orden
-            </Link>
-            <Link
-              href="/liquidaciones/nueva"
-              className="block w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.04]"
-              style={{ backgroundColor: 'var(--color-surface-elevated)', color: 'var(--color-foreground)' }}
-            >
-              + Nueva liquidacion
-            </Link>
-            <Link
-              href="/debitos/nuevo"
-              className="block w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.04]"
-              style={{ backgroundColor: 'var(--color-surface-elevated)', color: 'var(--color-foreground)' }}
-            >
-              + Nuevo debito
-            </Link>
-            <Link
-              href="/cirugias/nueva"
-              className="block w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.04]"
-              style={{ backgroundColor: 'var(--color-surface-elevated)', color: 'var(--color-foreground)' }}
-            >
-              + Nueva cirugia
-            </Link>
-            <Link
-              href="/ordenes"
-              className="block w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.04]"
-              style={{ backgroundColor: 'var(--color-surface-elevated)', color: 'var(--color-foreground)' }}
-            >
-              Ver ordenes ({ordenes.length})
-            </Link>
+        {/* Chart */}
+        <DashboardTrendChart data={trendData} />
+
+        {/* Bottom Grid - Alerts & Quick Actions */}
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <DashboardAlerts alerts={alerts} />
           </div>
+          <QuickActions ordenesCount={ordenes.length} />
         </div>
       </div>
     </div>
@@ -179,28 +133,6 @@ export default async function DashboardPage() {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function StatCard({ label, value, color, bgColor, icon }: {
-  label: string
-  value: string
-  color: string
-  bgColor: string
-  icon: React.ReactNode
-}) {
-  return (
-    <div className="rounded-xl p-5 md:p-7 transition-colors duration-200" style={{ backgroundColor: 'var(--color-surface)' }}>
-      <div className="flex items-center gap-4">
-        <div className="w-11 h-11 rounded-lg flex items-center justify-center" style={{ backgroundColor: bgColor, color }}>
-          {icon}
-        </div>
-        <div>
-          <p className="text-sm font-medium" style={{ color: 'var(--color-foreground-secondary)' }}>{label}</p>
-          <p className="text-2xl md:text-3xl font-semibold tracking-tight" style={{ color }}>{value}</p>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function formatMonto(valor: number): string {
   return new Intl.NumberFormat('es-AR', {
@@ -252,7 +184,7 @@ function computeTrendData(
     }
   }
 
-  const hasData = months.some(m => m.facturado > 0 || m.cobrado > 0 || m.debitado > 0)
+  const hasData = months.some((m) => m.facturado > 0 || m.cobrado > 0 || m.debitado > 0)
   return hasData ? months : []
 }
 
@@ -264,7 +196,7 @@ function computeAlerts(
 ): AlertItem[] {
   const alerts: AlertItem[] = []
 
-  const borradores = ordenes.filter(o => o.estado === 'borrador').length
+  const borradores = ordenes.filter((o) => o.estado === 'borrador').length
   if (borradores > 0) {
     alerts.push({
       type: 'warning',
@@ -274,7 +206,7 @@ function computeAlerts(
     })
   }
 
-  const cirugiasBorrador = cirugias.filter(c => c.estado === 'borrador').length
+  const cirugiasBorrador = cirugias.filter((c) => c.estado === 'borrador').length
   if (cirugiasBorrador > 0) {
     alerts.push({
       type: 'warning',
@@ -284,7 +216,7 @@ function computeAlerts(
     })
   }
 
-  const refacturables = debitos.filter(d => d.refacturable && !d.refacturado).length
+  const refacturables = debitos.filter((d) => d.refacturable && !d.refacturado).length
   if (refacturables > 0) {
     alerts.push({
       type: 'error',
@@ -294,7 +226,7 @@ function computeAlerts(
     })
   }
 
-  const pendientes = liquidaciones.filter(l => l.estado === 'pendiente').length
+  const pendientes = liquidaciones.filter((l) => l.estado === 'pendiente').length
   if (pendientes > 0) {
     alerts.push({
       type: 'info',

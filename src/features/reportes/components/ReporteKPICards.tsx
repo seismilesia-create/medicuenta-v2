@@ -1,6 +1,8 @@
+import { FileText, CheckCircle2, AlertTriangle, Wallet, Clock, Users } from 'lucide-react'
 import type { ReporteKPIs } from '../types/reportes'
 import { formatARS } from '../lib/format'
 import { AGENTE_LABELS } from '@/features/ordenes/types/ordenes'
+import { MetricCard } from '@/features/dashboard/components/MetricCard'
 
 interface Props {
   kpis: ReporteKPIs
@@ -10,95 +12,84 @@ export function ReporteKPICards({ kpis }: Props) {
   const alertaSinLiquidar = kpis.cirugias2doSinLiquidar.count > 0
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <KPICard
-        label="Facturado"
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <MetricCard
+        title="Facturado"
         value={formatARS(kpis.facturado)}
-        color="var(--color-info)"
-        bgColor="var(--color-info-light)"
-        icon={<IconDoc />}
+        icon={FileText}
+        variant="info"
+        description="Total presentado en el periodo"
       />
-      <KPICard
-        label="Cobrado (aprobado)"
+      <MetricCard
+        title="Cobrado (aprobado)"
         value={formatARS(kpis.cobrado)}
-        color="var(--color-success)"
-        bgColor="var(--color-success-light)"
-        icon={<IconCheck />}
+        icon={CheckCircle2}
+        variant="success"
+        description="Pagos confirmados"
       />
-      <KPICard
-        label="Débitos"
+      <MetricCard
+        title="Debitos"
         value={formatARS(kpis.debitos)}
-        color="var(--color-error)"
-        bgColor="var(--color-error-light)"
-        icon={<IconWarning />}
+        icon={AlertTriangle}
+        variant="danger"
+        description="Descuentos aplicados"
       />
-      <KPICard
-        label="Plus cobrado"
-        badge="🔒 Privado"
+      <MetricCard
+        title="Plus cobrado"
         value={formatARS(kpis.plus)}
-        color="var(--color-warning)"
-        bgColor="var(--color-warning-light)"
-        icon={<IconWallet />}
+        icon={Wallet}
+        variant="warning"
+        description="Ingresos adicionales privados"
       />
-      <KPICard
-        label="Cirugías 2° sin liquidar >90d"
-        value={
-          kpis.cirugias2doSinLiquidar.count === 0
-            ? 'Todo al día'
-            : `${kpis.cirugias2doSinLiquidar.count} · ${formatARS(kpis.cirugias2doSinLiquidar.monto)}`
-        }
-        color={alertaSinLiquidar ? 'var(--color-error)' : 'var(--color-success)'}
-        bgColor={alertaSinLiquidar ? 'var(--color-error-light)' : 'var(--color-success-light)'}
-        icon={<IconAlert />}
-      />
+
+      {/* Surgery status card */}
       <div
-        className="rounded-xl p-5 md:p-6"
-        style={{ backgroundColor: 'var(--color-surface)' }}
+        className={`relative overflow-hidden rounded-2xl border bg-card p-6 ${
+          alertaSinLiquidar ? 'border-red-500/20' : 'border-emerald-500/20'
+        }`}
       >
-        <p className="text-sm font-medium mb-3" style={{ color: 'var(--color-foreground-secondary)' }}>
-          Descuento por agente
-        </p>
-        <div className="space-y-2">
-          <AgenteRow label={AGENTE_LABELS.circulo_medico} value={kpis.descuentoPorAgente.circulo_medico} />
-          <AgenteRow label={AGENTE_LABELS.medical_group} value={kpis.descuentoPorAgente.medical_group} />
-          <AgenteRow label={AGENTE_LABELS.comunidad} value={kpis.descuentoPorAgente.comunidad} />
+        <div
+          className={`absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl ${
+            alertaSinLiquidar ? 'bg-red-500/10' : 'bg-emerald-500/10'
+          }`}
+        />
+        <div className="relative flex items-start justify-between">
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-muted-foreground">Cirugias 2° sin liquidar +90d</p>
+            <p className={`text-2xl font-bold tracking-tight ${alertaSinLiquidar ? 'text-red-500' : 'text-emerald-500'}`}>
+              {kpis.cirugias2doSinLiquidar.count === 0
+                ? 'Todo al dia'
+                : `${kpis.cirugias2doSinLiquidar.count} · ${formatARS(kpis.cirugias2doSinLiquidar.monto)}`}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {alertaSinLiquidar ? 'Atencion requerida' : 'Sin cirugias pendientes'}
+            </p>
+          </div>
+          <div
+            className={`flex h-12 w-12 items-center justify-center rounded-xl ${
+              alertaSinLiquidar ? 'bg-red-500/15' : 'bg-emerald-500/15'
+            }`}
+          >
+            <Clock className={`h-6 w-6 ${alertaSinLiquidar ? 'text-red-500' : 'text-emerald-500'}`} strokeWidth={1.5} />
+          </div>
         </div>
       </div>
-    </div>
-  )
-}
 
-function KPICard({
-  label,
-  value,
-  color,
-  bgColor,
-  icon,
-  badge,
-}: {
-  label: string
-  value: string
-  color: string
-  bgColor: string
-  icon: React.ReactNode
-  badge?: string
-}) {
-  return (
-    <div className="rounded-xl p-5 md:p-6" style={{ backgroundColor: 'var(--color-surface)' }}>
-      <div className="flex items-center gap-4">
-        <div className="w-11 h-11 rounded-lg flex items-center justify-center" style={{ backgroundColor: bgColor, color }}>
-          {icon}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium truncate" style={{ color: 'var(--color-foreground-secondary)' }}>{label}</p>
-            {badge && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>
-                {badge}
-              </span>
-            )}
+      {/* Discounts by agent */}
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6">
+        <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
+              <Users className="h-4 w-4 text-amber-500" />
+            </div>
+            <h4 className="text-sm font-semibold text-foreground">Descuento por agente</h4>
           </div>
-          <p className="text-xl md:text-2xl font-semibold tracking-tight truncate" style={{ color }}>{value}</p>
+          <div className="space-y-3">
+            <AgenteRow label={AGENTE_LABELS.circulo_medico} value={kpis.descuentoPorAgente.circulo_medico} />
+            <AgenteRow label={AGENTE_LABELS.medical_group} value={kpis.descuentoPorAgente.medical_group} />
+            <AgenteRow label={AGENTE_LABELS.comunidad} value={kpis.descuentoPorAgente.comunidad} />
+          </div>
         </div>
       </div>
     </div>
@@ -107,49 +98,9 @@ function KPICard({
 
 function AgenteRow({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span style={{ color: 'var(--color-foreground-secondary)' }}>{label}</span>
-      <span className="font-mono font-medium" style={{ color: 'var(--color-foreground)' }}>{formatARS(value)}</span>
+    <div className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+      <span className="text-sm text-foreground">{label}</span>
+      <span className="text-sm font-mono font-medium text-muted-foreground">{formatARS(value)}</span>
     </div>
-  )
-}
-
-function IconDoc() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-    </svg>
-  )
-}
-
-function IconCheck() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-    </svg>
-  )
-}
-
-function IconWarning() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-    </svg>
-  )
-}
-
-function IconWallet() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2M9 12h12m0 0l-3-3m3 3l-3 3" />
-    </svg>
-  )
-}
-
-function IconAlert() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Search, Filter, Calendar } from 'lucide-react'
 import type { OrdenFilters as FilterType, TipoAtencion, EstadoOrden } from '../types/ordenes'
 import { TIPOS_ATENCION, ESTADOS_ORDEN, OBRAS_SOCIALES, AGENTES_FACTURADORES, AGENTE_LABELS } from '../types/ordenes'
 
@@ -31,116 +32,101 @@ export function OrdenFilters({ onFilterChange, initialFilters = {} }: Props) {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-wrap gap-3 md:gap-4 p-3 md:p-5 rounded-xl" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-      {/* Busqueda */}
-      <div className="sm:col-span-2 md:flex-1 md:min-w-[200px]">
-        <input
-          type="text"
-          placeholder="Buscar paciente..."
-          value={filters.busqueda ?? ''}
-          onChange={(e) => updateFilter('busqueda', e.target.value)}
-          className="w-full px-3.5 py-2.5 rounded-lg text-sm"
-          style={{
-            background: 'var(--color-background)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-foreground)',
-          }}
-        />
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6">
+      <div className="absolute -top-12 -right-12 w-32 h-32 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
+
+      <div className="relative">
+        <div className="flex items-center gap-2 mb-5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+            <Filter className="h-4 w-4 text-primary" />
+          </div>
+          <h3 className="text-sm font-semibold text-foreground">Filtros de busqueda</h3>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {/* Busqueda */}
+          <div className="relative md:col-span-2 lg:col-span-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Buscar paciente..."
+              value={filters.busqueda ?? ''}
+              onChange={(e) => updateFilter('busqueda', e.target.value)}
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-muted/50 border border-border/50 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none transition-colors"
+            />
+          </div>
+
+          {/* Tipo */}
+          <FilterSelect
+            value={filters.tipo ?? ''}
+            onChange={(v) => updateFilter('tipo', v)}
+            placeholder="Todos los tipos"
+            options={TIPOS_ATENCION.map((t) => ({ value: t, label: TIPO_LABELS[t] }))}
+          />
+
+          {/* Obra Social */}
+          <FilterSelect
+            value={filters.obra_social ?? ''}
+            onChange={(v) => updateFilter('obra_social', v)}
+            placeholder="Todas las OS"
+            options={OBRAS_SOCIALES.map((os) => ({ value: os, label: os }))}
+          />
+
+          {/* Estado */}
+          <FilterSelect
+            value={filters.estado ?? ''}
+            onChange={(v) => updateFilter('estado', v)}
+            placeholder="Todos los estados"
+            options={ESTADOS_ORDEN.map((e) => ({ value: e, label: ESTADO_LABELS[e] }))}
+          />
+
+          {/* Agente */}
+          <FilterSelect
+            value={filters.agente_facturador ?? ''}
+            onChange={(v) => updateFilter('agente_facturador', v)}
+            placeholder="Todos los agentes"
+            options={AGENTES_FACTURADORES.map((a) => ({ value: a, label: AGENTE_LABELS[a] }))}
+          />
+
+          {/* Fecha desde */}
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <input
+              type="date"
+              value={filters.fecha_desde ?? ''}
+              onChange={(e) => updateFilter('fecha_desde', e.target.value)}
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-muted/50 border border-border/50 text-sm text-foreground focus:border-primary/50 focus:outline-none transition-colors"
+            />
+          </div>
+        </div>
       </div>
-
-      {/* Tipo */}
-      <select
-        value={filters.tipo ?? ''}
-        onChange={(e) => updateFilter('tipo', e.target.value)}
-        className="px-3.5 py-2.5 rounded-lg text-sm"
-        style={{
-          background: 'var(--color-background)',
-          border: '1px solid var(--color-border)',
-          color: 'var(--color-foreground)',
-        }}
-      >
-        <option value="">Todos los tipos</option>
-        {TIPOS_ATENCION.map((tipo) => (
-          <option key={tipo} value={tipo}>{TIPO_LABELS[tipo]}</option>
-        ))}
-      </select>
-
-      {/* Obra Social */}
-      <select
-        value={filters.obra_social ?? ''}
-        onChange={(e) => updateFilter('obra_social', e.target.value)}
-        className="px-3.5 py-2.5 rounded-lg text-sm"
-        style={{
-          background: 'var(--color-background)',
-          border: '1px solid var(--color-border)',
-          color: 'var(--color-foreground)',
-        }}
-      >
-        <option value="">Todas las OS</option>
-        {OBRAS_SOCIALES.map((os) => (
-          <option key={os} value={os}>{os}</option>
-        ))}
-      </select>
-
-      {/* Estado */}
-      <select
-        value={filters.estado ?? ''}
-        onChange={(e) => updateFilter('estado', e.target.value)}
-        className="px-3.5 py-2.5 rounded-lg text-sm"
-        style={{
-          background: 'var(--color-background)',
-          border: '1px solid var(--color-border)',
-          color: 'var(--color-foreground)',
-        }}
-      >
-        <option value="">Todos los estados</option>
-        {ESTADOS_ORDEN.map((estado) => (
-          <option key={estado} value={estado}>{ESTADO_LABELS[estado]}</option>
-        ))}
-      </select>
-
-      {/* Agente facturador */}
-      <select
-        value={filters.agente_facturador ?? ''}
-        onChange={(e) => updateFilter('agente_facturador', e.target.value)}
-        className="px-3.5 py-2.5 rounded-lg text-sm"
-        style={{
-          background: 'var(--color-background)',
-          border: '1px solid var(--color-border)',
-          color: 'var(--color-foreground)',
-        }}
-      >
-        <option value="">Todos los agentes</option>
-        {AGENTES_FACTURADORES.map((a) => (
-          <option key={a} value={a}>{AGENTE_LABELS[a]}</option>
-        ))}
-      </select>
-
-      {/* Fecha desde */}
-      <input
-        type="date"
-        value={filters.fecha_desde ?? ''}
-        onChange={(e) => updateFilter('fecha_desde', e.target.value)}
-        className="px-3.5 py-2.5 rounded-lg text-sm"
-        style={{
-          background: 'var(--color-background)',
-          border: '1px solid var(--color-border)',
-          color: 'var(--color-foreground)',
-        }}
-      />
-
-      {/* Fecha hasta */}
-      <input
-        type="date"
-        value={filters.fecha_hasta ?? ''}
-        onChange={(e) => updateFilter('fecha_hasta', e.target.value)}
-        className="px-3.5 py-2.5 rounded-lg text-sm"
-        style={{
-          background: 'var(--color-background)',
-          border: '1px solid var(--color-border)',
-          color: 'var(--color-foreground)',
-        }}
-      />
     </div>
+  )
+}
+
+function FilterSelect({
+  value,
+  onChange,
+  placeholder,
+  options,
+}: {
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+  options: { value: string; label: string }[]
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full px-3 py-2.5 rounded-xl bg-muted/50 border border-border/50 text-sm text-foreground focus:border-primary/50 focus:outline-none transition-colors appearance-none cursor-pointer"
+    >
+      <option value="">{placeholder}</option>
+      {options.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
   )
 }

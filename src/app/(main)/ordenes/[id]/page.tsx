@@ -43,7 +43,7 @@ function Field({
     <div>
       <dt
         className="text-sm font-medium"
-        style={{ color: 'var(--color-muted)' }}
+        style={{ color: 'var(--color-muted-foreground)' }}
       >
         {label}
       </dt>
@@ -93,7 +93,7 @@ export default async function OrdenDetallePage({
           className="rounded-xl p-6 text-center space-y-4"
           style={{ backgroundColor: 'var(--color-surface)' }}
         >
-          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+          <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
             No se encontro la orden solicitada o no tienes acceso a ella.
           </p>
           <Link
@@ -127,7 +127,7 @@ export default async function OrdenDetallePage({
           <Link
             href="/ordenes"
             className="inline-flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
-            style={{ color: 'var(--color-muted)' }}
+            style={{ color: 'var(--color-muted-foreground)' }}
           >
             &larr; Volver a Ordenes
           </Link>
@@ -173,7 +173,7 @@ export default async function OrdenDetallePage({
         <h2
           id="section-estado"
           className="text-sm font-semibold uppercase tracking-wide"
-          style={{ color: 'var(--color-muted)' }}
+          style={{ color: 'var(--color-muted-foreground)' }}
         >
           Cambiar Estado
         </h2>
@@ -191,7 +191,7 @@ export default async function OrdenDetallePage({
         <h2
           id="section-general"
           className="text-sm font-semibold uppercase tracking-wide"
-          style={{ color: 'var(--color-muted)' }}
+          style={{ color: 'var(--color-muted-foreground)' }}
         >
           Informacion general
         </h2>
@@ -222,7 +222,7 @@ export default async function OrdenDetallePage({
         <h2
           id="section-paciente"
           className="text-sm font-semibold uppercase tracking-wide"
-          style={{ color: 'var(--color-muted)' }}
+          style={{ color: 'var(--color-muted-foreground)' }}
         >
           Datos del paciente
         </h2>
@@ -268,7 +268,7 @@ export default async function OrdenDetallePage({
         <h2
           id="section-prestacion"
           className="text-sm font-semibold uppercase tracking-wide"
-          style={{ color: 'var(--color-muted)' }}
+          style={{ color: 'var(--color-muted-foreground)' }}
         >
           Prestacion
         </h2>
@@ -305,7 +305,7 @@ export default async function OrdenDetallePage({
         <h2
           id="section-montos"
           className="text-sm font-semibold uppercase tracking-wide"
-          style={{ color: 'var(--color-muted)' }}
+          style={{ color: 'var(--color-muted-foreground)' }}
         >
           Montos
         </h2>
@@ -316,7 +316,7 @@ export default async function OrdenDetallePage({
           <div>
             <dt
               className="text-sm font-medium"
-              style={{ color: 'var(--color-muted)' }}
+              style={{ color: 'var(--color-muted-foreground)' }}
             >
               Total
             </dt>
@@ -342,7 +342,7 @@ export default async function OrdenDetallePage({
           <h2
             id="section-obs"
             className="text-sm font-semibold uppercase tracking-wide"
-            style={{ color: 'var(--color-muted)' }}
+            style={{ color: 'var(--color-muted-foreground)' }}
           >
             Observaciones
           </h2>

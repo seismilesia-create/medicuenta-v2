@@ -35,7 +35,7 @@ export default async function EditarCirugiaPage({ params }: { params: Promise<{ 
         <Link
           href={`/cirugias/${id}`}
           className="inline-flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
-          style={{ color: 'var(--color-muted)' }}
+          style={{ color: 'var(--color-muted-foreground)' }}
         >
           &larr; Volver a la cirugia
         </Link>
@@ -49,7 +49,7 @@ export default async function EditarCirugiaPage({ params }: { params: Promise<{ 
         >
           Editar cirugia
         </h1>
-        <p className="mt-1.5 text-sm" style={{ color: 'var(--color-muted)' }}>
+        <p className="mt-1.5 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
           Modificando cirugia de {(cirugia as Cirugia).nombre_paciente}
         </p>
       </div>

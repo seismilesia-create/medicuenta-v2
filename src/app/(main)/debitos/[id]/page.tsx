@@ -27,7 +27,7 @@ function formatFecha(iso: string): string {
 function Field({ label, value }: { label: string; value: string | React.ReactNode }) {
   return (
     <div>
-      <dt className="text-sm font-medium" style={{ color: 'var(--color-muted)' }}>{label}</dt>
+      <dt className="text-sm font-medium" style={{ color: 'var(--color-muted-foreground)' }}>{label}</dt>
       <dd className="mt-1 text-sm" style={{ color: 'var(--color-foreground)' }}>{value}</dd>
     </div>
   )
@@ -54,7 +54,7 @@ export default async function DebitoDetallePage({
     return (
       <div className="px-4 py-6 md:px-8 md:py-10 max-w-4xl mx-auto space-y-6">
         <div className="rounded-xl p-6 text-center space-y-4" style={{ backgroundColor: 'var(--color-surface)' }}>
-          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+          <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
             No se encontro el debito solicitado o no tienes acceso a el.
           </p>
           <Link href="/debitos" className="inline-flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70" style={{ color: 'var(--color-primary)' }}>
@@ -72,7 +72,7 @@ export default async function DebitoDetallePage({
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
-          <Link href="/debitos" className="inline-flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70" style={{ color: 'var(--color-muted)' }}>
+          <Link href="/debitos" className="inline-flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70" style={{ color: 'var(--color-muted-foreground)' }}>
             &larr; Volver a Debitos
           </Link>
           <h1 className="text-2xl font-semibold tracking-tight" style={{ color: 'var(--color-foreground)' }}>
@@ -98,7 +98,7 @@ export default async function DebitoDetallePage({
 
       {/* Refacturacion */}
       <section className="rounded-xl p-5 md:p-6 space-y-3" style={{ backgroundColor: 'var(--color-surface)' }} aria-labelledby="section-refac">
-        <h2 id="section-refac" className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>
+        <h2 id="section-refac" className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted-foreground)' }}>
           Refacturacion
         </h2>
         <RefacturadoToggle debitoId={id} refacturable={typed.refacturable} refacturado={typed.refacturado} />
@@ -106,7 +106,7 @@ export default async function DebitoDetallePage({
 
       {/* Informacion general */}
       <section className="rounded-xl p-5 md:p-6 space-y-4" style={{ backgroundColor: 'var(--color-surface)' }} aria-labelledby="section-general">
-        <h2 id="section-general" className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>
+        <h2 id="section-general" className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted-foreground)' }}>
           Informacion general
         </h2>
         <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -118,12 +118,12 @@ export default async function DebitoDetallePage({
 
       {/* Monto */}
       <section className="rounded-xl p-5 md:p-6 space-y-4" style={{ backgroundColor: 'var(--color-surface)' }} aria-labelledby="section-monto">
-        <h2 id="section-monto" className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>
+        <h2 id="section-monto" className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted-foreground)' }}>
           Monto
         </h2>
         <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <dt className="text-sm font-medium" style={{ color: 'var(--color-muted)' }}>Monto debitado</dt>
+            <dt className="text-sm font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Monto debitado</dt>
             <dd className="mt-1 text-base font-semibold" style={{ color: 'var(--color-error)' }}>
               {ARS.format(typed.monto)}
             </dd>

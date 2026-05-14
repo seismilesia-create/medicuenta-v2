@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { cn } from '@/lib/utils'
+import { Bell, CheckCircle2, AlertCircle, Info, Shield, ArrowRight } from 'lucide-react'
 
 export interface AlertItem {
   type: 'info' | 'warning' | 'error'
@@ -11,59 +13,110 @@ interface Props {
   alerts: AlertItem[]
 }
 
-const ALERT_STYLES: Record<AlertItem['type'], { bg: string; color: string; icon: string }> = {
+const alertStyles = {
   info: {
-    bg: 'var(--color-info-light)',
-    color: 'var(--color-info)',
-    icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    icon: Info,
+    iconColor: 'text-blue-500',
+    bgColor: 'bg-blue-500/10',
+    borderColor: 'border-blue-500/20',
+    badgeBg: 'bg-blue-500/20',
+    badgeText: 'text-blue-500',
   },
   warning: {
-    bg: 'var(--color-warning-light)',
-    color: 'var(--color-warning)',
-    icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
+    icon: AlertCircle,
+    iconColor: 'text-amber-500',
+    bgColor: 'bg-amber-500/10',
+    borderColor: 'border-amber-500/20',
+    badgeBg: 'bg-amber-500/20',
+    badgeText: 'text-amber-500',
   },
   error: {
-    bg: 'var(--color-error-light)',
-    color: 'var(--color-error)',
-    icon: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    icon: AlertCircle,
+    iconColor: 'text-red-500',
+    bgColor: 'bg-red-500/10',
+    borderColor: 'border-red-500/20',
+    badgeBg: 'bg-red-500/20',
+    badgeText: 'text-red-500',
   },
-}
+} as const
 
 export function DashboardAlerts({ alerts }: Props) {
-  if (alerts.length === 0) {
-    return (
-      <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-        Sin alertas por el momento. Todo esta en orden.
-      </p>
-    )
-  }
-
   return (
-    <div className="space-y-2">
-      {alerts.map((alert, i) => {
-        const style = ALERT_STYLES[alert.type]
-        return (
-          <Link
-            key={i}
-            href={alert.href}
-            className="flex items-center gap-3 p-3 rounded-lg transition-opacity hover:opacity-80"
-            style={{ background: style.bg }}
-          >
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: style.color }}>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={style.icon} />
-            </svg>
-            <span className="flex-1 text-sm" style={{ color: style.color }}>
-              {alert.message}
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 h-full">
+      <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
+
+      <div className="relative">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+              <Bell className="h-4 w-4 text-primary" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">Alertas activas</h3>
+          </div>
+          {alerts.length > 0 && (
+            <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-primary/10 px-2 text-xs font-semibold text-primary">
+              {alerts.length}
             </span>
-            <span
-              className="text-xs font-semibold px-2 py-0.5 rounded-full"
-              style={{ backgroundColor: style.color, color: '#ffffff' }}
-            >
-              {alert.count}
-            </span>
-          </Link>
-        )
-      })}
+          )}
+        </div>
+
+        {alerts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="relative mb-4">
+              <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl" />
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 ring-1 ring-emerald-500/20">
+                <Shield className="h-8 w-8 text-emerald-500" strokeWidth={1.5} />
+              </div>
+            </div>
+            <p className="text-sm font-medium text-foreground">Todo en orden</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
+              No hay alertas pendientes. Tu facturacion esta al dia.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {alerts.map((alert, i) => {
+              const style = alertStyles[alert.type]
+              const Icon = style.icon
+              return (
+                <Link
+                  key={i}
+                  href={alert.href}
+                  className={cn(
+                    'group flex items-start gap-3 rounded-xl border p-4 transition-all duration-300 hover:scale-[1.01]',
+                    style.bgColor,
+                    style.borderColor,
+                  )}
+                >
+                  <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', style.bgColor)}>
+                    <Icon className={cn('h-4 w-4', style.iconColor)} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">{alert.message}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        'flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs font-semibold',
+                        style.badgeBg,
+                        style.badgeText,
+                      )}
+                    >
+                      {alert.count}
+                    </span>
+                    <ArrowRight
+                      className={cn(
+                        'h-4 w-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all',
+                        style.iconColor,
+                      )}
+                    />
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

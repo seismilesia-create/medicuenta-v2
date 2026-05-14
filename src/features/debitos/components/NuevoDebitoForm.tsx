@@ -84,7 +84,7 @@ export function NuevoDebitoForm() {
             color: 'var(--color-foreground)',
           }}
         />
-        <p className="text-xs mt-1.5" style={{ color: 'var(--color-muted)' }}>
+        <p className="text-xs mt-1.5" style={{ color: 'var(--color-muted-foreground)' }}>
           Describe más detalles sobre el motivo del débito
         </p>
       </div>
@@ -144,14 +144,14 @@ export function NuevoDebitoForm() {
             <div className="text-sm font-medium" style={{ color: 'var(--color-foreground)' }}>
               ¿Es refacturable?
             </div>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted-foreground)' }}>
               Marca esta opción si el débito puede corregirse y refacturarse en el futuro
             </p>
           </div>
         </label>
 
         <div className="mt-3 p-3 rounded-lg" style={{ background: 'var(--color-background)', border: '1px dashed var(--color-border)' }}>
-          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+          <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
             <strong>Nota:</strong> Los débitos por falta de token, firma, diagnóstico o error en código se marcan automáticamente como refacturables.
           </p>
         </div>

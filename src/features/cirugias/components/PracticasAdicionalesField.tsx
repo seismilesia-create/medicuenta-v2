@@ -172,14 +172,14 @@ function PracticaRow({ practica, onRemove }: PracticaRowProps) {
       <div className="grid grid-cols-3 gap-2 text-xs">
         {/* Honorarios */}
         <div>
-          <span className="block mb-0.5" style={{ color: 'var(--color-muted)' }}>
+          <span className="block mb-0.5" style={{ color: 'var(--color-muted-foreground)' }}>
             Honorarios
           </span>
           <span className="font-mono" style={{ color: 'var(--color-foreground)' }}>
             {formatMonto(practica.honorariosCalculados)}
           </span>
           {practica.porcentajeHonorarios === 50 && (
-            <span className="block font-mono text-[10px]" style={{ color: 'var(--color-muted)' }}>
+            <span className="block font-mono text-[10px]" style={{ color: 'var(--color-muted-foreground)' }}>
               (de {formatMonto(practica.honorarios)})
             </span>
           )}
@@ -187,7 +187,7 @@ function PracticaRow({ practica, onRemove }: PracticaRowProps) {
 
         {/* Gastos */}
         <div>
-          <span className="block mb-0.5" style={{ color: 'var(--color-muted)' }}>
+          <span className="block mb-0.5" style={{ color: 'var(--color-muted-foreground)' }}>
             Gastos
           </span>
           <span className="font-mono" style={{ color: 'var(--color-foreground)' }}>
@@ -197,7 +197,7 @@ function PracticaRow({ practica, onRemove }: PracticaRowProps) {
 
         {/* Subtotal */}
         <div>
-          <span className="block mb-0.5" style={{ color: 'var(--color-muted)' }}>
+          <span className="block mb-0.5" style={{ color: 'var(--color-muted-foreground)' }}>
             Subtotal
           </span>
           <span className="font-mono font-semibold" style={{ color: 'var(--color-success)' }}>
@@ -228,7 +228,7 @@ function EmptyState() {
         stroke="currentColor"
         viewBox="0 0 24 24"
         aria-hidden="true"
-        style={{ color: 'var(--color-muted)' }}
+        style={{ color: 'var(--color-muted-foreground)' }}
       >
         <path
           strokeLinecap="round"
@@ -237,10 +237,10 @@ function EmptyState() {
           d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
         />
       </svg>
-      <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+      <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
         Sin practicas adicionales
       </p>
-      <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>
+      <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
         Busca y agrega prestaciones del nomenclador
       </p>
     </div>
@@ -310,7 +310,7 @@ export function PracticasAdicionalesField({
           onSelect={handleSelect}
           value=""
         />
-        <p className="mt-1.5 text-xs" style={{ color: 'var(--color-muted)' }}>
+        <p className="mt-1.5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
           Busca por codigo o nombre de prestacion y selecciona para agregar
         </p>
       </div>
@@ -375,7 +375,7 @@ export function PracticasAdicionalesField({
         >
           <span className="text-sm font-medium" style={{ color: 'var(--color-foreground)' }}>
             Subtotal practicas adicionales
-            <span className="ml-1 text-xs font-normal" style={{ color: 'var(--color-muted)' }}>
+            <span className="ml-1 text-xs font-normal" style={{ color: 'var(--color-muted-foreground)' }}>
               ({value.length} {value.length === 1 ? 'practica' : 'practicas'})
             </span>
           </span>

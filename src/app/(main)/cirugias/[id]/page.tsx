@@ -42,7 +42,7 @@ function Field({
     <div>
       <dt
         className="text-sm font-medium"
-        style={{ color: 'var(--color-muted)' }}
+        style={{ color: 'var(--color-muted-foreground)' }}
       >
         {label}
       </dt>
@@ -92,7 +92,7 @@ export default async function CirugiaDetallePage({
           className="rounded-xl p-6 text-center space-y-4"
           style={{ backgroundColor: 'var(--color-surface)' }}
         >
-          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+          <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
             No se encontro la cirugia solicitada o no tienes acceso a ella.
           </p>
           <Link
@@ -122,7 +122,7 @@ export default async function CirugiaDetallePage({
           <Link
             href="/cirugias"
             className="inline-flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
-            style={{ color: 'var(--color-muted)' }}
+            style={{ color: 'var(--color-muted-foreground)' }}
           >
             &larr; Volver a Cirugias
           </Link>
@@ -164,7 +164,7 @@ export default async function CirugiaDetallePage({
         <h2
           id="section-estado"
           className="text-sm font-semibold uppercase tracking-wide"
-          style={{ color: 'var(--color-muted)' }}
+          style={{ color: 'var(--color-muted-foreground)' }}
         >
           Cambiar Estado
         </h2>
@@ -180,7 +180,7 @@ export default async function CirugiaDetallePage({
         <h2
           id="section-general"
           className="text-sm font-semibold uppercase tracking-wide"
-          style={{ color: 'var(--color-muted)' }}
+          style={{ color: 'var(--color-muted-foreground)' }}
         >
           Informacion general
         </h2>
@@ -200,7 +200,7 @@ export default async function CirugiaDetallePage({
         <h2
           id="section-practica"
           className="text-sm font-semibold uppercase tracking-wide"
-          style={{ color: 'var(--color-muted)' }}
+          style={{ color: 'var(--color-muted-foreground)' }}
         >
           Practica principal
         </h2>
@@ -219,7 +219,7 @@ export default async function CirugiaDetallePage({
         <h2
           id="section-montos"
           className="text-sm font-semibold uppercase tracking-wide"
-          style={{ color: 'var(--color-muted)' }}
+          style={{ color: 'var(--color-muted-foreground)' }}
         >
           Montos
         </h2>
@@ -230,7 +230,7 @@ export default async function CirugiaDetallePage({
           <div>
             <dt
               className="text-sm font-medium"
-              style={{ color: 'var(--color-muted)' }}
+              style={{ color: 'var(--color-muted-foreground)' }}
             >
               Total calculado
             </dt>
@@ -254,7 +254,7 @@ export default async function CirugiaDetallePage({
           <h2
             id="section-equipo"
             className="text-sm font-semibold uppercase tracking-wide"
-            style={{ color: 'var(--color-muted)' }}
+            style={{ color: 'var(--color-muted-foreground)' }}
           >
             Equipo quirurgico
           </h2>
@@ -276,7 +276,7 @@ export default async function CirugiaDetallePage({
           <h2
             id="section-anestesia"
             className="text-sm font-semibold uppercase tracking-wide"
-            style={{ color: 'var(--color-muted)' }}
+            style={{ color: 'var(--color-muted-foreground)' }}
           >
             Anestesia y lugar
           </h2>
@@ -299,7 +299,7 @@ export default async function CirugiaDetallePage({
           <h2
             id="section-adicionales"
             className="text-sm font-semibold uppercase tracking-wide"
-            style={{ color: 'var(--color-muted)' }}
+            style={{ color: 'var(--color-muted-foreground)' }}
           >
             Practicas adicionales ({practicas.length})
           </h2>
@@ -307,11 +307,11 @@ export default async function CirugiaDetallePage({
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <th className="text-left py-2 font-medium" style={{ color: 'var(--color-muted)' }}>Codigo</th>
-                  <th className="text-left py-2 font-medium" style={{ color: 'var(--color-muted)' }}>Detalle</th>
-                  <th className="text-right py-2 font-medium" style={{ color: 'var(--color-muted)' }}>Honorarios</th>
-                  <th className="text-right py-2 font-medium" style={{ color: 'var(--color-muted)' }}>Gastos</th>
-                  <th className="text-right py-2 font-medium" style={{ color: 'var(--color-muted)' }}>Total</th>
+                  <th className="text-left py-2 font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Codigo</th>
+                  <th className="text-left py-2 font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Detalle</th>
+                  <th className="text-right py-2 font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Honorarios</th>
+                  <th className="text-right py-2 font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Gastos</th>
+                  <th className="text-right py-2 font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -340,7 +340,7 @@ export default async function CirugiaDetallePage({
           <h2
             id="section-obs"
             className="text-sm font-semibold uppercase tracking-wide"
-            style={{ color: 'var(--color-muted)' }}
+            style={{ color: 'var(--color-muted-foreground)' }}
           >
             Observaciones
           </h2>

@@ -88,7 +88,7 @@ export function AssistantWidget() {
                 <p className="text-sm font-medium" style={{ color: 'var(--color-foreground)' }}>
                   Hola! Soy tu asistente de facturacion
                 </p>
-                <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>
+                <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
                   Preguntame sobre nomenclador, ordenes, liquidaciones o debitos
                 </p>
               </div>

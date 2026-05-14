@@ -119,7 +119,7 @@ export function EditarOrdenForm({ orden }: Props) {
             } : {
               background: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
-              color: 'var(--color-muted)',
+              color: 'var(--color-muted-foreground)',
             }}
           >
             Obra Social
@@ -135,7 +135,7 @@ export function EditarOrdenForm({ orden }: Props) {
             } : {
               background: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
-              color: 'var(--color-muted)',
+              color: 'var(--color-muted-foreground)',
             }}
           >
             Particular
@@ -163,7 +163,7 @@ export function EditarOrdenForm({ orden }: Props) {
             <option key={a} value={a}>{AGENTE_LABELS[a]}</option>
           ))}
         </select>
-        <p className="text-xs mt-1.5" style={{ color: 'var(--color-muted)' }}>
+        <p className="text-xs mt-1.5" style={{ color: 'var(--color-muted-foreground)' }}>
           Quién factura esta orden según el convenio de la OS del paciente.
         </p>
       </div>
@@ -333,7 +333,7 @@ export function EditarOrdenForm({ orden }: Props) {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Honorario calculado</p>
+                  <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Honorario calculado</p>
                   <p className="text-sm font-mono" style={{ color: 'var(--color-foreground)' }}>
                     {prestacionSeleccionada.codigo} - {prestacionSeleccionada.detalle}
                   </p>
@@ -421,7 +421,7 @@ export function EditarOrdenForm({ orden }: Props) {
               Plus (privado)
             </h3>
           </div>
-          <p className="text-xs mb-3" style={{ color: 'var(--color-muted)' }}>
+          <p className="text-xs mb-3" style={{ color: 'var(--color-muted-foreground)' }}>
             Este dato es estrictamente privado. Solo vos podes verlo.
           </p>
           <input

@@ -239,19 +239,19 @@ export function EditarCirugiaForm({ cirugia }: Props) {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Practica seleccionada</p>
+                <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Practica seleccionada</p>
                 <p className="text-sm font-mono" style={{ color: 'var(--color-foreground)' }}>
                   {prestacion.codigo} - {prestacion.detalle}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Total</p>
+                <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Total</p>
                 <p className="text-xl font-bold font-mono" style={{ color: 'var(--color-success)' }}>
                   ${Number(prestacion.total ?? 0).toLocaleString('es-AR')}
                 </p>
               </div>
             </div>
-            <div className="flex gap-4 mt-2 text-xs" style={{ color: 'var(--color-muted)' }}>
+            <div className="flex gap-4 mt-2 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
               <span>Hon: ${Number(prestacion.honorarios ?? 0).toLocaleString('es-AR')}</span>
               <span>Gastos: ${Number(prestacion.gastos ?? 0).toLocaleString('es-AR')}</span>
             </div>

@@ -82,7 +82,7 @@ export function EditarLiquidacionForm({ liquidacion }: Props) {
             <option key={os} value={os}>{os}</option>
           ))}
         </select>
-        <p className="text-xs mt-1.5" style={{ color: 'var(--color-muted)' }}>
+        <p className="text-xs mt-1.5" style={{ color: 'var(--color-muted-foreground)' }}>
           Dejar en blanco para liquidaciones de todas las obras sociales
         </p>
       </div>
@@ -122,7 +122,7 @@ export function EditarLiquidacionForm({ liquidacion }: Props) {
           </div>
         </div>
         <div className="p-3 rounded-lg" style={{ background: 'var(--color-background)', border: '1px dashed var(--color-border)' }}>
-          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+          <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
             <strong>Presentado:</strong> Total facturado a la OS. <strong>Liquidado:</strong> Lo que efectivamente paga la OS. <strong>Debitado:</strong> Descuentos/debitos aplicados.
           </p>
         </div>

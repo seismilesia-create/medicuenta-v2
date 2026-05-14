@@ -1,288 +1,280 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { ThemeToggle } from '@/shared/components/theme-toggle';
-import { logout } from '@/actions/auth';
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useTheme } from 'next-themes'
+import {
+  LayoutDashboard,
+  FileText,
+  Receipt,
+  AlertTriangle,
+  BarChart3,
+  Grid3X3,
+  Scissors,
+  Bot,
+  Moon,
+  Sun,
+  User,
+  LogOut,
+  Activity,
+  ChevronRight,
+  Sparkles,
+  Menu,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { logout } from '@/actions/auth'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu'
 
 interface NavItem {
-  label: string;
-  href: string;
-  icon: React.ReactNode;
-  disabled?: boolean;
-  badge?: string;
+  name: string
+  href: string
+  icon: LucideIcon
+  badge?: string
+}
+
+const navigation: { principal: NavItem[]; avanzado: NavItem[] } = {
+  principal: [
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Ordenes', href: '/ordenes', icon: FileText },
+    { name: 'Liquidaciones', href: '/liquidaciones', icon: Receipt },
+    { name: 'Debitos', href: '/debitos', icon: AlertTriangle },
+    { name: 'Reportes', href: '/reportes', icon: BarChart3 },
+  ],
+  avanzado: [
+    { name: 'Nomenclador', href: '/nomenclador', icon: Grid3X3 },
+    { name: 'Cirugias', href: '/cirugias', icon: Scissors },
+    { name: 'Asistente IA', href: '/asistente', icon: Bot, badge: 'Beta' },
+  ],
 }
 
 export function Sidebar() {
-  const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname()
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
 
-  const mainNavItems: NavItem[] = [
-    {
-      label: 'Dashboard',
-      href: '/dashboard',
-      icon: (
-        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Ordenes',
-      href: '/ordenes',
-      icon: (
-        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Liquidaciones',
-      href: '/liquidaciones',
-      icon: (
-        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Debitos',
-      href: '/debitos',
-      icon: (
-        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Reportes',
-      href: '/reportes',
-      icon: (
-        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3v18h18M7 14l4-4 4 4 5-5" />
-        </svg>
-      ),
-    },
-  ];
+  useEffect(() => setMounted(true), [])
 
-  const advancedNavItems: NavItem[] = [
-    {
-      label: 'Nomenclador',
-      href: '/nomenclador',
-      icon: (
-        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Cirugias',
-      href: '/cirugias',
-      icon: (
-        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
-        </svg>
-      ),
-    },
-    {
-      label: 'Asistente',
-      href: '/asistente',
-      icon: (
-        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
-        </svg>
-      ),
-    },
-  ];
+  const isDark = theme === 'dark'
+  const toggleTheme = () => setTheme(isDark ? 'light' : 'dark')
 
   const isActiveRoute = (href: string) => {
-    if (href === '/dashboard') {
-      return pathname === '/dashboard';
-    }
-    return pathname.startsWith(href);
-  };
-
-  function handleNavClick() {
-    setMobileOpen(false);
+    if (href === '/dashboard') return pathname === '/dashboard'
+    return pathname === href || pathname?.startsWith(href + '/')
   }
+
+  const handleNavClick = () => setMobileOpen(false)
 
   const sidebarContent = (
     <>
+      {/* Decorative gradient orbs */}
+      <div className="absolute -top-20 -left-20 w-40 h-40 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-40 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
+
       {/* Logo */}
-      <div className="px-5 pt-6 pb-6 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--color-primary)' }}>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12h2m14 0h2M12 3v2m0 14v2" />
-          </svg>
-          <div>
-            <h1 className="text-base font-semibold tracking-tight">MediCuenta</h1>
-            <p className="text-[11px]" style={{ color: 'var(--color-foreground-muted)' }}>Facturacion Medica</p>
+      <div className="relative flex h-20 items-center justify-between gap-4 px-6">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <div className="absolute inset-0 bg-primary/30 rounded-xl blur-lg" />
+            <div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg">
+              <Activity className="h-6 w-6 text-primary-foreground" strokeWidth={2.5} />
+            </div>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-lg font-bold tracking-tight text-foreground">MediCuenta</span>
+            <span className="text-xs font-medium text-muted-foreground">Facturacion Medica</span>
           </div>
         </div>
         {/* Close button - mobile only */}
         <button
           onClick={() => setMobileOpen(false)}
-          className="md:hidden p-1.5 rounded-lg hover:bg-white/[0.06]"
+          className="md:hidden p-2 rounded-lg hover:bg-accent/50 text-muted-foreground"
+          aria-label="Cerrar menu"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <X className="h-5 w-5" />
         </button>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-2">
-        <div className="mb-6">
-          <h2 className="px-5 mb-2 text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--color-foreground-muted)' }}>
-            Principal
-          </h2>
-          <ul className="space-y-1 px-3">
-            {mainNavItems.map((item) => {
-              const isActive = isActiveRoute(item.href);
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={handleNavClick}
-                    className={`
-                      flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors
-                      ${isActive
-                        ? 'font-semibold'
-                        : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06]'
-                      }
-                    `}
-                    style={{
-                      color: isActive ? 'var(--color-primary)' : undefined,
-                    }}
-                  >
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+      {/* Divider with gradient */}
+      <div className="mx-6 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
-        <div>
-          <h2 className="px-5 mb-2 text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--color-foreground-muted)' }}>
-            Avanzado
-          </h2>
-          <ul className="space-y-1 px-3">
-            {advancedNavItems.map((item) => (
-              <li key={item.href}>
-                {item.disabled ? (
-                  <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm opacity-40 cursor-not-allowed">
-                    {item.icon}
-                    <span className="flex-1">{item.label}</span>
-                    {item.badge && (
-                      <span
-                        className="px-2 py-0.5 text-[10px] font-medium rounded-md"
-                        style={{
-                          background: 'var(--color-border-light)',
-                          color: 'var(--color-foreground-muted)',
-                        }}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <Link
-                    href={item.href}
-                    onClick={handleNavClick}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
-                  >
-                    {item.icon}
-                    <span className="flex-1">{item.label}</span>
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+      {/* Navigation */}
+      <nav className="relative flex-1 space-y-8 overflow-y-auto px-4 py-6">
+        <NavSection title="Principal" items={navigation.principal} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
+        <NavSection title="Avanzado" items={navigation.avanzado} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
       </nav>
 
       {/* Footer */}
-      <div className="pt-4">
-        <div className="p-3 flex justify-center">
-          <ThemeToggle />
-        </div>
+      <div className="relative p-4 space-y-2">
+        <div className="mx-2 mb-3 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
-        <ul className="py-2 px-3">
-          <li>
-            <Link
-              href="/perfil"
-              onClick={handleNavClick}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
-            >
-              <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Perfil</span>
-            </Link>
-          </li>
-          <li>
-            <button
-              onClick={() => { handleNavClick(); logout(); }}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
-              style={{ color: 'var(--color-error)' }}
-            >
-              <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              <span>Cerrar sesion</span>
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-muted-foreground transition-all duration-300 hover:bg-accent/50 hover:text-foreground"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted/50">
+            {!mounted ? (
+              <Moon className="h-[18px] w-[18px]" />
+            ) : isDark ? (
+              <Sun className="h-[18px] w-[18px]" />
+            ) : (
+              <Moon className="h-[18px] w-[18px]" />
+            )}
+          </div>
+          <span>{!mounted ? 'Modo' : isDark ? 'Modo claro' : 'Modo oscuro'}</span>
+        </button>
+
+        {/* User dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-muted-foreground transition-all duration-300 hover:bg-accent/50 hover:text-foreground">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-primary/10">
+                <User className="h-[18px] w-[18px] text-primary" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-medium text-foreground">Doctor</p>
+                <p className="text-xs text-muted-foreground">Perfil</p>
+              </div>
             </button>
-          </li>
-        </ul>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuItem asChild>
+              <Link href="/perfil" onClick={handleNavClick}>
+                <User className="mr-2 h-4 w-4" />
+                Ver perfil
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={() => {
+                handleNavClick()
+                logout()
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Cerrar sesion
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </>
-  );
+  )
 
   return (
     <>
       {/* Mobile header bar */}
-      <div
-        className="fixed top-0 left-0 right-0 h-14 flex md:hidden items-center px-4 z-40"
-        style={{ backgroundColor: 'var(--color-sidebar-bg)' }}
-      >
+      <div className="fixed top-0 left-0 right-0 h-14 flex md:hidden items-center px-4 z-40 bg-sidebar border-b border-border">
         <button
           onClick={() => setMobileOpen(true)}
-          className="p-2 -ml-2 rounded-lg"
+          className="p-2 -ml-2 rounded-lg hover:bg-accent/50"
           aria-label="Abrir menu"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-          </svg>
+          <Menu className="h-5 w-5" />
         </button>
-        <span className="ml-3 text-sm font-semibold">MediCuenta</span>
+        <div className="ml-3 flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80">
+            <Activity className="h-4 w-4 text-primary-foreground" strokeWidth={2.5} />
+          </div>
+          <span className="text-sm font-bold tracking-tight">MediCuenta</span>
+        </div>
       </div>
 
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
-      {/* Sidebar - desktop: always visible, mobile: drawer */}
+      {/* Sidebar */}
       <aside
-        className={`
-          fixed left-0 top-0 h-screen w-64 flex flex-col z-50
-          transition-transform duration-200 ease-out
-          md:translate-x-0
-          ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
-        style={{
-          backgroundColor: 'var(--color-sidebar-bg)',
-          color: 'var(--color-sidebar-text)',
-        }}
+        className={cn(
+          'fixed left-0 top-0 h-screen w-72 flex flex-col z-50 bg-sidebar text-sidebar-foreground overflow-hidden',
+          'transition-transform duration-200 ease-out',
+          'md:translate-x-0',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full',
+        )}
       >
         {sidebarContent}
       </aside>
     </>
-  );
+  )
+}
+
+// ---------------------------------------------------------------------------
+// NavSection
+// ---------------------------------------------------------------------------
+
+function NavSection({
+  title,
+  items,
+  isActiveRoute,
+  onNavClick,
+}: {
+  title: string
+  items: NavItem[]
+  isActiveRoute: (href: string) => boolean
+  onNavClick: () => void
+}) {
+  return (
+    <div>
+      <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
+        {title}
+      </p>
+      <ul className="space-y-1">
+        {items.map((item) => {
+          const isActive = isActiveRoute(item.href)
+          const Icon = item.icon
+          return (
+            <li key={item.name}>
+              <Link
+                href={item.href}
+                onClick={onNavClick}
+                className={cn(
+                  'group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300',
+                  isActive
+                    ? 'bg-gradient-to-r from-primary/20 to-primary/5 text-primary'
+                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
+                )}
+              >
+                {isActive && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full bg-primary shadow-lg shadow-primary/50" />
+                )}
+                <div
+                  className={cn(
+                    'flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-300',
+                    isActive
+                      ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30'
+                      : 'bg-muted/50 text-muted-foreground group-hover:bg-accent group-hover:text-accent-foreground',
+                  )}
+                >
+                  <Icon className="h-[18px] w-[18px]" />
+                </div>
+                <span className="flex-1">{item.name}</span>
+                {item.badge && (
+                  <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-primary/20 to-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                    <Sparkles className="h-2.5 w-2.5" />
+                    {item.badge}
+                  </span>
+                )}
+                {isActive && !item.badge && <ChevronRight className="h-4 w-4 text-primary/60" />}
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
 }

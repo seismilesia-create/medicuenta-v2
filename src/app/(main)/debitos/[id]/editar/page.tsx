@@ -28,7 +28,7 @@ export default async function EditarDebitoPage({
     return (
       <div className="px-4 py-6 md:px-8 md:py-10 max-w-4xl mx-auto space-y-6">
         <div className="rounded-xl p-6 text-center space-y-4" style={{ backgroundColor: 'var(--color-surface)' }}>
-          <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+          <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
             No se encontro el debito solicitado o no tienes acceso a el.
           </p>
           <Link href="/debitos" className="inline-flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70" style={{ color: 'var(--color-primary)' }}>
@@ -42,7 +42,7 @@ export default async function EditarDebitoPage({
   return (
     <div className="px-4 py-6 md:px-8 md:py-10 max-w-4xl mx-auto space-y-6">
       <div>
-        <Link href={`/debitos/${id}`} className="inline-flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70" style={{ color: 'var(--color-muted)' }}>
+        <Link href={`/debitos/${id}`} className="inline-flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70" style={{ color: 'var(--color-muted-foreground)' }}>
           &larr; Volver al debito
         </Link>
       </div>
@@ -50,7 +50,7 @@ export default async function EditarDebitoPage({
         <h1 className="text-2xl md:text-3xl font-semibold tracking-tight" style={{ color: 'var(--color-foreground)' }}>
           Editar debito
         </h1>
-        <p className="mt-1.5 text-sm" style={{ color: 'var(--color-muted)' }}>
+        <p className="mt-1.5 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
           Modificando los datos de este debito
         </p>
       </div>
