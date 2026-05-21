@@ -6,6 +6,8 @@ interface Props {
   input?: unknown
   output?: unknown
   errorText?: string
+  recordDeleted?: boolean
+  recordHref?: string
 }
 
 const TOOL_LABELS: Record<string, { icon: string; label: string }> = {
@@ -17,7 +19,7 @@ const TOOL_LABELS: Record<string, { icon: string; label: string }> = {
   ayuda_plataforma: { icon: '💡', label: 'Ayuda' },
 }
 
-export function ToolCallCard({ toolName, state, output, errorText }: Props) {
+export function ToolCallCard({ toolName, state, output, errorText, recordDeleted, recordHref }: Props) {
   const meta = TOOL_LABELS[toolName] ?? { icon: '🔧', label: toolName }
 
   const isLoading = state === 'input-streaming' || state === 'input-available'
@@ -59,9 +61,27 @@ export function ToolCallCard({ toolName, state, output, errorText }: Props) {
         {(isError || errorInOutput) && (
           <span className="text-[11px] font-medium" style={{ color: 'var(--color-error)' }}>✗ error</span>
         )}
+        {recordDeleted && (
+          <span
+            className="text-[11px] font-medium px-1.5 py-0.5 rounded"
+            style={{ color: 'var(--color-muted)', backgroundColor: 'var(--color-border)' }}
+          >
+            registro eliminado
+          </span>
+        )}
       </div>
 
       <ToolCardBody toolName={toolName} state={state} output={outputObj} errorText={errorText ?? errorInOutput ?? undefined} />
+
+      {recordHref && !recordDeleted && state === 'output-available' && success && (
+        <a
+          href={recordHref}
+          className="inline-block mt-2 text-[11px] font-medium underline"
+          style={{ color: 'var(--color-primary)' }}
+        >
+          Ver registro →
+        </a>
+      )}
     </div>
   )
 }

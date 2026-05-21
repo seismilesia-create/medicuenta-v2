@@ -106,25 +106,60 @@ Ejemplo particular: { tipo: 'particular', nombre_paciente: 'María Gómez', fech
 // ============================================================================
 // Tool 2: registrar_cirugia
 // ============================================================================
+const practicaAdicionalSchema = z.object({
+  codigo: z.string().min(1),
+  nombre: z.string().optional(),
+  honorarios: z.number().min(0).default(0),
+  gastos: z.number().min(0).default(0),
+  porcentaje_reconocido: z
+    .number()
+    .min(0)
+    .max(100)
+    .default(70)
+    .describe('Porcentaje que la OS reconoce sobre la práctica adicional. Default 70%, editable.'),
+})
+
 export const registrarCirugiaTool = tool({
   description: `Registra una cirugía. Puede ser 1° Nivel (ambulatoria en consultorio) o 2° Nivel (en institución como sanatorio).
 Para 2° Nivel, la institución es requerida (Pasteur, Junín, Privado, Nosocomio de la Comunidad, etc.).
-fecha_alta_paciente es opcional — solo completarlo si el paciente queda internado más de un día. Si el alta es el mismo día, dejalo vacío.
+rol_medico: el médico puede actuar como 'cirujano' o como 'ayudante'. Default 'cirujano'.
+fecha_alta_paciente es opcional — solo completarlo si el paciente quedó internado más de un día.
+fecha_autorizacion es opcional — fecha en que la OS autoriza/liquida. Si aún no la sabe, dejar vacío.
+practicas_adicionales: cirugías agregadas realizadas en el mismo procedimiento (no son complicaciones). La OS reconoce por default 70% — el médico puede modificar ese %.
 Estado inicial: 'borrador'.`,
   inputSchema: z.object({
     nombre_paciente: z.string().min(2),
     fecha: z.string().describe('Fecha de la cirugía, YYYY-MM-DD'),
     obra_social: z.string(),
-    codigo_practica: z.string(),
-    nombre_practica: z.string().optional(),
+    codigo_practica: z
+      .string()
+      .optional()
+      .describe('Opcional. Si el médico no lo sabe, dejar vacío y guardar como borrador incompleto.'),
+    nombre_practica: z
+      .string()
+      .optional()
+      .describe('Opcional. Nombre/descripción de la cirugía.'),
     honorarios: z.number().min(0).default(0),
     gastos: z.number().min(0).default(0),
     nivel: NIVEL_ENUM.default(2),
     agente_facturador: AGENTE_ENUM.default('circulo_medico'),
     institucion: z.string().optional().describe('Requerida si nivel=2'),
-    fecha_alta_paciente: z.string().optional().describe('YYYY-MM-DD, opcional. Solo si el paciente quedó internado'),
+    rol_medico: z.enum(['cirujano', 'ayudante']).default('cirujano'),
+    nro_historia_clinica: z.string().optional().describe('Nro de historia clínica en la institución'),
+    fecha_autorizacion: z
+      .string()
+      .optional()
+      .describe('YYYY-MM-DD, fecha en que la OS autoriza/liquida la práctica. Opcional.'),
+    fecha_alta_paciente: z
+      .string()
+      .optional()
+      .describe('YYYY-MM-DD, opcional. Solo si el paciente quedó internado'),
+    practicas_adicionales: z
+      .array(practicaAdicionalSchema)
+      .optional()
+      .describe('Cirugías agregadas en el mismo procedimiento, OS reconoce 70% por default.'),
     observaciones: z.string().optional(),
-    ayudante: z.string().optional(),
+    ayudante: z.string().optional().describe('Nombre del ayudante si el médico es cirujano'),
     anestesiologo: z.string().optional(),
     tipo_anestesia: z.string().optional(),
     duracion_minutos: z.number().int().min(0).optional(),
@@ -138,14 +173,24 @@ Estado inicial: 'borrador'.`,
         return { success: false, error: 'Institución es requerida para cirugías de 2° Nivel' }
       }
 
-      const total = input.honorarios + input.gastos
+      const adicionales = input.practicas_adicionales ?? []
+      const totalAdicionales = adicionales.reduce(
+        (acc, p) => acc + (p.honorarios ?? 0) + (p.gastos ?? 0),
+        0,
+      )
+      const total = input.honorarios + input.gastos + totalAdicionales
+
+      const codigoTrim = input.codigo_practica?.trim() || null
+      const nombrePracticaTrim = input.nombre_practica?.trim() || null
+      const cirugiaIncompleta = !codigoTrim && !nombrePracticaTrim
+
       const insertData = {
         medico_id: medicoId,
         nombre_paciente: input.nombre_paciente,
         fecha: input.fecha,
         obra_social: input.obra_social,
-        codigo_practica: input.codigo_practica,
-        nombre_practica: input.nombre_practica ?? null,
+        codigo_practica: codigoTrim,
+        nombre_practica: nombrePracticaTrim,
         honorarios: input.honorarios,
         gastos: input.gastos,
         total,
@@ -154,6 +199,9 @@ Estado inicial: 'borrador'.`,
         nivel: input.nivel,
         agente_facturador: input.agente_facturador,
         institucion: input.institucion?.trim() || null,
+        rol_medico: input.rol_medico,
+        nro_historia_clinica: input.nro_historia_clinica?.trim() || null,
+        fecha_autorizacion: input.fecha_autorizacion || null,
         fecha_alta_paciente: input.fecha_alta_paciente || null,
         observaciones: input.observaciones ?? null,
         ayudante: input.ayudante ?? null,
@@ -161,7 +209,7 @@ Estado inicial: 'borrador'.`,
         tipo_anestesia: input.tipo_anestesia ?? null,
         duracion_minutos: input.duracion_minutos ?? null,
         sala: input.sala ?? null,
-        practicas_adicionales: [],
+        practicas_adicionales: adicionales,
       }
 
       const { data, error } = await supabase
@@ -177,9 +225,12 @@ Estado inicial: 'borrador'.`,
         id: data.id,
         paciente: input.nombre_paciente,
         nivel: input.nivel === 1 ? '1° Nivel' : '2° Nivel',
+        rol_medico: input.rol_medico,
         obra_social: input.obra_social,
         institucion: input.institucion ?? null,
         total,
+        cantidad_adicionales: adicionales.length,
+        codigo_pendiente: cirugiaIncompleta,
         estado: 'borrador',
       }
     } catch (err) {
@@ -261,6 +312,22 @@ const SECCIONES_MEDICAS = [
   'paliativos',
 ] as const
 
+// Filtro v1 confirmado con owner 2026-05-11 — app para médicos clínicos/cirujanos.
+// Excluimos diagnóstico por imágenes, medicina nuclear y hospital de día porque son
+// otra especialidad/centro facturador y generan ruido al consultar el nomenclador.
+// SE MANTIENEN dentro del nomenclador: electrocardio/holter/ergometría (cardiólogos
+// clínicos), endoscopías (gastros/urólogos/gines).
+// Reversible: borrar esta constante + su uso en el filtro JS abajo.
+// Plan a futuro (Fase 5): reemplazar por columna `especialidades text[]` en
+// prestaciones + match con especialidades del perfil del médico logueado.
+const EXCLUDE_PATRONES_PREFIJO = /(ECOGRAF|DOPPLER|ECOCARDIO|RADIOGRAF|TOMOGRAF|RESONAN|ANGIORESON|MAMOGRAF|CENTELLO|GAMMACAMARA|HEMODIAL|TRANSFUS|QUIMIOTERAPIA|DIALISIS|MEDICINA NUCLEAR)/i
+const EXCLUDE_PATRONES_SIGLA = /\b(RX|TAC|I131)\b/i
+
+function esExcluidaPorRuido(detalle: string | null | undefined): boolean {
+  if (!detalle) return false
+  return EXCLUDE_PATRONES_PREFIJO.test(detalle) || EXCLUDE_PATRONES_SIGLA.test(detalle)
+}
+
 function sanitizeTerm(raw: string): string {
   return raw.replace(/[%,()]/g, ' ').trim()
 }
@@ -302,6 +369,7 @@ La búsqueda parte el texto en palabras clave y busca cualquier coincidencia —
 
       const lcWords = words.map((w) => w.toLowerCase())
       const ranked = (data ?? [])
+        .filter((p) => !esExcluidaPorRuido(p.detalle))
         .map((p) => {
           const detalle = (p.detalle ?? '').toLowerCase()
           const codigo = (p.codigo ?? '').toLowerCase()

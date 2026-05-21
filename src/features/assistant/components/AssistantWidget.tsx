@@ -1,14 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { useChat } from '@ai-sdk/react'
+import { usePathname } from 'next/navigation'
 import { AssistantMessages } from './AssistantMessages'
 import { AssistantInput } from './AssistantInput'
 import { SUGGESTED_QUESTIONS } from '../types/assistant'
+import { useAssistantChat } from '../hooks/useAssistantChat'
 
 export function AssistantWidget() {
+  const pathname = usePathname()
   const [open, setOpen] = useState(false)
-  const { messages, status, error, sendMessage } = useChat()
+  const { messages, status, error, sendMessage } = useAssistantChat()
+
+  if (pathname === '/asistente') return null
 
   const isLoading = status === 'submitted' || status === 'streaming'
 
