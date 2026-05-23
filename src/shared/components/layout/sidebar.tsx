@@ -52,7 +52,7 @@ const navigation: { principal: NavItem[]; avanzado: NavItem[] } = {
   avanzado: [
     { name: 'Nomenclador', href: '/nomenclador', icon: Grid3X3 },
     { name: 'Cirugias', href: '/cirugias', icon: Scissors },
-    { name: 'Asistente IA', href: '/asistente', icon: Bot, badge: 'Beta' },
+    { name: 'Asistente IA', href: '/asistente', icon: Bot },
   ],
 }
 
