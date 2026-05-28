@@ -1,10 +1,13 @@
 'use client'
 
 import { useRef, useState, type FormEvent } from 'react'
+import { useVoiceInput } from '../hooks/useVoiceInput'
 
 interface Props {
   onSend: (payload: { text: string; files?: FileList }) => void
   isLoading: boolean
+  /** Si es true, agrega botón de micrófono (Web Speech API). Default true. */
+  withVoice?: boolean
 }
 
 async function compressImage(file: File, maxWidth = 1400, quality = 0.75): Promise<File> {
@@ -24,11 +27,19 @@ async function compressImage(file: File, maxWidth = 1400, quality = 0.75): Promi
   return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })
 }
 
-export function AssistantInput({ onSend, isLoading }: Props) {
+export function AssistantInput({ onSend, isLoading, withVoice = true }: Props) {
   const [input, setInput] = useState('')
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [compressing, setCompressing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const voice = useVoiceInput({
+    onFinalTranscript: (text) => {
+      // Auto-send cuando termina de dictar
+      onSend({ text })
+      setInput('')
+    },
+  })
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -64,6 +75,18 @@ export function AssistantInput({ onSend, isLoading }: Props) {
     setPendingFiles(prev => prev.filter((_, i) => i !== idx))
   }
 
+  function toggleVoice() {
+    if (voice.isListening) voice.stop()
+    else voice.start()
+  }
+
+  const showMic = withVoice && voice.isSupported
+  const placeholder = voice.isListening
+    ? voice.interimTranscript || 'Escuchando...'
+    : compressing
+    ? 'Comprimiendo imagen...'
+    : 'Preguntá, registrá o escaneá...'
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -94,6 +117,16 @@ export function AssistantInput({ onSend, isLoading }: Props) {
         </div>
       )}
 
+      {voice.error && (
+        <p className="text-[11px]" style={{ color: 'var(--color-error)' }}>
+          {voice.error === 'not-allowed'
+            ? 'Necesito permiso del micrófono. Activalo en el navegador.'
+            : voice.error === 'no-speech'
+            ? 'No te escuché. Intentá de nuevo.'
+            : `Error de voz: ${voice.error}`}
+        </p>
+      )}
+
       <div className="flex gap-2">
         <input
           ref={fileInputRef}
@@ -121,11 +154,31 @@ export function AssistantInput({ onSend, isLoading }: Props) {
           </svg>
         </button>
 
+        {showMic && (
+          <button
+            type="button"
+            onClick={toggleVoice}
+            disabled={isLoading || compressing}
+            className="p-2 rounded-lg transition-all"
+            style={{
+              backgroundColor: voice.isListening ? 'var(--color-error)' : 'var(--color-background)',
+              border: `1px solid ${voice.isListening ? 'var(--color-error)' : 'var(--color-border)'}`,
+              color: voice.isListening ? '#fff' : 'var(--color-foreground)',
+            }}
+            aria-label={voice.isListening ? 'Detener grabación' : 'Hablar'}
+            title={voice.isListening ? 'Detener grabación' : 'Hablar'}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-14 0m7 7v3m-4 0h8M12 3a3 3 0 00-3 3v5a3 3 0 006 0V6a3 3 0 00-3-3z" />
+            </svg>
+          </button>
+        )}
+
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={compressing ? 'Comprimiendo imagen...' : 'Pregunta, registrá o escaneá...'}
+          placeholder={placeholder}
           disabled={isLoading}
           className="flex-1 px-3 py-2 rounded-lg text-sm"
           style={{

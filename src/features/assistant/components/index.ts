@@ -1,1 +1,5 @@
 export { AssistantWidget } from './AssistantWidget'
+export { AssistantPanel } from './AssistantPanel'
+export { AssistantHome } from './AssistantHome'
+export { AssistantSidePanel } from './AssistantSidePanel'
+export { MainShell } from './MainShell'

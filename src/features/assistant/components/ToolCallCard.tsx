@@ -15,6 +15,7 @@ const TOOL_LABELS: Record<string, { icon: string; label: string }> = {
   consultar_nomenclador: { icon: '📖', label: 'Consultar nomenclador' },
   analizar_imagen_orden: { icon: '📷', label: 'Analizar imagen' },
   ayuda_plataforma: { icon: '💡', label: 'Ayuda' },
+  navegar: { icon: '🧭', label: 'Navegando' },
 }
 
 export function ToolCallCard({ toolName, state, output, errorText }: Props) {
@@ -133,6 +134,21 @@ function ToolCardBody({
         <p>Monto: <span className="font-mono font-medium" style={{ color: 'var(--color-error)' }}>${Number(output.monto ?? 0).toLocaleString('es-AR')}</span></p>
         {output.refacturable === true && <p className="text-[11px]" style={{ color: 'var(--color-warning)' }}>Marcado como refacturable</p>}
       </div>
+    )
+  }
+
+  if (toolName === 'navegar') {
+    if (output.ok === true) {
+      return (
+        <p style={{ color: 'var(--color-foreground)' }}>
+          Te llevo a <span className="font-medium">{String(output.destino ?? '')}</span>
+        </p>
+      )
+    }
+    return (
+      <p style={{ color: 'var(--color-error)' }}>
+        No pude navegar: {String(output.error ?? 'destino inválido')}
+      </p>
     )
   }
 

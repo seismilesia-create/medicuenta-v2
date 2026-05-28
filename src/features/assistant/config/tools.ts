@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { openrouter, MODELS } from '@/lib/ai/openrouter'
 import { generateObject } from 'ai'
+import { NAVIGATION_DESTINATIONS } from './navigation'
 
 const AGENTE_ENUM = z.enum(['circulo_medico', 'medical_group', 'comunidad'])
 const NIVEL_ENUM = z.union([z.literal(1), z.literal(2)])
@@ -439,6 +440,27 @@ Devuelve la respuesta ya formulada — vos después la explicás en tus palabras
 })
 
 // ============================================================================
+// Tool 7: navegar (CLIENT-SIDE — sin execute, se resuelve en el navegador)
+// ============================================================================
+// Esta tool NO tiene execute. El modelo emite la llamada y el cliente la
+// intercepta en useChat.onToolCall para hacer router.push().
+export const navegarTool = tool({
+  description: `Lleva al médico a una sección de la app. Usá esta tool cuando el médico te diga "llevame a", "mostrame", "quiero ver", "abrí", "ir a" + nombre de sección.
+
+Ejemplos:
+- "Llevame a mis órdenes" → navegar({ destino: 'ordenes' })
+- "Quiero cargar una orden nueva" → navegar({ destino: 'nueva_orden' })
+- "Mostrame el dashboard" → navegar({ destino: 'dashboard' })
+- "Abrí el nomenclador" → navegar({ destino: 'nomenclador' })
+
+Después de navegar, el chat se achica a un panel lateral y la sección queda como pantalla principal. NO confirmes antes de navegar, hacelo directo. Sí podés agregar una frase corta de contexto al responder (ej: "Listo, te llevo a tus órdenes").`,
+  inputSchema: z.object({
+    destino: z.enum(NAVIGATION_DESTINATIONS as unknown as [string, ...string[]]).describe('Sección destino. Usá uno de los valores válidos del enum.'),
+  }),
+  // ↓ NO execute: tool de cliente
+})
+
+// ============================================================================
 // Export registry
 // ============================================================================
 export const assistantTools = {
@@ -448,6 +470,7 @@ export const assistantTools = {
   consultar_nomenclador: consultarNomencladorTool,
   analizar_imagen_orden: analizarImagenOrdenTool,
   ayuda_plataforma: ayudaPlataformaTool,
+  navegar: navegarTool,
 }
 
 export type AssistantToolName = keyof typeof assistantTools

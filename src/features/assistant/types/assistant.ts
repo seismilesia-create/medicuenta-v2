@@ -5,19 +5,19 @@ export interface SuggestedQuestion {
 
 export const SUGGESTED_QUESTIONS: SuggestedQuestion[] = [
   {
-    label: '📋 Registrá una orden',
-    text: 'Registrá una orden de consulta para Juan Pérez hoy, OSEP, código 420101',
+    label: 'Quiero ver mis órdenes médicas',
+    text: 'Llevame a mis órdenes médicas',
   },
   {
-    label: '📖 Consultá el nomenclador',
-    text: 'Buscame el código de consulta de especialista',
+    label: 'Revisar liquidaciones',
+    text: 'Mostrame mis liquidaciones',
   },
   {
-    label: '📊 Múltiples prácticas',
-    text: 'Cómo funciona el cálculo de múltiples prácticas OSEP?',
+    label: 'Calcular una práctica',
+    text: 'Buscame un código del nomenclador',
   },
   {
-    label: '💸 Motivos de débito',
-    text: 'Cuáles son los motivos de débito más comunes y cómo prevenirlos?',
+    label: 'Registrar una orden',
+    text: 'Quiero registrar una nueva orden',
   },
 ]
