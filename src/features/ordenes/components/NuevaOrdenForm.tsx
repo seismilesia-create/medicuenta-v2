@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createOrden } from '@/actions/ordenes'
+import { createClient } from '@/lib/supabase/client'
 import {
   OBRAS_SOCIALES,
   AGENTES_FACTURADORES,
@@ -36,12 +37,31 @@ export function NuevaOrdenForm() {
   const [ocr, setOcr] = useState<OrdenEscaneada | null>(null)
   const [formKey, setFormKey] = useState(0)
 
-  function handleOcrExtracted(data: OrdenEscaneada) {
+  async function handleOcrExtracted(data: OrdenEscaneada) {
     setOcr(data)
     setTipo('obra_social')
     const matched = matchesOsFromScan(data.obra_social)
     if (matched) setObraSocial(matched)
+    setPrestacionSeleccionada(null) // limpio cualquier previa antes del lookup
     setFormKey((k) => k + 1)
+
+    // Auto-buscar la prestacion en el nomenclador por codigo.
+    // Si la encuentra, dispara el calculo de honorarios sin que el medico tenga
+    // que tipear ni elegir nada.
+    if (data.codigo_practica) {
+      const supabase = createClient()
+      const osForQuery = matched || 'OSEP'
+      const { data: prestacion } = await supabase
+        .from('prestaciones')
+        .select('id, codigo, detalle, honorarios, gastos, total, seccion, categoria, obra_social')
+        .eq('obra_social', osForQuery)
+        .eq('codigo', data.codigo_practica)
+        .maybeSingle()
+
+      if (prestacion) {
+        setPrestacionSeleccionada(prestacion as Prestacion)
+      }
+    }
   }
 
   function isDudoso(campo: string): boolean {
@@ -121,6 +141,46 @@ export function NuevaOrdenForm() {
               </span>
             )}
           </p>
+        </div>
+      )}
+
+      {/* Datos extraidos por OCR que el form todavia no almacena.
+          Visibles para referencia del medico — cuando se agregue el campo al
+          schema, simplemente extender el mapeo en handleOcrExtracted. */}
+      {ocr && (ocr.medico_solicitante || ocr.horario_atencion || ocr.diagnostico) && (
+        <div
+          className="mb-6 rounded-lg p-4"
+          style={{ backgroundColor: 'var(--color-surface)', border: '1px dashed var(--color-border)' }}
+        >
+          <p
+            className="text-[11px] font-semibold uppercase tracking-wider mb-1"
+            style={{ color: 'var(--color-muted-foreground)' }}
+          >
+            Datos adicionales detectados
+          </p>
+          <p className="text-[11px] mb-3" style={{ color: 'var(--color-muted-foreground)' }}>
+            El OCR leyó estos datos pero todavía no se guardan en la orden. Quedan acá para tu referencia.
+          </p>
+          <div className="space-y-1.5 text-sm">
+            {ocr.medico_solicitante && (
+              <div className="flex justify-between gap-3">
+                <span style={{ color: 'var(--color-muted-foreground)' }}>Médico solicitante</span>
+                <span className="text-right" style={{ color: 'var(--color-foreground)' }}>{ocr.medico_solicitante}</span>
+              </div>
+            )}
+            {ocr.horario_atencion && (
+              <div className="flex justify-between gap-3">
+                <span style={{ color: 'var(--color-muted-foreground)' }}>Horario de atención</span>
+                <span className="text-right" style={{ color: 'var(--color-foreground)' }}>{ocr.horario_atencion}</span>
+              </div>
+            )}
+            {ocr.diagnostico && (
+              <div className="flex justify-between gap-3">
+                <span style={{ color: 'var(--color-muted-foreground)' }}>Diagnóstico (texto)</span>
+                <span className="text-right" style={{ color: 'var(--color-foreground)' }}>{ocr.diagnostico}</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -335,6 +395,11 @@ export function NuevaOrdenForm() {
           <PracticaAutocomplete
             obraSocial={obraSocial || 'OSEP'}
             onSelect={handlePrestacionSelect}
+            value={
+              prestacionSeleccionada
+                ? `${prestacionSeleccionada.codigo} - ${prestacionSeleccionada.detalle}`
+                : ocr?.codigo_practica ?? ''
+            }
           />
 
           {/* Diagnostico */}
@@ -346,13 +411,11 @@ export function NuevaOrdenForm() {
               name="diagnostico_cie10"
               type="text"
               placeholder="Codigo CIE-10 (opcional)"
-              defaultValue={ocr?.diagnostico ?? ''}
               className="w-full px-4 py-3 rounded-lg text-sm"
               style={{
                 background: 'var(--color-background)',
                 border: '1px solid var(--color-border)',
                 color: 'var(--color-foreground)',
-                ...dudosoStyle('diagnostico'),
               }}
             />
           </div>
@@ -463,6 +526,7 @@ export function NuevaOrdenForm() {
           name="observaciones"
           rows={3}
           placeholder="Notas adicionales (opcional)"
+          defaultValue={ocr?.observaciones ?? ''}
           className="w-full px-4 py-3 rounded-lg text-sm resize-none"
           style={{
             background: 'var(--color-background)',
