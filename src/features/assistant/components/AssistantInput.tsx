@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 
 interface Props {
@@ -8,6 +8,8 @@ interface Props {
   isLoading: boolean
   /** Si es true, agrega botón de micrófono (Web Speech API). Default true. */
   withVoice?: boolean
+  /** Prefill request from parent. `nonce` distingue requests aunque text sea igual. */
+  prefill?: { text: string; nonce: number } | null
 }
 
 async function compressImage(file: File, maxWidth = 1400, quality = 0.75): Promise<File> {
@@ -27,11 +29,24 @@ async function compressImage(file: File, maxWidth = 1400, quality = 0.75): Promi
   return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })
 }
 
-export function AssistantInput({ onSend, isLoading, withVoice = true }: Props) {
+export function AssistantInput({ onSend, isLoading, withVoice = true, prefill }: Props) {
   const [input, setInput] = useState('')
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [compressing, setCompressing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textInputRef = useRef<HTMLInputElement>(null)
+
+  // Cuando el padre pide pre-llenar el input (click en sugerencia), volcamos el
+  // texto y enfocamos para que el médico complete y mande UN solo turno.
+  useEffect(() => {
+    if (!prefill) return
+    setInput(prefill.text)
+    queueMicrotask(() => {
+      textInputRef.current?.focus()
+      const el = textInputRef.current
+      if (el) el.setSelectionRange(el.value.length, el.value.length)
+    })
+  }, [prefill])
 
   const voice = useVoiceInput({
     onFinalTranscript: (text) => {
@@ -175,6 +190,7 @@ export function AssistantInput({ onSend, isLoading, withVoice = true }: Props) {
         )}
 
         <input
+          ref={textInputRef}
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}

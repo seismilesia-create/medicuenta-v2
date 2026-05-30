@@ -7,17 +7,41 @@ import { ToolCallCard } from './ToolCallCard'
 interface Props {
   messages: UIMessage[]
   isLoading: boolean
+  highlightMessageId?: string | null
 }
 
-export function AssistantMessages({ messages, isLoading }: Props) {
+export function AssistantMessages({ messages, isLoading, highlightMessageId }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (highlightMessageId) return
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isLoading])
+  }, [messages, isLoading, highlightMessageId])
+
+  useEffect(() => {
+    if (!highlightMessageId) return
+    const el = containerRef.current?.querySelector(`[data-message-id="${highlightMessageId}"]`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.classList.add('msg-highlight-anim')
+    const t = setTimeout(() => el.classList.remove('msg-highlight-anim'), 2000)
+    return () => clearTimeout(t)
+  }, [highlightMessageId, messages])
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+    <div ref={containerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+      <style>{`
+        .msg-highlight-anim {
+          animation: msg-pulse 2s ease-out;
+          border-radius: 0.75rem;
+        }
+        @keyframes msg-pulse {
+          0% { box-shadow: 0 0 0 4px rgba(99,102,241,0); }
+          20% { box-shadow: 0 0 0 4px rgba(99,102,241,0.45); }
+          100% { box-shadow: 0 0 0 4px rgba(99,102,241,0); }
+        }
+      `}</style>
       {messages.map((m) => (
         <MessageBubble key={m.id} message={m} />
       ))}
@@ -52,7 +76,10 @@ function MessageBubble({ message }: { message: UIMessage }) {
   const isUser = message.role === 'user'
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} flex-col gap-2 items-${isUser ? 'end' : 'start'}`}>
+    <div
+      data-message-id={message.id}
+      className={`flex ${isUser ? 'justify-end' : 'justify-start'} flex-col gap-2 items-${isUser ? 'end' : 'start'}`}
+    >
       {message.parts?.map((part, idx) => {
         if (part.type === 'text') {
           return (
@@ -94,6 +121,8 @@ function MessageBubble({ message }: { message: UIMessage }) {
             input?: unknown
             output?: unknown
             errorText?: string
+            _recordDeleted?: boolean
+            _recordHref?: string
           }
           return (
             <ToolCallCard
@@ -103,6 +132,8 @@ function MessageBubble({ message }: { message: UIMessage }) {
               input={toolPart.input}
               output={toolPart.output}
               errorText={toolPart.errorText}
+              recordDeleted={toolPart._recordDeleted}
+              recordHref={toolPart._recordHref}
             />
           )
         }
