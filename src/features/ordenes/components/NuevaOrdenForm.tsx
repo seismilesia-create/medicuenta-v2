@@ -409,7 +409,7 @@ export function NuevaOrdenForm() {
                 min="0"
                 step="0.01"
                 placeholder="0.00"
-                defaultValue={ocr?.importe ?? ''}
+                defaultValue={ocr?.importe || ''}
                 className="w-full px-4 py-3 rounded-lg text-sm font-mono"
                 style={{
                   background: 'var(--color-background)',
@@ -472,7 +472,7 @@ export function NuevaOrdenForm() {
                 min="0"
                 step="1"
                 placeholder="1"
-                defaultValue={ocr?.cantidad ?? 1}
+                defaultValue={ocr?.cantidad || 1}
                 className="w-full px-4 py-3 rounded-lg text-sm font-mono"
                 style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
               />

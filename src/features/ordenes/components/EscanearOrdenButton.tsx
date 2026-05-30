@@ -55,7 +55,7 @@ export function EscanearOrdenButton({ onExtracted }: Props) {
       const data = (await res.json()) as OrdenEscaneada
 
       if (!data.es_orden_medica) {
-        setError(data.motivo_rechazo ?? 'La imagen no parece ser una orden médica')
+        setError(data.motivo_rechazo || 'La imagen no parece ser una orden médica')
         return
       }
 
