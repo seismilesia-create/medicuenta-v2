@@ -50,6 +50,14 @@ export async function createOrden(formData: OrdenFormData) {
     diagnostico_cie10: data.tipo === 'obra_social' ? (data.diagnostico_cie10 ?? null) : null,
     honorario_calculado: data.tipo === 'obra_social' ? data.honorario_calculado : 0,
     monto_particular: data.tipo === 'particular' ? data.monto_particular : 0,
+    // Campos adicionales (OCR / orden completa)
+    nro_documento: data.nro_documento ?? null,
+    nro_comprobante: data.nro_comprobante ?? null,
+    grupo_afiliado: data.grupo_afiliado ?? null,
+    fecha_vencimiento: data.fecha_vencimiento || null,
+    cantidad: data.cantidad ?? 1,
+    medico_solicitante: data.medico_solicitante ?? null,
+    horario_realizacion: data.horario_realizacion ?? null,
     estado: 'borrador',
   }
 
@@ -106,6 +114,14 @@ export async function updateOrden(ordenId: string, formData: OrdenFormData) {
     diagnostico_cie10: data.tipo === 'obra_social' ? (data.diagnostico_cie10 ?? null) : null,
     honorario_calculado: data.tipo === 'obra_social' ? data.honorario_calculado : 0,
     monto_particular: data.tipo === 'particular' ? data.monto_particular : 0,
+    // Campos adicionales (OCR / orden completa)
+    nro_documento: data.nro_documento ?? null,
+    nro_comprobante: data.nro_comprobante ?? null,
+    grupo_afiliado: data.grupo_afiliado ?? null,
+    fecha_vencimiento: data.fecha_vencimiento || null,
+    cantidad: data.cantidad ?? 1,
+    medico_solicitante: data.medico_solicitante ?? null,
+    horario_realizacion: data.horario_realizacion ?? null,
     updated_at: new Date().toISOString(),
   }
 

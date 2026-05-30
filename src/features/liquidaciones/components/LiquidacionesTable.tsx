@@ -61,16 +61,16 @@ export function LiquidacionesTable() {
 
   return (
     <div className="h-full overflow-y-auto">
-      {/* Header con gradient verde (V0 liquidaciones usa emerald) */}
+      {/* Header con gradient azul (sky) */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-sky-500/5 via-transparent to-transparent" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
         <div className="relative px-4 md:px-8 pt-6 md:pt-8 pb-4 md:pb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 ring-1 ring-emerald-500/20">
-                <Receipt className="h-6 w-6 text-emerald-500" strokeWidth={1.5} />
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500/20 to-sky-500/10 ring-1 ring-sky-500/20">
+                <Receipt className="h-6 w-6 text-sky-500" strokeWidth={1.5} />
               </div>
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Liquidaciones</h1>
@@ -124,14 +124,14 @@ export function LiquidacionesTable() {
           </div>
         ) : liquidaciones.length === 0 ? (
           <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-16">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent" />
-            <div className="absolute -bottom-20 -right-20 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-br from-sky-500/5 via-transparent to-transparent" />
+            <div className="absolute -bottom-20 -right-20 w-48 h-48 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
 
             <div className="relative flex flex-col items-center justify-center text-center">
               <div className="relative mb-6">
-                <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl pulse-glow" />
-                <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 ring-2 ring-emerald-500/20">
-                  <Receipt className="h-10 w-10 text-emerald-500" strokeWidth={1.5} />
+                <div className="absolute inset-0 bg-sky-500/20 rounded-full blur-xl pulse-glow" />
+                <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-sky-500/20 to-sky-500/10 ring-2 ring-sky-500/20">
+                  <Receipt className="h-10 w-10 text-sky-500" strokeWidth={1.5} />
                 </div>
               </div>
               <h3 className="text-xl font-semibold text-foreground mb-2">No hay liquidaciones</h3>
@@ -186,7 +186,7 @@ export function LiquidacionesTable() {
                         <td
                           className={cn(
                             'px-3 md:px-5 py-4 text-right font-mono font-medium hidden lg:table-cell',
-                            diferencia < 0 ? 'text-red-500' : 'text-emerald-500',
+                            diferencia < 0 ? 'text-red-500' : 'text-sky-500',
                           )}
                         >
                           {formatMonto(diferencia)}

@@ -42,6 +42,7 @@ export function NuevaOrdenForm() {
     setTipo('obra_social')
     const matched = matchesOsFromScan(data.obra_social)
     if (matched) setObraSocial(matched)
+    if (data.agente_facturador) setAgenteFacturador(data.agente_facturador)
     setPrestacionSeleccionada(null) // limpio cualquier previa antes del lookup
     setFormKey((k) => k + 1)
 
@@ -83,6 +84,17 @@ export function NuevaOrdenForm() {
 
     const form = new FormData(e.currentTarget)
 
+    // Campos adicionales comunes (OCR / orden completa)
+    const comunes = {
+      nro_documento: (form.get('nro_documento') as string) || undefined,
+      nro_comprobante: (form.get('nro_comprobante') as string) || undefined,
+      grupo_afiliado: (form.get('grupo_afiliado') as string) || undefined,
+      fecha_vencimiento: (form.get('fecha_vencimiento') as string) || undefined,
+      cantidad: form.get('cantidad') ? Number(form.get('cantidad')) : undefined,
+      medico_solicitante: (form.get('medico_solicitante') as string) || undefined,
+      horario_realizacion: (form.get('horario_realizacion') as string) || undefined,
+    }
+
     const formData: OrdenFormData = tipo === 'obra_social'
       ? {
           tipo: 'obra_social',
@@ -101,6 +113,7 @@ export function NuevaOrdenForm() {
           honorario_calculado: prestacionSeleccionada?.total
             ? Number(prestacionSeleccionada.total)
             : Number(form.get('honorario_calculado') || 0),
+          ...comunes,
         }
       : {
           tipo: 'particular',
@@ -111,6 +124,7 @@ export function NuevaOrdenForm() {
           agente_facturador: agenteFacturador,
           nombre_practica: form.get('nombre_practica') as string,
           monto_particular: Number(form.get('monto_particular') || 0),
+          ...comunes,
         }
 
     const result = await createOrden(formData)
@@ -144,45 +158,6 @@ export function NuevaOrdenForm() {
         </div>
       )}
 
-      {/* Datos extraidos por OCR que el form todavia no almacena.
-          Visibles para referencia del medico — cuando se agregue el campo al
-          schema, simplemente extender el mapeo en handleOcrExtracted. */}
-      {ocr && (ocr.medico_solicitante || ocr.horario_atencion || ocr.diagnostico) && (
-        <div
-          className="mb-6 rounded-lg p-4"
-          style={{ backgroundColor: 'var(--color-surface)', border: '1px dashed var(--color-border)' }}
-        >
-          <p
-            className="text-[11px] font-semibold uppercase tracking-wider mb-1"
-            style={{ color: 'var(--color-muted-foreground)' }}
-          >
-            Datos adicionales detectados
-          </p>
-          <p className="text-[11px] mb-3" style={{ color: 'var(--color-muted-foreground)' }}>
-            El OCR leyó estos datos pero todavía no se guardan en la orden. Quedan acá para tu referencia.
-          </p>
-          <div className="space-y-1.5 text-sm">
-            {ocr.medico_solicitante && (
-              <div className="flex justify-between gap-3">
-                <span style={{ color: 'var(--color-muted-foreground)' }}>Médico solicitante</span>
-                <span className="text-right" style={{ color: 'var(--color-foreground)' }}>{ocr.medico_solicitante}</span>
-              </div>
-            )}
-            {ocr.horario_atencion && (
-              <div className="flex justify-between gap-3">
-                <span style={{ color: 'var(--color-muted-foreground)' }}>Horario de atención</span>
-                <span className="text-right" style={{ color: 'var(--color-foreground)' }}>{ocr.horario_atencion}</span>
-              </div>
-            )}
-            {ocr.diagnostico && (
-              <div className="flex justify-between gap-3">
-                <span style={{ color: 'var(--color-muted-foreground)' }}>Diagnóstico (texto)</span>
-                <span className="text-right" style={{ color: 'var(--color-foreground)' }}>{ocr.diagnostico}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       <form key={formKey} onSubmit={handleSubmit} className="space-y-8">
       {/* Error message */}
@@ -287,7 +262,7 @@ export function NuevaOrdenForm() {
             name="fecha_atencion"
             type="date"
             required
-            defaultValue={ocr?.fecha ?? today}
+            defaultValue={ocr?.fecha_realizacion ?? today}
             max={today}
             className="w-full px-4 py-3 rounded-lg text-sm"
             style={{
@@ -411,6 +386,7 @@ export function NuevaOrdenForm() {
               name="diagnostico_cie10"
               type="text"
               placeholder="Codigo CIE-10 (opcional)"
+              defaultValue={ocr?.diagnostico ?? ''}
               className="w-full px-4 py-3 rounded-lg text-sm"
               style={{
                 background: 'var(--color-background)',
@@ -418,6 +394,127 @@ export function NuevaOrdenForm() {
                 color: 'var(--color-foreground)',
               }}
             />
+          </div>
+
+          {/* Importe manual (fallback): si no se eligió práctica del nomenclador,
+              el honorario se toma de acá — autocompletado con el importe del OCR. */}
+          {!prestacionSeleccionada && (
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                Importe / Honorario
+              </label>
+              <input
+                name="honorario_calculado"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                defaultValue={ocr?.importe ?? ''}
+                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
+                style={{
+                  background: 'var(--color-background)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-foreground)',
+                  ...dudosoStyle('importe'),
+                }}
+              />
+            </div>
+          )}
+
+          {/* Datos adicionales de la orden (OCR) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                DNI del paciente
+              </label>
+              <input
+                name="nro_documento"
+                type="text"
+                placeholder="00000000"
+                defaultValue={ocr?.nro_documento ?? ''}
+                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)', ...dudosoStyle('nro_documento') }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                Grupo (afiliado)
+              </label>
+              <input
+                name="grupo_afiliado"
+                type="text"
+                placeholder="01"
+                defaultValue={ocr?.grupo_afiliado ?? ''}
+                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)', ...dudosoStyle('grupo_afiliado') }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                N° Comprobante
+              </label>
+              <input
+                name="nro_comprobante"
+                type="text"
+                placeholder="00000000"
+                defaultValue={ocr?.nro_comprobante ?? ''}
+                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)', ...dudosoStyle('nro_comprobante') }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                Cantidad
+              </label>
+              <input
+                name="cantidad"
+                type="number"
+                min="0"
+                step="1"
+                placeholder="1"
+                defaultValue={ocr?.cantidad ?? 1}
+                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                Fecha de vencimiento
+              </label>
+              <input
+                name="fecha_vencimiento"
+                type="date"
+                defaultValue={ocr?.fecha_vencimiento ?? ''}
+                className="w-full px-4 py-3 rounded-lg text-sm"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                Horario de realización
+              </label>
+              <input
+                name="horario_realizacion"
+                type="text"
+                placeholder="HH:MM"
+                defaultValue={ocr?.horario_realizacion ?? ''}
+                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                Médico solicitante
+              </label>
+              <input
+                name="medico_solicitante"
+                type="text"
+                placeholder="Apellido y nombre del prescriptor"
+                defaultValue={ocr?.medico_solicitante ?? ''}
+                className="w-full px-4 py-3 rounded-lg text-sm"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+              />
+            </div>
           </div>
 
           {/* Honorario calculado */}

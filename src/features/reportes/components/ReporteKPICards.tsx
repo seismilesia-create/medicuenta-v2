@@ -45,18 +45,18 @@ export function ReporteKPICards({ kpis }: Props) {
       {/* Surgery status card */}
       <div
         className={`relative overflow-hidden rounded-2xl border bg-card p-6 ${
-          alertaSinLiquidar ? 'border-red-500/20' : 'border-emerald-500/20'
+          alertaSinLiquidar ? 'border-red-500/20' : 'border-sky-500/20'
         }`}
       >
         <div
           className={`absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl ${
-            alertaSinLiquidar ? 'bg-red-500/10' : 'bg-emerald-500/10'
+            alertaSinLiquidar ? 'bg-red-500/10' : 'bg-sky-500/10'
           }`}
         />
         <div className="relative flex items-start justify-between">
           <div className="space-y-3">
             <p className="text-sm font-medium text-muted-foreground">Cirugias 2° sin liquidar +90d</p>
-            <p className={`text-2xl font-bold tracking-tight ${alertaSinLiquidar ? 'text-red-500' : 'text-emerald-500'}`}>
+            <p className={`text-2xl font-bold tracking-tight ${alertaSinLiquidar ? 'text-red-500' : 'text-sky-500'}`}>
               {kpis.cirugias2doSinLiquidar.count === 0
                 ? 'Todo al dia'
                 : `${kpis.cirugias2doSinLiquidar.count} · ${formatARS(kpis.cirugias2doSinLiquidar.monto)}`}
@@ -67,10 +67,10 @@ export function ReporteKPICards({ kpis }: Props) {
           </div>
           <div
             className={`flex h-12 w-12 items-center justify-center rounded-xl ${
-              alertaSinLiquidar ? 'bg-red-500/15' : 'bg-emerald-500/15'
+              alertaSinLiquidar ? 'bg-red-500/15' : 'bg-sky-500/15'
             }`}
           >
-            <Clock className={`h-6 w-6 ${alertaSinLiquidar ? 'text-red-500' : 'text-emerald-500'}`} strokeWidth={1.5} />
+            <Clock className={`h-6 w-6 ${alertaSinLiquidar ? 'text-red-500' : 'text-sky-500'}`} strokeWidth={1.5} />
           </div>
         </div>
       </div>

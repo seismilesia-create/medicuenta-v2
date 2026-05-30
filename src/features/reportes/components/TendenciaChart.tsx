@@ -10,8 +10,8 @@ interface Props {
 }
 
 const COLORS = {
-  facturado: '#14b8a6', // teal-500
-  cobrado: '#10b981', // emerald-500
+  facturado: '#0ea5e9', // sky-500
+  cobrado: '#3b82f6', // blue-500
   debitos: '#ef4444', // red-500
 }
 

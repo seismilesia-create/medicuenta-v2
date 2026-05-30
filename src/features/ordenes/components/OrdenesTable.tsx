@@ -216,7 +216,7 @@ export function OrdenesTable() {
             className={cn(
               'flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium',
               batchResult.type === 'success'
-                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+                ? 'bg-sky-500/10 border-sky-500/20 text-sky-500'
                 : 'bg-red-500/10 border-red-500/20 text-red-500',
             )}
           >

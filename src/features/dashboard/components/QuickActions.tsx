@@ -14,7 +14,7 @@ interface QuickActionItem {
   label: string
   icon: LucideIcon
   href: string
-  color: 'primary' | 'emerald' | 'amber' | 'blue'
+  color: 'primary' | 'sky' | 'amber' | 'blue'
 }
 
 interface Props {
@@ -23,14 +23,14 @@ interface Props {
 
 const quickActions: QuickActionItem[] = [
   { label: 'Nueva orden', icon: FileText, href: '/ordenes/nueva', color: 'primary' },
-  { label: 'Nueva liquidacion', icon: Receipt, href: '/liquidaciones/nueva', color: 'emerald' },
+  { label: 'Nueva liquidacion', icon: Receipt, href: '/liquidaciones/nueva', color: 'sky' },
   { label: 'Nuevo debito', icon: AlertTriangle, href: '/debitos/nuevo', color: 'amber' },
   { label: 'Nueva cirugia', icon: Scissors, href: '/cirugias/nueva', color: 'blue' },
 ]
 
 const colorVariants: Record<QuickActionItem['color'], { bg: string; text: string; hover: string }> = {
   primary: { bg: 'bg-primary/10', text: 'text-primary', hover: 'hover:bg-primary/20' },
-  emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', hover: 'hover:bg-emerald-500/20' },
+  sky: { bg: 'bg-sky-500/10', text: 'text-sky-500', hover: 'hover:bg-sky-500/20' },
   amber: { bg: 'bg-amber-500/10', text: 'text-amber-500', hover: 'hover:bg-amber-500/20' },
   blue: { bg: 'bg-blue-500/10', text: 'text-blue-500', hover: 'hover:bg-blue-500/20' },
 }

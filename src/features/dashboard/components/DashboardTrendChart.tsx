@@ -24,8 +24,8 @@ interface Props {
 
 // Colores fijos que funcionan en light y dark mode
 const COLORS = {
-  facturado: '#14b8a6', // teal-500 (primary)
-  cobrado: '#10b981', // emerald-500
+  facturado: '#0ea5e9', // sky-500 (primary)
+  cobrado: '#3b82f6', // blue-500
   debitado: '#ef4444', // red-500
 }
 
@@ -43,7 +43,7 @@ export function DashboardTrendChart({ data }: Props) {
     <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6">
       {/* Background decorations */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-48 h-48 bg-sky-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
       <div className="relative">
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">

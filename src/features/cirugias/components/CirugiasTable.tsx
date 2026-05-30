@@ -211,7 +211,7 @@ export function CirugiasTable() {
             className={cn(
               'flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium',
               batchResult.type === 'success'
-                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+                ? 'bg-sky-500/10 border-sky-500/20 text-sky-500'
                 : 'bg-red-500/10 border-red-500/20 text-red-500',
             )}
           >
@@ -310,7 +310,7 @@ export function CirugiasTable() {
                           <span
                             className={cn(
                               'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium',
-                              cirugia.nivel === 1 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500',
+                              cirugia.nivel === 1 ? 'bg-sky-500/10 text-sky-500' : 'bg-amber-500/10 text-amber-500',
                             )}
                           >
                             {cirugia.nivel === 1 ? '1°' : '2°'}

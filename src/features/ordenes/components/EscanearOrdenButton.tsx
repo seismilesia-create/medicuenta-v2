@@ -1,25 +1,10 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import type { OrdenExtraida } from '@/lib/ai/ocr-orden'
 
-export interface OrdenEscaneada {
-  es_orden_medica: boolean
-  motivo_rechazo: string | null
-  paciente: string | null
-  obra_social: string | null
-  nro_afiliado: string | null
-  codigo_practica: string | null
-  nombre_practica: string | null
-  diagnostico: string | null
-  fecha: string | null
-  medico_solicitante: string | null
-  token_osep: string | null
-  firma_paciente: boolean | null
-  horario_atencion: string | null
-  observaciones: string | null
-  confianza: 'alta' | 'media' | 'baja'
-  campos_dudosos: string[]
-}
+// El tipo de la orden escaneada es el inferido del schema OCR compartido.
+export type OrdenEscaneada = OrdenExtraida
 
 async function compressImage(file: File, maxWidth = 1400, quality = 0.75): Promise<string> {
   const bitmap = await createImageBitmap(file)

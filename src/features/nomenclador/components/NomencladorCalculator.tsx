@@ -100,7 +100,7 @@ export function NomencladorCalculator() {
                     <span
                       className={cn(
                         'inline-block px-2 py-0.5 rounded-full text-[10px] font-bold',
-                        item.porcentajeHonorarios === 100 ? 'bg-emerald-500/15 text-emerald-500' : 'bg-amber-500/15 text-amber-500',
+                        item.porcentajeHonorarios === 100 ? 'bg-sky-500/15 text-sky-500' : 'bg-amber-500/15 text-amber-500',
                       )}
                     >
                       {item.porcentajeHonorarios}%
@@ -112,7 +112,7 @@ export function NomencladorCalculator() {
                   <td className="py-3 px-3 text-right font-mono text-xs text-foreground hidden md:table-cell">
                     {formatMonto(item.gastos)}
                   </td>
-                  <td className="py-3 px-3 text-right font-mono text-xs font-medium text-emerald-500">
+                  <td className="py-3 px-3 text-right font-mono text-xs font-medium text-sky-500">
                     {formatMonto(item.subtotal)}
                   </td>
                   <td className="py-3 px-3 text-center">
@@ -132,7 +132,7 @@ export function NomencladorCalculator() {
                 <td colSpan={6} className="py-4 px-3 text-right font-semibold text-foreground">
                   Total a cobrar:
                 </td>
-                <td className="py-4 px-3 text-right font-mono font-bold text-base text-emerald-500">
+                <td className="py-4 px-3 text-right font-mono font-bold text-base text-sky-500">
                   {formatMonto(totalGeneral())}
                 </td>
                 <td></td>

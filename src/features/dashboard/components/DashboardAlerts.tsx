@@ -63,9 +63,9 @@ export function DashboardAlerts({ alerts }: Props) {
         {alerts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="relative mb-4">
-              <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl" />
-              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 ring-1 ring-emerald-500/20">
-                <Shield className="h-8 w-8 text-emerald-500" strokeWidth={1.5} />
+              <div className="absolute inset-0 bg-sky-500/20 rounded-full blur-xl" />
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-sky-500/20 to-sky-500/10 ring-1 ring-sky-500/20">
+                <Shield className="h-8 w-8 text-sky-500" strokeWidth={1.5} />
               </div>
             </div>
             <p className="text-sm font-medium text-foreground">Todo en orden</p>

@@ -79,7 +79,7 @@ export function NomencladorSearch() {
                       <td className="py-3 px-3 text-right font-mono text-xs text-muted-foreground hidden md:table-cell">
                         {formatMonto(p.gastos)}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono text-xs font-medium text-emerald-500">
+                      <td className="py-3 px-3 text-right font-mono text-xs font-medium text-sky-500">
                         {formatMonto(p.total)}
                       </td>
                       <td className="py-3 px-3 text-center">

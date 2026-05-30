@@ -51,6 +51,17 @@ export function EditarOrdenForm({ orden }: Props) {
 
     const form = new FormData(e.currentTarget)
 
+    // Campos adicionales comunes (OCR / orden completa)
+    const comunes = {
+      nro_documento: (form.get('nro_documento') as string) || undefined,
+      nro_comprobante: (form.get('nro_comprobante') as string) || undefined,
+      grupo_afiliado: (form.get('grupo_afiliado') as string) || undefined,
+      fecha_vencimiento: (form.get('fecha_vencimiento') as string) || undefined,
+      cantidad: form.get('cantidad') ? Number(form.get('cantidad')) : undefined,
+      medico_solicitante: (form.get('medico_solicitante') as string) || undefined,
+      horario_realizacion: (form.get('horario_realizacion') as string) || undefined,
+    }
+
     const formData: OrdenFormData = tipo === 'obra_social'
       ? {
           tipo: 'obra_social',
@@ -69,6 +80,7 @@ export function EditarOrdenForm({ orden }: Props) {
           honorario_calculado: prestacionSeleccionada?.total
             ? Number(prestacionSeleccionada.total)
             : Number(form.get('honorario_calculado') || 0),
+          ...comunes,
         }
       : {
           tipo: 'particular',
@@ -79,6 +91,7 @@ export function EditarOrdenForm({ orden }: Props) {
           agente_facturador: agenteFacturador,
           nombre_practica: form.get('nombre_practica') as string,
           monto_particular: Number(form.get('monto_particular') || 0),
+          ...comunes,
         }
 
     const result = await updateOrden(orden.id, formData)
@@ -323,6 +336,121 @@ export function EditarOrdenForm({ orden }: Props) {
                 color: 'var(--color-foreground)',
               }}
             />
+          </div>
+
+          {/* Importe manual (fallback): si no hay práctica del nomenclador */}
+          {!prestacionSeleccionada && (
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                Importe / Honorario
+              </label>
+              <input
+                name="honorario_calculado"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                defaultValue={orden.honorario_calculado || ''}
+                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+              />
+            </div>
+          )}
+
+          {/* Datos adicionales de la orden */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                DNI del paciente
+              </label>
+              <input
+                name="nro_documento"
+                type="text"
+                placeholder="00000000"
+                defaultValue={orden.nro_documento ?? ''}
+                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                Grupo (afiliado)
+              </label>
+              <input
+                name="grupo_afiliado"
+                type="text"
+                placeholder="01"
+                defaultValue={orden.grupo_afiliado ?? ''}
+                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                N° Comprobante
+              </label>
+              <input
+                name="nro_comprobante"
+                type="text"
+                placeholder="00000000"
+                defaultValue={orden.nro_comprobante ?? ''}
+                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                Cantidad
+              </label>
+              <input
+                name="cantidad"
+                type="number"
+                min="0"
+                step="1"
+                placeholder="1"
+                defaultValue={orden.cantidad ?? 1}
+                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                Fecha de vencimiento
+              </label>
+              <input
+                name="fecha_vencimiento"
+                type="date"
+                defaultValue={orden.fecha_vencimiento ?? ''}
+                className="w-full px-4 py-3 rounded-lg text-sm"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                Horario de realización
+              </label>
+              <input
+                name="horario_realizacion"
+                type="text"
+                placeholder="HH:MM"
+                defaultValue={orden.horario_realizacion ?? ''}
+                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+                Médico solicitante
+              </label>
+              <input
+                name="medico_solicitante"
+                type="text"
+                placeholder="Apellido y nombre del prescriptor"
+                defaultValue={orden.medico_solicitante ?? ''}
+                className="w-full px-4 py-3 rounded-lg text-sm"
+                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+              />
+            </div>
           </div>
 
           {/* Honorario calculado */}

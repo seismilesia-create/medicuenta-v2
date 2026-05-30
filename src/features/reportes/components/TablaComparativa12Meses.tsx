@@ -51,7 +51,7 @@ export function TablaComparativa12Meses({ rows }: Props) {
                   <tr key={r.key} className="border-b border-border/50 hover:bg-accent/30 transition-colors">
                     <Td>{r.label}</Td>
                     <Td align="right" mono>{formatARS(r.facturado)}</Td>
-                    <Td align="right" mono colorClass="text-emerald-500">{formatARS(r.cobrado)}</Td>
+                    <Td align="right" mono colorClass="text-sky-500">{formatARS(r.cobrado)}</Td>
                     <Td align="right" mono colorClass="text-red-500">{formatARS(r.debitos)}</Td>
                     <Td align="right" mono colorClass="text-amber-500">{formatARS(r.plus)}</Td>
                     <Td align="right" mono bold>{formatARS(r.neto)}</Td>
@@ -62,7 +62,7 @@ export function TablaComparativa12Meses({ rows }: Props) {
                 <tr className="border-t border-border">
                   <Td bold>Totales</Td>
                   <Td align="right" mono bold>{formatARS(totales.facturado)}</Td>
-                  <Td align="right" mono bold colorClass="text-emerald-500">{formatARS(totales.cobrado)}</Td>
+                  <Td align="right" mono bold colorClass="text-sky-500">{formatARS(totales.cobrado)}</Td>
                   <Td align="right" mono bold colorClass="text-red-500">{formatARS(totales.debitos)}</Td>
                   <Td align="right" mono bold colorClass="text-amber-500">{formatARS(totales.plus)}</Td>
                   <Td align="right" mono bold>{formatARS(totales.neto)}</Td>

@@ -1,9 +1,8 @@
 'use client'
 
-import { useChat } from '@ai-sdk/react'
 import { useEffect, useState } from 'react'
 import { Bot, X, ChevronLeft, Sparkles } from 'lucide-react'
-import { useAssistantNavigation } from '../hooks/useAssistantNavigation'
+import { useAssistantChat } from '../hooks/useAssistantChat'
 import { useSidePanelStore } from '../store/sidePanelStore'
 import { AssistantMessages } from './AssistantMessages'
 import { AssistantInput } from './AssistantInput'
@@ -27,11 +26,7 @@ export function AssistantSidePanel() {
   // Para evitar hydration mismatch con localStorage
   useEffect(() => setMounted(true), [])
 
-  const onToolCall = useAssistantNavigation()
-
-  const { messages, status, error, sendMessage } = useChat({
-    onToolCall,
-  } as Parameters<typeof useChat>[0])
+  const { messages, status, error, sendMessage } = useAssistantChat()
 
   const isLoading = status === 'submitted' || status === 'streaming'
 

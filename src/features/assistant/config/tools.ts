@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { openrouter, MODELS } from '@/lib/ai/openrouter'
 import { generateObject } from 'ai'
 import { NAVIGATION_DESTINATIONS } from './navigation'
+import { ordenExtraidaSchema, OCR_ORDEN_PROMPT } from '@/lib/ai/ocr-orden'
 
 const AGENTE_ENUM = z.enum(['circulo_medico', 'medical_group', 'comunidad'])
 const NIVEL_ENUM = z.union([z.literal(1), z.literal(2)])
@@ -33,6 +34,15 @@ Ejemplo particular: { tipo: 'particular', nombre_paciente: 'María Gómez', fech
     agente_facturador: AGENTE_ENUM.default('circulo_medico'),
     monto_plus: z.number().min(0).default(0),
     observaciones: z.string().optional(),
+
+    // Campos adicionales (opcionales) — provienen del OCR o de la orden completa
+    nro_documento: z.string().optional().describe('DNI del paciente'),
+    nro_comprobante: z.string().optional().describe('N° de comprobante de la orden'),
+    fecha_vencimiento: z.string().optional().describe('YYYY-MM-DD'),
+    grupo_afiliado: z.string().optional().describe('Grupo del afiliado (ej: "01")'),
+    cantidad: z.number().min(0).optional().describe('Cantidad de la práctica (default 1)'),
+    medico_solicitante: z.string().optional(),
+    horario_realizacion: z.string().optional().describe('HH:MM'),
 
     // OS specific (required when tipo='obra_social')
     obra_social: z.string().optional(),
@@ -78,6 +88,14 @@ Ejemplo particular: { tipo: 'particular', nombre_paciente: 'María Gómez', fech
         diagnostico_cie10: input.tipo === 'obra_social' ? (input.diagnostico_cie10 ?? null) : null,
         honorario_calculado: input.tipo === 'obra_social' ? (input.honorario_calculado ?? 0) : 0,
         monto_particular: input.tipo === 'particular' ? input.monto_particular : 0,
+        // Campos adicionales (genéricos, opcionales)
+        nro_documento: input.nro_documento ?? null,
+        nro_comprobante: input.nro_comprobante ?? null,
+        fecha_vencimiento: input.fecha_vencimiento ?? null,
+        grupo_afiliado: input.grupo_afiliado ?? null,
+        cantidad: input.cantidad ?? 1,
+        medico_solicitante: input.medico_solicitante ?? null,
+        horario_realizacion: input.horario_realizacion ?? null,
         estado: 'borrador',
       }
 
@@ -407,30 +425,12 @@ La búsqueda parte el texto en palabras clave y busca cualquier coincidencia —
 })
 
 // ============================================================================
-// Tool 5: analizar_imagen_orden (OCR con Gemini Vision)
+// Tool 5: analizar_imagen_orden (OCR multimodal — usa MODELS.vision)
+// Schema + prompt compartidos con /api/ocr-orden en @/lib/ai/ocr-orden.
 // ============================================================================
-const ordenExtraidaSchema = z.object({
-  es_orden_medica: z.boolean(),
-  motivo_rechazo: z.string().nullable().describe('Si es_orden_medica=false, por qué no lo es'),
-  paciente: z.string().nullable(),
-  obra_social: z.string().nullable(),
-  nro_afiliado: z.string().nullable(),
-  codigo_practica: z.string().nullable(),
-  nombre_practica: z.string().nullable(),
-  diagnostico: z.string().nullable(),
-  fecha: z.string().nullable().describe('YYYY-MM-DD si se puede inferir'),
-  medico_solicitante: z.string().nullable(),
-  token_osep: z.string().nullable().describe('6 dígitos si aplica'),
-  firma_paciente: z.boolean().nullable(),
-  horario_atencion: z.string().nullable().describe('HH:MM si figura'),
-  observaciones: z.string().nullable(),
-  confianza: z.enum(['alta', 'media', 'baja']),
-  campos_dudosos: z.array(z.string()).describe('Lista de campos con baja confianza'),
-})
-
 export const analizarImagenOrdenTool = tool({
-  description: `Analiza una foto de una orden médica en papel (OCR multimodal con Gemini Vision).
-Extrae: paciente, OS, nro de afiliado, código/nombre de práctica, diagnóstico, fecha, médico solicitante, token OSEP, firma, horario.
+  description: `Analiza una foto de una orden médica en papel (OCR multimodal).
+Extrae: paciente, DNI, OS, grupo/nro de afiliado, N° comprobante, código/nombre de práctica, cantidad, importe, diagnóstico, fechas (realización y vencimiento), médico solicitante, agente facturador, token OSEP, firma, horario.
 Ejecutá esta tool AUTOMÁTICAMENTE cuando el médico adjunte una imagen.
 Devuelve estructura con nivel de confianza y lista de campos dudosos.`,
   inputSchema: z.object({
@@ -445,24 +445,8 @@ Devuelve estructura con nivel de confianza y lista de campos dudosos.`,
           {
             role: 'user',
             content: [
-              {
-                type: 'text',
-                text: `Analizá esta imagen de una orden médica argentina. Extraé todos los campos que puedas.
-
-Reglas:
-- Token OSEP = 6 dígitos numéricos
-- Obras sociales comunes en Catamarca: OSEP, PAMI, Swiss Medical, OSDE, Galeno, Medife, Accord Salud, OSPAT, OSPIA
-- Intentá leer letra manuscrita
-- Para cada campo que no esté seguro, incluilo en campos_dudosos
-- Confianza "alta" = podés leer casi todo sin ambigüedad
-- Confianza "media" = algunos campos requieren verificación
-- Confianza "baja" = mucha incertidumbre
-- Si la imagen NO es una orden médica: es_orden_medica=false + motivo_rechazo con explicación breve.`,
-              },
-              {
-                type: 'image',
-                image: input.imagen_url,
-              },
+              { type: 'text', text: OCR_ORDEN_PROMPT },
+              { type: 'image', image: input.imagen_url },
             ],
           },
         ],

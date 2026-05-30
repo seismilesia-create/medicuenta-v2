@@ -52,6 +52,14 @@ export interface Orden {
   agente_facturador: AgenteFacturador
   fecha_atencion: string
   observaciones: string | null
+  // Campos adicionales (OCR / orden completa)
+  nro_documento: string | null
+  nro_comprobante: string | null
+  grupo_afiliado: string | null
+  fecha_vencimiento: string | null
+  cantidad: number | null
+  medico_solicitante: string | null
+  horario_realizacion: string | null
   created_at: string
   updated_at: string
 }
@@ -98,6 +106,14 @@ export const ordenBaseSchema = z.object({
   observaciones: z.string().optional(),
   monto_plus: z.coerce.number().min(0).default(0),
   agente_facturador: z.enum(AGENTES_FACTURADORES).default('circulo_medico'),
+  // Campos adicionales (OCR / orden completa) — todos opcionales
+  nro_documento: z.string().optional(),
+  nro_comprobante: z.string().optional(),
+  grupo_afiliado: z.string().optional(),
+  fecha_vencimiento: z.string().optional(),
+  cantidad: z.coerce.number().min(0).optional(),
+  medico_solicitante: z.string().optional(),
+  horario_realizacion: z.string().optional(),
 })
 
 export const ordenObraSocialSchema = ordenBaseSchema.extend({

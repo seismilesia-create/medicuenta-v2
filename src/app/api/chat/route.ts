@@ -1,4 +1,4 @@
-import { openrouter, MODELS } from '@/lib/ai/openrouter'
+import { openrouter, getAgentModel } from '@/lib/ai/openrouter'
 import { streamText, convertToModelMessages, stepCountIs, type UIMessage } from 'ai'
 import { SYSTEM_PROMPT } from '@/features/assistant/config/systemPrompt'
 import { PLATFORM_KNOWLEDGE } from '@/features/assistant/config/platformKnowledge'
@@ -93,38 +93,59 @@ export async function POST(req: Request) {
     if (!convId) return new Response('No se pudo crear la conversación', { status: 500 })
   }
 
-  // Calcular step_index base contando mensajes ya existentes en la conversación.
-  let baseStepIndex = 0
-  const { count } = await supabase
-    .from('chat_mensajes')
-    .select('id', { count: 'exact', head: true })
-    .eq('conversacion_id', convId)
-  if (typeof count === 'number') baseStepIndex = count
-
-  // Si la conversación es preexistente, cargamos historial ANTES de persistir el user
-  // para evitar duplicación. Si es nueva, usamos messages tal cual.
+  // Para conversaciones existentes: contar mensajes (para step_index) y cargar
+  // historial EN PARALELO. Para nuevas: arrancamos en 0 sin tocar la BD.
   const isExisting = !!conversationId
-  const historyMessages = isExisting ? await cargarHistorialModelMessages(supabase, convId) : []
+  let baseStepIndex = 0
+  let historyMessages: Awaited<ReturnType<typeof cargarHistorialModelMessages>> = []
+  if (isExisting) {
+    const [countRes, history] = await Promise.all([
+      supabase
+        .from('chat_mensajes')
+        .select('id', { count: 'exact', head: true })
+        .eq('conversacion_id', convId),
+      cargarHistorialModelMessages(supabase, convId),
+    ])
+    if (typeof countRes.count === 'number') baseStepIndex = countRes.count
+    historyMessages = history
+  }
+
   const newTurnMessages = await convertToModelMessages(messages)
   const modelMessages = isExisting ? [...historyMessages, ...newTurnMessages] : newTurnMessages
 
-  // Persistir el user message ANTES del stream (sincrónico).
-  if (lastUserText) {
-    await persistirUserMessage(supabase, medicoId, convId, lastUserText, baseStepIndex)
-    baseStepIndex += 1
-  }
+  // step_index: el user ocupa baseStepIndex; assistant/tools arrancan en el siguiente.
+  // OJO: persistimos al final (en onFinish), NO antes del stream, para no agregar
+  // latencia antes del primer token.
+  const userStepIndex = baseStepIndex
+  const assistantBaseStepIndex = lastUserText ? baseStepIndex + 1 : baseStepIndex
 
   const conversacionIdResolved = convId
 
+  // ── Diagnóstico de latencia/tool-calling (temporal) ──
+  const modelId = getAgentModel()
+  const t0 = Date.now()
+  console.log(`[chat] ▶ model=${modelId} conv=${convId} existing=${isExisting} historyMsgs=${historyMessages.length}`)
+
   const result = streamText({
-    model: openrouter(MODELS.agent),
+    model: openrouter(modelId),
     system: `${SYSTEM_PROMPT}\n\n${buildContextoTemporal()}\n\n${PLATFORM_KNOWLEDGE}`,
     messages: modelMessages,
     tools: assistantTools,
     stopWhen: stepCountIs(5),
+    onError: (e) => {
+      console.error(`[chat] ✖ streamText error (model=${modelId}, +${Date.now() - t0}ms):`, e)
+    },
     onFinish: async (event) => {
+      const toolNames = event.steps.flatMap((s) => s.toolCalls.map((c) => c.toolName))
+      console.log(
+        `[chat] ✔ finish model=${modelId} +${Date.now() - t0}ms reason=${event.finishReason} steps=${event.steps.length} tools=[${toolNames.join(',')}]`,
+      )
       try {
-        await persistirOnFinish(supabase, medicoId, conversacionIdResolved, event, baseStepIndex)
+        // Persistimos user + assistant juntos, ya terminado el stream.
+        if (lastUserText) {
+          await persistirUserMessage(supabase, medicoId, conversacionIdResolved, lastUserText, userStepIndex)
+        }
+        await persistirOnFinish(supabase, medicoId, conversacionIdResolved, event, assistantBaseStepIndex)
       } catch (err) {
         console.error('[chat] onFinish persistence failed:', err)
       }

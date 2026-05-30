@@ -68,7 +68,7 @@ export function AssistantPanel({
           <div className="relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent" />
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
-            <div className="absolute bottom-0 left-1/4 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-1/4 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
 
             <div className="relative px-6 md:px-8 pt-10 md:pt-14 pb-8">
               <div className="max-w-2xl mx-auto text-center">

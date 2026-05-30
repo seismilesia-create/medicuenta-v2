@@ -140,7 +140,7 @@ export function DebitosTable() {
                     <td className="px-3 md:px-5 py-4 text-right font-mono font-medium text-red-500">{formatMonto(Number(debito.monto))}</td>
                     <td className="px-3 md:px-5 py-4 text-center hidden lg:table-cell">
                       {debito.refacturable ? (
-                        <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-emerald-500/15 text-emerald-500')}>
+                        <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-sky-500/15 text-sky-500')}>
                           Si
                         </span>
                       ) : (

@@ -1,9 +1,8 @@
 'use client'
 
-import { useChat } from '@ai-sdk/react'
 import { Sparkles, Mic, MicOff, Send, FileText, Receipt, Calculator, Plus, Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { useAssistantNavigation } from '../hooks/useAssistantNavigation'
+import { useAssistantChat } from '../hooks/useAssistantChat'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { AssistantMessages } from './AssistantMessages'
 import { SUGGESTED_QUESTIONS } from '../types/assistant'
@@ -17,11 +16,8 @@ const SUGGESTION_ICONS = [FileText, Receipt, Calculator, Plus]
 
 export function AssistantHome({ nombre }: Props) {
   const [text, setText] = useState('')
-  const onToolCall = useAssistantNavigation()
 
-  const { messages, status, error, sendMessage } = useChat({
-    onToolCall,
-  } as Parameters<typeof useChat>[0])
+  const { messages, status, error, sendMessage } = useAssistantChat()
 
   const isLoading = status === 'submitted' || status === 'streaming'
 
@@ -89,7 +85,7 @@ export function AssistantHome({ nombre }: Props) {
       {/* Orbes decorativos */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 -right-32 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 -right-32 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-32 left-1/4 w-72 h-72 bg-primary/15 rounded-full blur-3xl" />
       </div>
 

@@ -24,13 +24,13 @@ const variantStyles = {
     orb: 'bg-primary',
   },
   success: {
-    gradient: 'from-emerald-500/10 via-emerald-500/5 to-transparent',
-    iconBg: 'bg-emerald-500/15',
-    iconColor: 'text-emerald-500',
-    valueColor: 'text-emerald-500',
-    glow: 'group-hover:shadow-emerald-500/20',
-    border: 'border-emerald-500/20',
-    orb: 'bg-emerald-500',
+    gradient: 'from-sky-500/10 via-sky-500/5 to-transparent',
+    iconBg: 'bg-sky-500/15',
+    iconColor: 'text-sky-500',
+    valueColor: 'text-sky-500',
+    glow: 'group-hover:shadow-sky-500/20',
+    border: 'border-sky-500/20',
+    orb: 'bg-sky-500',
   },
   warning: {
     gradient: 'from-amber-500/10 via-amber-500/5 to-transparent',
@@ -109,7 +109,7 @@ export function MetricCard({
           <div
             className={cn(
               'flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold',
-              trend.positive ? 'bg-emerald-500/15 text-emerald-500' : 'bg-red-500/15 text-red-500',
+              trend.positive ? 'bg-sky-500/15 text-sky-500' : 'bg-red-500/15 text-red-500',
             )}
           >
             {trend.positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
