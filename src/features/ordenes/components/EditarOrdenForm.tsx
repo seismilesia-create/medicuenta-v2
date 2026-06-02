@@ -14,6 +14,54 @@ import {
 } from '../types/ordenes'
 import { PracticaAutocomplete } from './PracticaAutocomplete'
 
+const inputBase = 'w-full px-4 py-3 rounded-lg text-sm'
+const inputStyle = {
+  background: 'var(--color-background)',
+  border: '1px solid var(--color-border)',
+  color: 'var(--color-foreground)',
+} as const
+const sectionStyle = { background: 'var(--color-surface)', border: '1px solid var(--color-border)' } as const
+
+function Campo({
+  name,
+  label,
+  type = 'text',
+  defaultValue,
+  placeholder,
+  mono,
+  colSpan,
+  step,
+  min,
+}: {
+  name: string
+  label: string
+  type?: string
+  defaultValue?: string | number
+  placeholder?: string
+  mono?: boolean
+  colSpan?: boolean
+  step?: string
+  min?: string
+}) {
+  return (
+    <div className={colSpan ? 'md:col-span-2' : undefined}>
+      <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+        {label}
+      </label>
+      <input
+        name={name}
+        type={type}
+        defaultValue={defaultValue}
+        placeholder={placeholder}
+        step={step}
+        min={min}
+        className={`${inputBase}${mono ? ' font-mono' : ''}`}
+        style={inputStyle}
+      />
+    </div>
+  )
+}
+
 interface Props {
   orden: Orden
 }
@@ -50,16 +98,41 @@ export function EditarOrdenForm({ orden }: Props) {
     setLoading(true)
 
     const form = new FormData(e.currentTarget)
+    const str = (k: string) => (form.get(k) as string) || undefined
 
-    // Campos adicionales comunes (OCR / orden completa)
     const comunes = {
-      nro_documento: (form.get('nro_documento') as string) || undefined,
-      nro_comprobante: (form.get('nro_comprobante') as string) || undefined,
-      grupo_afiliado: (form.get('grupo_afiliado') as string) || undefined,
-      fecha_vencimiento: (form.get('fecha_vencimiento') as string) || undefined,
+      nro_documento: str('nro_documento'),
+      nro_comprobante: str('nro_comprobante'),
+      grupo_afiliado: str('grupo_afiliado'),
+      fecha_vencimiento: str('fecha_vencimiento'),
       cantidad: form.get('cantidad') ? Number(form.get('cantidad')) : undefined,
-      medico_solicitante: (form.get('medico_solicitante') as string) || undefined,
-      horario_realizacion: (form.get('horario_realizacion') as string) || undefined,
+      medico_solicitante: str('medico_solicitante'),
+      horario_realizacion: str('horario_realizacion'),
+      delegacion: str('delegacion'),
+      titulo_autorizacion: str('titulo_autorizacion'),
+      nro_internacion: str('nro_internacion'),
+      fecha_solicitud: str('fecha_solicitud'),
+      fecha_prescripcion: str('fecha_prescripcion'),
+      fecha_emision: str('fecha_emision'),
+      hora_emision: str('hora_emision'),
+      titular_nombre: str('titular_nombre'),
+      cobertura: str('cobertura'),
+      parentesco: str('parentesco'),
+      domicilio: str('domicilio'),
+      tipo_documento: str('tipo_documento'),
+      alias: str('alias'),
+      cara: str('cara'),
+      pieza: str('pieza'),
+      forma_pago: str('forma_pago'),
+      cod_pago: str('cod_pago'),
+      origen: str('origen'),
+      arancelista: str('arancelista'),
+      cajero: str('cajero'),
+      total_cargo_afiliado: form.get('total_cargo_afiliado') ? Number(form.get('total_cargo_afiliado')) : undefined,
+      matricula_profesional: str('matricula_profesional'),
+      profesional: str('profesional'),
+      entidad: str('entidad'),
+      responsable: str('responsable'),
     }
 
     const formData: OrdenFormData = tipo === 'obra_social'
@@ -67,16 +140,16 @@ export function EditarOrdenForm({ orden }: Props) {
           tipo: 'obra_social',
           nombre_paciente: form.get('nombre_paciente') as string,
           fecha_atencion: form.get('fecha_atencion') as string,
-          observaciones: (form.get('observaciones') as string) || undefined,
+          observaciones: str('observaciones'),
           monto_plus: Number(form.get('monto_plus') || 0),
           agente_facturador: agenteFacturador,
           obra_social: obraSocial,
           nro_afiliado: form.get('nro_afiliado') as string,
-          token_osep: (form.get('token_osep') as string) || undefined,
+          token_osep: str('token_osep'),
           firma_paciente: form.get('firma_paciente') === 'on',
           codigo_practica: prestacionSeleccionada?.codigo ?? (form.get('codigo_practica') as string),
-          nombre_practica: prestacionSeleccionada?.detalle ?? undefined,
-          diagnostico_cie10: (form.get('diagnostico_cie10') as string) || undefined,
+          nombre_practica: prestacionSeleccionada?.detalle ?? str('nombre_practica'),
+          diagnostico_cie10: str('diagnostico_cie10'),
           honorario_calculado: prestacionSeleccionada?.total
             ? Number(prestacionSeleccionada.total)
             : Number(form.get('honorario_calculado') || 0),
@@ -86,7 +159,7 @@ export function EditarOrdenForm({ orden }: Props) {
           tipo: 'particular',
           nombre_paciente: form.get('nombre_paciente') as string,
           fecha_atencion: form.get('fecha_atencion') as string,
-          observaciones: (form.get('observaciones') as string) || undefined,
+          observaciones: str('observaciones'),
           monto_plus: Number(form.get('monto_plus') || 0),
           agente_facturador: agenteFacturador,
           nombre_practica: form.get('nombre_practica') as string,
@@ -104,53 +177,27 @@ export function EditarOrdenForm({ orden }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8 max-w-2xl">
-      {/* Error message */}
+    <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
       {error && (
-        <div
-          className="p-3 rounded-lg text-sm bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
-          style={{ border: '1px solid var(--color-error)' }}
-        >
+        <div className="p-3 rounded-lg text-sm bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400" style={{ border: '1px solid var(--color-error)' }}>
           {error}
         </div>
       )}
 
       {/* Tipo de atencion */}
       <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-foreground)' }}>
-          Tipo de atencion
-        </label>
+        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-foreground)' }}>Tipo de atencion</label>
         <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => setTipo('obra_social')}
-            className="flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all"
-            style={tipo === 'obra_social' ? {
-              background: 'var(--color-primary)',
-              color: 'white',
-              boxShadow: '0 0 0 2px var(--color-primary)',
-            } : {
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              color: 'var(--color-muted-foreground)',
-            }}
-          >
+          <button type="button" onClick={() => setTipo('obra_social')} className="flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all"
+            style={tipo === 'obra_social'
+              ? { background: 'var(--color-primary)', color: 'white', boxShadow: '0 0 0 2px var(--color-primary)' }
+              : { background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-muted-foreground)' }}>
             Obra Social
           </button>
-          <button
-            type="button"
-            onClick={() => setTipo('particular')}
-            className="flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all"
-            style={tipo === 'particular' ? {
-              background: 'var(--color-secondary)',
-              color: 'white',
-              boxShadow: '0 0 0 2px var(--color-secondary)',
-            } : {
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              color: 'var(--color-muted-foreground)',
-            }}
-          >
+          <button type="button" onClick={() => setTipo('particular')} className="flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all"
+            style={tipo === 'particular'
+              ? { background: 'var(--color-secondary)', color: 'white', boxShadow: '0 0 0 2px var(--color-secondary)' }
+              : { background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-muted-foreground)' }}>
             Particular
           </button>
         </div>
@@ -158,455 +205,187 @@ export function EditarOrdenForm({ orden }: Props) {
 
       {/* Agente facturador */}
       <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-foreground)' }}>
-          Agente facturador *
-        </label>
-        <select
-          value={agenteFacturador}
-          onChange={(e) => setAgenteFacturador(e.target.value as AgenteFacturador)}
-          required
-          className="w-full px-4 py-3 rounded-lg text-sm"
-          style={{
-            background: 'var(--color-background)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-foreground)',
-          }}
-        >
-          {AGENTES_FACTURADORES.map((a) => (
-            <option key={a} value={a}>{AGENTE_LABELS[a]}</option>
-          ))}
+        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-foreground)' }}>Agente facturador *</label>
+        <select value={agenteFacturador} onChange={(e) => setAgenteFacturador(e.target.value as AgenteFacturador)} required className={inputBase} style={inputStyle}>
+          {AGENTES_FACTURADORES.map((a) => (<option key={a} value={a}>{AGENTE_LABELS[a]}</option>))}
         </select>
-        <p className="text-xs mt-1.5" style={{ color: 'var(--color-muted-foreground)' }}>
-          Quién factura esta orden según el convenio de la OS del paciente.
-        </p>
       </div>
 
-      {/* Datos del paciente */}
+      {/* Paciente + fecha */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-            Nombre del paciente *
-          </label>
-          <input
-            name="nombre_paciente"
-            type="text"
-            required
-            placeholder="Juan Perez"
-            defaultValue={orden.nombre_paciente}
-            className="w-full px-4 py-3 rounded-lg text-sm"
-            style={{
-              background: 'var(--color-background)',
-              border: '1px solid var(--color-border)',
-              color: 'var(--color-foreground)',
-            }}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-            Fecha de atencion *
-          </label>
-          <input
-            name="fecha_atencion"
-            type="date"
-            required
-            defaultValue={orden.fecha_atencion}
-            className="w-full px-4 py-3 rounded-lg text-sm"
-            style={{
-              background: 'var(--color-background)',
-              border: '1px solid var(--color-border)',
-              color: 'var(--color-foreground)',
-            }}
-          />
-        </div>
+        <Campo name="nombre_paciente" label="Nombre del paciente *" defaultValue={orden.nombre_paciente} placeholder="Juan Perez" />
+        <Campo name="fecha_atencion" label="Fecha de atencion (realización) *" type="date" defaultValue={orden.fecha_atencion} />
       </div>
 
-      {/* Campos Obra Social */}
       {tipo === 'obra_social' && (
-        <div
-          className="space-y-4 p-6 rounded-xl"
-          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-        >
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
-            Datos de Obra Social
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Obra Social *
-              </label>
-              <select
-                value={obraSocial}
-                onChange={(e) => setObraSocial(e.target.value)}
-                required
-                className="w-full px-4 py-3 rounded-lg text-sm"
-                style={{
-                  background: 'var(--color-background)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-foreground)',
-                }}
-              >
-                <option value="">Seleccionar...</option>
-                {OBRAS_SOCIALES.map((os) => (
-                  <option key={os} value={os}>{os}</option>
-                ))}
-              </select>
+        <>
+          {/* Cabecera */}
+          <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Comprobante</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Campo name="delegacion" label="Delegación" defaultValue={orden.delegacion ?? ''} />
+              <Campo name="nro_comprobante" label="N° Comprobante" mono defaultValue={orden.nro_comprobante ?? ''} />
+              <Campo name="titulo_autorizacion" label="Título de autorización" defaultValue={orden.titulo_autorizacion ?? ''} />
+              <Campo name="nro_internacion" label="N° Internación" defaultValue={orden.nro_internacion ?? ''} />
             </div>
+          </section>
 
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Nro. Afiliado *
-              </label>
-              <input
-                name="nro_afiliado"
-                type="text"
-                required
-                placeholder="000000"
-                defaultValue={orden.nro_afiliado ?? ''}
-                className="w-full px-4 py-3 rounded-lg text-sm"
-                style={{
-                  background: 'var(--color-background)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-foreground)',
-                }}
-              />
+          {/* Fechas */}
+          <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Fechas</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Campo name="fecha_solicitud" label="Fecha de solicitud" type="date" defaultValue={orden.fecha_solicitud ?? ''} />
+              <Campo name="fecha_vencimiento" label="Fecha de vencimiento" type="date" defaultValue={orden.fecha_vencimiento ?? ''} />
+              <Campo name="fecha_prescripcion" label="Fecha de prescripción" type="date" defaultValue={orden.fecha_prescripcion ?? ''} />
+              <Campo name="fecha_emision" label="Fecha de emisión" type="date" defaultValue={orden.fecha_emision ?? ''} />
+              <Campo name="hora_emision" label="Hora de emisión" mono placeholder="HH:MM" defaultValue={orden.hora_emision ?? ''} />
             </div>
-          </div>
+          </section>
 
-          {/* OSEP specific fields */}
-          {obraSocial === 'OSEP' && (
+          {/* Titular y afiliado */}
+          <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Titular y afiliado</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                  Token OSEP (6 digitos) *
-                </label>
-                <input
-                  name="token_osep"
-                  type="text"
-                  required
-                  maxLength={6}
-                  pattern="[0-9]{6}"
-                  placeholder="123456"
-                  defaultValue={orden.token_osep ?? ''}
-                  className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-                  style={{
-                    background: 'var(--color-background)',
-                    border: '1px solid var(--color-border)',
-                    color: 'var(--color-foreground)',
-                  }}
-                />
+                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Obra Social *</label>
+                <select value={obraSocial} onChange={(e) => setObraSocial(e.target.value)} required className={inputBase} style={inputStyle}>
+                  <option value="">Seleccionar...</option>
+                  {OBRAS_SOCIALES.map((os) => (<option key={os} value={os}>{os}</option>))}
+                </select>
               </div>
-              <div className="flex items-end">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    name="firma_paciente"
-                    type="checkbox"
-                    defaultChecked={orden.firma_paciente}
-                    className="w-4 h-4 rounded"
-                    style={{ accentColor: 'var(--color-primary)' }}
-                  />
-                  <span className="text-sm" style={{ color: 'var(--color-foreground)' }}>
-                    Firma del paciente
-                  </span>
-                </label>
+              <Campo name="nro_afiliado" label="Nro. Afiliado *" defaultValue={orden.nro_afiliado ?? ''} placeholder="000000" />
+              <Campo name="grupo_afiliado" label="Grupo" mono placeholder="01" defaultValue={orden.grupo_afiliado ?? ''} />
+              <Campo name="titular_nombre" label="Titular (apellido y nombre)" defaultValue={orden.titular_nombre ?? ''} />
+              <Campo name="medico_solicitante" label="Prescriptor / médico solicitante" colSpan defaultValue={orden.medico_solicitante ?? ''} />
+            </div>
+
+            {obraSocial === 'OSEP' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Campo name="token_osep" label="Token OSEP (6 dígitos)" mono placeholder="123456" defaultValue={orden.token_osep ?? ''} />
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input name="firma_paciente" type="checkbox" defaultChecked={orden.firma_paciente} className="w-4 h-4 rounded" style={{ accentColor: 'var(--color-primary)' }} />
+                    <span className="text-sm" style={{ color: 'var(--color-foreground)' }}>Firma del paciente</span>
+                  </label>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </section>
 
-          {/* Practica autocomplete */}
-          <PracticaAutocomplete
-            obraSocial={obraSocial || 'OSEP'}
-            onSelect={handlePrestacionSelect}
-          />
+          {/* Beneficiario / documento */}
+          <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Beneficiario y documento</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Campo name="cobertura" label="Cobertura" defaultValue={orden.cobertura ?? ''} />
+              <Campo name="parentesco" label="Parentesco" defaultValue={orden.parentesco ?? ''} />
+              <Campo name="tipo_documento" label="Tipo de documento" placeholder="DNI" defaultValue={orden.tipo_documento ?? ''} />
+              <Campo name="nro_documento" label="N° de documento (DNI)" mono placeholder="00000000" defaultValue={orden.nro_documento ?? ''} />
+              <Campo name="domicilio" label="Domicilio" colSpan defaultValue={orden.domicilio ?? ''} />
+            </div>
+          </section>
 
-          {/* Diagnostico */}
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-              Diagnostico CIE-10
-            </label>
-            <input
-              name="diagnostico_cie10"
-              type="text"
-              placeholder="Codigo CIE-10 (opcional)"
-              defaultValue={orden.diagnostico_cie10 ?? ''}
-              className="w-full px-4 py-3 rounded-lg text-sm"
-              style={{
-                background: 'var(--color-background)',
-                border: '1px solid var(--color-border)',
-                color: 'var(--color-foreground)',
-              }}
-            />
-          </div>
+          {/* Práctica */}
+          <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Práctica</h3>
+            <PracticaAutocomplete obraSocial={obraSocial || 'OSEP'} onSelect={handlePrestacionSelect} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Campo name="alias" label="Alias" defaultValue={orden.alias ?? ''} />
+              <Campo name="nombre_practica" label="Descripción" colSpan placeholder="Ej: Consulta médica" defaultValue={orden.nombre_practica ?? ''} />
+              <Campo name="cantidad" label="Cantidad" type="number" min="0" step="1" mono defaultValue={orden.cantidad ?? 1} />
+              <Campo name="cara" label="Cara (odontología)" defaultValue={orden.cara ?? ''} />
+              <Campo name="pieza" label="Pieza (odontología)" defaultValue={orden.pieza ?? ''} />
+              <Campo name="diagnostico_cie10" label="Diagnóstico CIE-10" colSpan defaultValue={orden.diagnostico_cie10 ?? ''} />
+            </div>
 
-          {/* Importe manual (fallback): si no hay práctica del nomenclador */}
-          {!prestacionSeleccionada && (
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Importe / Honorario
-              </label>
-              <input
-                name="honorario_calculado"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                defaultValue={orden.honorario_calculado || ''}
-                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
-              />
-            </div>
-          )}
+            {!prestacionSeleccionada && (
+              <Campo name="honorario_calculado" label="Importe / Honorario" type="number" min="0" step="0.01" mono placeholder="0.00" defaultValue={orden.honorario_calculado || ''} />
+            )}
 
-          {/* Datos adicionales de la orden */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                DNI del paciente
-              </label>
-              <input
-                name="nro_documento"
-                type="text"
-                placeholder="00000000"
-                defaultValue={orden.nro_documento ?? ''}
-                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Grupo (afiliado)
-              </label>
-              <input
-                name="grupo_afiliado"
-                type="text"
-                placeholder="01"
-                defaultValue={orden.grupo_afiliado ?? ''}
-                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                N° Comprobante
-              </label>
-              <input
-                name="nro_comprobante"
-                type="text"
-                placeholder="00000000"
-                defaultValue={orden.nro_comprobante ?? ''}
-                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Cantidad
-              </label>
-              <input
-                name="cantidad"
-                type="number"
-                min="0"
-                step="1"
-                placeholder="1"
-                defaultValue={orden.cantidad ?? 1}
-                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Fecha de vencimiento
-              </label>
-              <input
-                name="fecha_vencimiento"
-                type="date"
-                defaultValue={orden.fecha_vencimiento ?? ''}
-                className="w-full px-4 py-3 rounded-lg text-sm"
-                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Horario de realización
-              </label>
-              <input
-                name="horario_realizacion"
-                type="text"
-                placeholder="HH:MM"
-                defaultValue={orden.horario_realizacion ?? ''}
-                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Médico solicitante
-              </label>
-              <input
-                name="medico_solicitante"
-                type="text"
-                placeholder="Apellido y nombre del prescriptor"
-                defaultValue={orden.medico_solicitante ?? ''}
-                className="w-full px-4 py-3 rounded-lg text-sm"
-                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
-              />
-            </div>
-          </div>
-
-          {/* Honorario calculado */}
-          {prestacionSeleccionada && (
-            <div
-              className="p-3 rounded-lg"
-              style={{ background: 'var(--color-background)', border: '1px solid var(--color-success)' }}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Honorario calculado</p>
-                  <p className="text-sm font-mono" style={{ color: 'var(--color-foreground)' }}>
-                    {prestacionSeleccionada.codigo} - {prestacionSeleccionada.detalle}
+            {prestacionSeleccionada && (
+              <div className="p-3 rounded-lg" style={{ background: 'var(--color-background)', border: '1px solid var(--color-success)' }}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Honorario calculado</p>
+                    <p className="text-sm font-mono" style={{ color: 'var(--color-foreground)' }}>
+                      {prestacionSeleccionada.codigo} - {prestacionSeleccionada.detalle}
+                    </p>
+                  </div>
+                  <p className="text-xl font-bold font-mono" style={{ color: 'var(--color-success)' }}>
+                    ${Number(prestacionSeleccionada.total ?? 0).toLocaleString('es-AR')}
                   </p>
                 </div>
-                <p className="text-xl font-bold font-mono" style={{ color: 'var(--color-success)' }}>
-                  ${Number(prestacionSeleccionada.total ?? 0).toLocaleString('es-AR')}
-                </p>
               </div>
+            )}
+          </section>
+
+          {/* Pago */}
+          <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Pago</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Campo name="forma_pago" label="Forma de pago" placeholder="Contado / Posnet Físico" defaultValue={orden.forma_pago ?? ''} />
+              <Campo name="origen" label="Origen" placeholder="Prestador / Web Service" defaultValue={orden.origen ?? ''} />
+              <Campo name="cod_pago" label="Cód. (solo posnet físico)" mono defaultValue={orden.cod_pago ?? ''} />
             </div>
-          )}
-        </div>
+          </section>
+
+          {/* Arancel / total */}
+          <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Arancel y total</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Campo name="arancelista" label="Arancelista" defaultValue={orden.arancelista ?? ''} />
+              <Campo name="cajero" label="Cajero" defaultValue={orden.cajero ?? ''} />
+              <Campo name="total_cargo_afiliado" label="Total a cargo afiliado" type="number" min="0" step="0.01" mono placeholder="0.00" defaultValue={orden.total_cargo_afiliado || ''} />
+              <Campo name="horario_realizacion" label="Hora de realización" mono placeholder="HH:MM" defaultValue={orden.horario_realizacion ?? ''} />
+            </div>
+          </section>
+
+          {/* Profesional */}
+          <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Profesional</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Campo name="matricula_profesional" label="Matrícula profesional" mono defaultValue={orden.matricula_profesional ?? ''} />
+              <Campo name="profesional" label="Profesional (realizador)" defaultValue={orden.profesional ?? ''} />
+              <Campo name="entidad" label="Entidad" defaultValue={orden.entidad ?? ''} />
+              <Campo name="responsable" label="Responsable" defaultValue={orden.responsable ?? ''} />
+            </div>
+          </section>
+        </>
       )}
 
-      {/* Campos Particular */}
       {tipo === 'particular' && (
-        <div
-          className="space-y-4 p-6 rounded-xl"
-          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-        >
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--color-secondary)' }}>
-            Prestacion Particular
-          </h3>
-
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-              Descripcion de la prestacion *
-            </label>
-            <input
-              name="nombre_practica"
-              type="text"
-              required
-              placeholder="Consulta, cirugia menor, etc."
-              defaultValue={orden.nombre_practica ?? ''}
-              className="w-full px-4 py-3 rounded-lg text-sm"
-              style={{
-                background: 'var(--color-background)',
-                border: '1px solid var(--color-border)',
-                color: 'var(--color-foreground)',
-              }}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-              Monto cobrado *
-            </label>
-            <input
-              name="monto_particular"
-              type="number"
-              required
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              defaultValue={orden.monto_particular}
-              className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-              style={{
-                background: 'var(--color-background)',
-                border: '1px solid var(--color-border)',
-                color: 'var(--color-foreground)',
-              }}
-            />
-          </div>
-        </div>
+        <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--color-secondary)' }}>Prestacion Particular</h3>
+          <Campo name="nombre_practica" label="Descripcion de la prestacion *" defaultValue={orden.nombre_practica ?? ''} placeholder="Consulta, cirugia menor, etc." />
+          <Campo name="monto_particular" label="Monto cobrado *" type="number" min="0" step="0.01" mono placeholder="0.00" defaultValue={orden.monto_particular} />
+        </section>
       )}
 
-      {/* Plus (solo para Obra Social) */}
+      {/* Plus (solo Obra Social) */}
       {tipo === 'obra_social' && (
-        <div
-          className="p-6 rounded-xl"
-          style={{ background: 'var(--color-surface)', border: '1px dashed var(--color-border)' }}
-        >
+        <div className="p-6 rounded-xl" style={{ background: 'var(--color-surface)', border: '1px dashed var(--color-border)' }}>
           <div className="flex items-center gap-2 mb-2">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              style={{ color: 'var(--color-warning)' }}
-            >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--color-warning)' }}>
               <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-warning)' }}>
-              Plus (privado)
-            </h3>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-warning)' }}>Plus (privado)</h3>
           </div>
-          <p className="text-xs mb-3" style={{ color: 'var(--color-muted-foreground)' }}>
-            Este dato es estrictamente privado. Solo vos podes verlo.
-          </p>
-          <input
-            name="monto_plus"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0.00"
-            defaultValue={orden.monto_plus}
-            className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-            style={{
-              background: 'var(--color-background)',
-              border: '1px solid var(--color-border)',
-              color: 'var(--color-foreground)',
-            }}
-          />
+          <p className="text-xs mb-3" style={{ color: 'var(--color-muted-foreground)' }}>Este dato es estrictamente privado. Solo vos podes verlo.</p>
+          <input name="monto_plus" type="number" min="0" step="0.01" defaultValue={orden.monto_plus} placeholder="0.00" className={`${inputBase} font-mono`} style={inputStyle} />
         </div>
       )}
 
       {/* Observaciones */}
       <div>
-        <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-          Observaciones
-        </label>
-        <textarea
-          name="observaciones"
-          rows={3}
-          placeholder="Notas adicionales (opcional)"
-          defaultValue={orden.observaciones ?? ''}
-          className="w-full px-4 py-3 rounded-lg text-sm resize-none"
-          style={{
-            background: 'var(--color-background)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-foreground)',
-          }}
-        />
+        <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Observaciones</label>
+        <textarea name="observaciones" rows={3} placeholder="Notas adicionales (opcional)" defaultValue={orden.observaciones ?? ''} className={`${inputBase} resize-none`} style={inputStyle} />
       </div>
 
       {/* Botones */}
       <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={loading}
-          className="flex-1 px-4 py-3.5 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50"
-          style={{ background: 'var(--color-primary)' }}
-        >
+        <button type="submit" disabled={loading} className="flex-1 px-4 py-3.5 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50" style={{ background: 'var(--color-primary)' }}>
           {loading ? 'Guardando...' : 'Guardar cambios'}
         </button>
-        <a
-          href={`/ordenes/${orden.id}`}
-          className="px-4 py-3.5 rounded-lg text-sm font-medium transition-colors text-center"
-          style={{
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-foreground)',
-          }}
-        >
+        <a href={`/ordenes/${orden.id}`} className="px-4 py-3.5 rounded-lg text-sm font-medium transition-colors text-center" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}>
           Cancelar
         </a>
       </div>

@@ -15,6 +15,57 @@ import {
 import { PracticaAutocomplete } from './PracticaAutocomplete'
 import { EscanearOrdenButton, type OrdenEscaneada } from './EscanearOrdenButton'
 
+const inputBase = 'w-full px-4 py-3 rounded-lg text-sm'
+const inputStyle = {
+  background: 'var(--color-background)',
+  border: '1px solid var(--color-border)',
+  color: 'var(--color-foreground)',
+} as const
+const sectionStyle = { background: 'var(--color-surface)', border: '1px solid var(--color-border)' } as const
+
+/** Campo de texto/fecha/número simple, etiquetado. */
+function Campo({
+  name,
+  label,
+  type = 'text',
+  defaultValue,
+  placeholder,
+  mono,
+  dudoso,
+  colSpan,
+  step,
+  min,
+}: {
+  name: string
+  label: string
+  type?: string
+  defaultValue?: string | number
+  placeholder?: string
+  mono?: boolean
+  dudoso?: boolean
+  colSpan?: boolean
+  step?: string
+  min?: string
+}) {
+  return (
+    <div className={colSpan ? 'md:col-span-2' : undefined}>
+      <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+        {label}
+      </label>
+      <input
+        name={name}
+        type={type}
+        defaultValue={defaultValue}
+        placeholder={placeholder}
+        step={step}
+        min={min}
+        className={`${inputBase}${mono ? ' font-mono' : ''}`}
+        style={{ ...inputStyle, ...(dudoso ? { outline: '2px solid var(--color-warning)' } : {}) }}
+      />
+    </div>
+  )
+}
+
 function matchesOsFromScan(scanned: string | null): string {
   if (!scanned) return ''
   const low = scanned.toLowerCase()
@@ -47,8 +98,6 @@ export function NuevaOrdenForm() {
     setFormKey((k) => k + 1)
 
     // Auto-buscar la prestacion en el nomenclador por codigo.
-    // Si la encuentra, dispara el calculo de honorarios sin que el medico tenga
-    // que tipear ni elegir nada.
     if (data.codigo_practica) {
       const supabase = createClient()
       const osForQuery = matched || 'OSEP'
@@ -69,10 +118,6 @@ export function NuevaOrdenForm() {
     return !!ocr?.campos_dudosos?.includes(campo)
   }
 
-  function dudosoStyle(campo: string) {
-    return isDudoso(campo) ? { outline: '2px solid var(--color-warning)' } : {}
-  }
-
   function handlePrestacionSelect(prestacion: Prestacion) {
     setPrestacionSeleccionada(prestacion)
   }
@@ -83,16 +128,42 @@ export function NuevaOrdenForm() {
     setLoading(true)
 
     const form = new FormData(e.currentTarget)
+    const str = (k: string) => (form.get(k) as string) || undefined
 
     // Campos adicionales comunes (OCR / orden completa)
     const comunes = {
-      nro_documento: (form.get('nro_documento') as string) || undefined,
-      nro_comprobante: (form.get('nro_comprobante') as string) || undefined,
-      grupo_afiliado: (form.get('grupo_afiliado') as string) || undefined,
-      fecha_vencimiento: (form.get('fecha_vencimiento') as string) || undefined,
+      nro_documento: str('nro_documento'),
+      nro_comprobante: str('nro_comprobante'),
+      grupo_afiliado: str('grupo_afiliado'),
+      fecha_vencimiento: str('fecha_vencimiento'),
       cantidad: form.get('cantidad') ? Number(form.get('cantidad')) : undefined,
-      medico_solicitante: (form.get('medico_solicitante') as string) || undefined,
-      horario_realizacion: (form.get('horario_realizacion') as string) || undefined,
+      medico_solicitante: str('medico_solicitante'),
+      horario_realizacion: str('horario_realizacion'),
+      delegacion: str('delegacion'),
+      titulo_autorizacion: str('titulo_autorizacion'),
+      nro_internacion: str('nro_internacion'),
+      fecha_solicitud: str('fecha_solicitud'),
+      fecha_prescripcion: str('fecha_prescripcion'),
+      fecha_emision: str('fecha_emision'),
+      hora_emision: str('hora_emision'),
+      titular_nombre: str('titular_nombre'),
+      cobertura: str('cobertura'),
+      parentesco: str('parentesco'),
+      domicilio: str('domicilio'),
+      tipo_documento: str('tipo_documento'),
+      alias: str('alias'),
+      cara: str('cara'),
+      pieza: str('pieza'),
+      forma_pago: str('forma_pago'),
+      cod_pago: str('cod_pago'),
+      origen: str('origen'),
+      arancelista: str('arancelista'),
+      cajero: str('cajero'),
+      total_cargo_afiliado: form.get('total_cargo_afiliado') ? Number(form.get('total_cargo_afiliado')) : undefined,
+      matricula_profesional: str('matricula_profesional'),
+      profesional: str('profesional'),
+      entidad: str('entidad'),
+      responsable: str('responsable'),
     }
 
     const formData: OrdenFormData = tipo === 'obra_social'
@@ -100,16 +171,16 @@ export function NuevaOrdenForm() {
           tipo: 'obra_social',
           nombre_paciente: form.get('nombre_paciente') as string,
           fecha_atencion: form.get('fecha_atencion') as string,
-          observaciones: (form.get('observaciones') as string) || undefined,
+          observaciones: str('observaciones'),
           monto_plus: Number(form.get('monto_plus') || 0),
           agente_facturador: agenteFacturador,
           obra_social: obraSocial,
           nro_afiliado: form.get('nro_afiliado') as string,
-          token_osep: (form.get('token_osep') as string) || undefined,
+          token_osep: str('token_osep'),
           firma_paciente: form.get('firma_paciente') === 'on',
           codigo_practica: prestacionSeleccionada?.codigo ?? (form.get('codigo_practica') as string),
-          nombre_practica: prestacionSeleccionada?.detalle ?? undefined,
-          diagnostico_cie10: (form.get('diagnostico_cie10') as string) || undefined,
+          nombre_practica: prestacionSeleccionada?.detalle ?? str('nombre_practica'),
+          diagnostico_cie10: str('diagnostico_cie10'),
           honorario_calculado: prestacionSeleccionada?.total
             ? Number(prestacionSeleccionada.total)
             : Number(form.get('honorario_calculado') || 0),
@@ -119,7 +190,7 @@ export function NuevaOrdenForm() {
           tipo: 'particular',
           nombre_paciente: form.get('nombre_paciente') as string,
           fecha_atencion: form.get('fecha_atencion') as string,
-          observaciones: (form.get('observaciones') as string) || undefined,
+          observaciones: str('observaciones'),
           monto_plus: Number(form.get('monto_plus') || 0),
           agente_facturador: agenteFacturador,
           nombre_practica: form.get('nombre_practica') as string,
@@ -158,503 +229,283 @@ export function NuevaOrdenForm() {
         </div>
       )}
 
-
-      <form key={formKey} onSubmit={handleSubmit} className="space-y-8">
-      {/* Error message */}
-      {error && (
-        <div className="p-3 rounded-lg text-sm bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400" style={{ border: '1px solid var(--color-error)' }}>
-          {error}
-        </div>
-      )}
-
-      {/* Tipo de atencion */}
-      <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-foreground)' }}>
-          Tipo de atencion
-        </label>
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => setTipo('obra_social')}
-            className="flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all"
-            style={tipo === 'obra_social' ? {
-              background: 'var(--color-primary)',
-              color: 'white',
-              boxShadow: '0 0 0 2px var(--color-primary)',
-            } : {
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              color: 'var(--color-muted-foreground)',
-            }}
-          >
-            Obra Social
-          </button>
-          <button
-            type="button"
-            onClick={() => setTipo('particular')}
-            className="flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all"
-            style={tipo === 'particular' ? {
-              background: 'var(--color-secondary)',
-              color: 'white',
-              boxShadow: '0 0 0 2px var(--color-secondary)',
-            } : {
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              color: 'var(--color-muted-foreground)',
-            }}
-          >
-            Particular
-          </button>
-        </div>
-      </div>
-
-      {/* Agente facturador */}
-      <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-foreground)' }}>
-          Agente facturador *
-        </label>
-        <select
-          value={agenteFacturador}
-          onChange={(e) => setAgenteFacturador(e.target.value as AgenteFacturador)}
-          required
-          className="w-full px-4 py-3 rounded-lg text-sm"
-          style={{
-            background: 'var(--color-background)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-foreground)',
-          }}
-        >
-          {AGENTES_FACTURADORES.map((a) => (
-            <option key={a} value={a}>{AGENTE_LABELS[a]}</option>
-          ))}
-        </select>
-        <p className="text-xs mt-1.5" style={{ color: 'var(--color-muted-foreground)' }}>
-          Quién factura esta orden según el convenio de la OS del paciente.
-        </p>
-      </div>
-
-      {/* Datos del paciente */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-            Nombre del paciente *
-          </label>
-          <input
-            name="nombre_paciente"
-            type="text"
-            required
-            placeholder="Juan Perez"
-            defaultValue={ocr?.paciente ?? ''}
-            className="w-full px-4 py-3 rounded-lg text-sm"
-            style={{
-              background: 'var(--color-background)',
-              border: '1px solid var(--color-border)',
-              color: 'var(--color-foreground)',
-              ...dudosoStyle('paciente'),
-            }}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-            Fecha de atencion *
-          </label>
-          <input
-            name="fecha_atencion"
-            type="date"
-            required
-            defaultValue={ocr?.fecha_realizacion ?? today}
-            max={today}
-            className="w-full px-4 py-3 rounded-lg text-sm"
-            style={{
-              background: 'var(--color-background)',
-              border: '1px solid var(--color-border)',
-              color: 'var(--color-foreground)',
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Campos Obra Social */}
-      {tipo === 'obra_social' && (
-        <div className="space-y-4 p-6 rounded-xl" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
-            Datos de Obra Social
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Obra Social *
-              </label>
-              <select
-                value={obraSocial}
-                onChange={(e) => setObraSocial(e.target.value)}
-                required
-                className="w-full px-4 py-3 rounded-lg text-sm"
-                style={{
-                  background: 'var(--color-background)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-foreground)',
-                }}
-              >
-                <option value="">Seleccionar...</option>
-                {OBRAS_SOCIALES.map((os) => (
-                  <option key={os} value={os}>{os}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Nro. Afiliado *
-              </label>
-              <input
-                name="nro_afiliado"
-                type="text"
-                required
-                placeholder="000000"
-                defaultValue={ocr?.nro_afiliado ?? ''}
-                className="w-full px-4 py-3 rounded-lg text-sm"
-                style={{
-                  background: 'var(--color-background)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-foreground)',
-                  ...dudosoStyle('nro_afiliado'),
-                }}
-              />
-            </div>
+      <form key={formKey} onSubmit={handleSubmit} className="space-y-6">
+        {error && (
+          <div className="p-3 rounded-lg text-sm bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400" style={{ border: '1px solid var(--color-error)' }}>
+            {error}
           </div>
+        )}
 
-          {/* OSEP specific fields */}
-          {obraSocial === 'OSEP' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                  Token OSEP (6 digitos) *
-                </label>
-                <input
-                  name="token_osep"
-                  type="text"
-                  required
-                  maxLength={6}
-                  pattern="[0-9]{6}"
-                  placeholder="123456"
-                  defaultValue={ocr?.token_osep ?? ''}
-                  className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-                  style={{
-                    background: 'var(--color-background)',
-                    border: '1px solid var(--color-border)',
-                    color: 'var(--color-foreground)',
-                    ...dudosoStyle('token_osep'),
-                  }}
-                />
-              </div>
-              <div className="flex items-end">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    name="firma_paciente"
-                    type="checkbox"
-                    defaultChecked={!!ocr?.firma_paciente}
-                    className="w-4 h-4 rounded"
-                    style={{ accentColor: 'var(--color-primary)' }}
-                  />
-                  <span className="text-sm" style={{ color: 'var(--color-foreground)' }}>
-                    Firma del paciente
-                  </span>
-                </label>
-              </div>
-            </div>
-          )}
+        {/* Tipo de atencion */}
+        <div>
+          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-foreground)' }}>
+            Tipo de atencion
+          </label>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setTipo('obra_social')}
+              className="flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all"
+              style={tipo === 'obra_social'
+                ? { background: 'var(--color-primary)', color: 'white', boxShadow: '0 0 0 2px var(--color-primary)' }
+                : { background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-muted-foreground)' }}
+            >
+              Obra Social
+            </button>
+            <button
+              type="button"
+              onClick={() => setTipo('particular')}
+              className="flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all"
+              style={tipo === 'particular'
+                ? { background: 'var(--color-secondary)', color: 'white', boxShadow: '0 0 0 2px var(--color-secondary)' }
+                : { background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-muted-foreground)' }}
+            >
+              Particular
+            </button>
+          </div>
+        </div>
 
-          {/* Practica autocomplete */}
-          <PracticaAutocomplete
-            obraSocial={obraSocial || 'OSEP'}
-            onSelect={handlePrestacionSelect}
-            value={
-              prestacionSeleccionada
-                ? `${prestacionSeleccionada.codigo} - ${prestacionSeleccionada.detalle}`
-                : ocr?.codigo_practica ?? ''
-            }
-          />
+        {/* Agente facturador */}
+        <div>
+          <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-foreground)' }}>
+            Agente facturador *
+          </label>
+          <select
+            value={agenteFacturador}
+            onChange={(e) => setAgenteFacturador(e.target.value as AgenteFacturador)}
+            required
+            className={inputBase}
+            style={inputStyle}
+          >
+            {AGENTES_FACTURADORES.map((a) => (
+              <option key={a} value={a}>{AGENTE_LABELS[a]}</option>
+            ))}
+          </select>
+        </div>
 
-          {/* Diagnostico */}
+        {/* Paciente + fecha de atención (requeridos para ambos tipos) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-              Diagnostico CIE-10
+              Nombre del paciente *
             </label>
             <input
-              name="diagnostico_cie10"
+              name="nombre_paciente"
               type="text"
-              placeholder="Codigo CIE-10 (opcional)"
-              defaultValue={ocr?.diagnostico ?? ''}
-              className="w-full px-4 py-3 rounded-lg text-sm"
-              style={{
-                background: 'var(--color-background)',
-                border: '1px solid var(--color-border)',
-                color: 'var(--color-foreground)',
-              }}
+              required
+              placeholder="Juan Perez"
+              defaultValue={ocr?.paciente ?? ''}
+              className={inputBase}
+              style={{ ...inputStyle, ...(isDudoso('paciente') ? { outline: '2px solid var(--color-warning)' } : {}) }}
             />
           </div>
-
-          {/* Importe manual (fallback): si no se eligió práctica del nomenclador,
-              el honorario se toma de acá — autocompletado con el importe del OCR. */}
-          {!prestacionSeleccionada && (
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Importe / Honorario
-              </label>
-              <input
-                name="honorario_calculado"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                defaultValue={ocr?.importe || ''}
-                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-                style={{
-                  background: 'var(--color-background)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-foreground)',
-                  ...dudosoStyle('importe'),
-                }}
-              />
-            </div>
-          )}
-
-          {/* Datos adicionales de la orden (OCR) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                DNI del paciente
-              </label>
-              <input
-                name="nro_documento"
-                type="text"
-                placeholder="00000000"
-                defaultValue={ocr?.nro_documento ?? ''}
-                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)', ...dudosoStyle('nro_documento') }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Grupo (afiliado)
-              </label>
-              <input
-                name="grupo_afiliado"
-                type="text"
-                placeholder="01"
-                defaultValue={ocr?.grupo_afiliado ?? ''}
-                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)', ...dudosoStyle('grupo_afiliado') }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                N° Comprobante
-              </label>
-              <input
-                name="nro_comprobante"
-                type="text"
-                placeholder="00000000"
-                defaultValue={ocr?.nro_comprobante ?? ''}
-                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)', ...dudosoStyle('nro_comprobante') }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Cantidad
-              </label>
-              <input
-                name="cantidad"
-                type="number"
-                min="0"
-                step="1"
-                placeholder="1"
-                defaultValue={ocr?.cantidad || 1}
-                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Fecha de vencimiento
-              </label>
-              <input
-                name="fecha_vencimiento"
-                type="date"
-                defaultValue={ocr?.fecha_vencimiento ?? ''}
-                className="w-full px-4 py-3 rounded-lg text-sm"
-                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Horario de realización
-              </label>
-              <input
-                name="horario_realizacion"
-                type="text"
-                placeholder="HH:MM"
-                defaultValue={ocr?.horario_realizacion ?? ''}
-                className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-                Médico solicitante
-              </label>
-              <input
-                name="medico_solicitante"
-                type="text"
-                placeholder="Apellido y nombre del prescriptor"
-                defaultValue={ocr?.medico_solicitante ?? ''}
-                className="w-full px-4 py-3 rounded-lg text-sm"
-                style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+              Fecha de atencion (realización) *
+            </label>
+            <input
+              name="fecha_atencion"
+              type="date"
+              required
+              defaultValue={ocr?.fecha_realizacion ?? today}
+              max={today}
+              className={inputBase}
+              style={inputStyle}
+            />
           </div>
+        </div>
 
-          {/* Honorario calculado */}
-          {prestacionSeleccionada && (
-            <div className="p-3 rounded-lg" style={{ background: 'var(--color-background)', border: '1px solid var(--color-success)' }}>
-              <div className="flex items-center justify-between">
+        {/* ===== Campos Obra Social (en el orden físico de la orden) ===== */}
+        {tipo === 'obra_social' && (
+          <>
+            {/* Cabecera / comprobante */}
+            <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Comprobante</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Campo name="delegacion" label="Delegación" defaultValue={ocr?.delegacion ?? ''} />
+                <Campo name="nro_comprobante" label="N° Comprobante" mono defaultValue={ocr?.nro_comprobante ?? ''} dudoso={isDudoso('nro_comprobante')} />
+                <Campo name="titulo_autorizacion" label="Título de autorización" defaultValue={ocr?.titulo_autorizacion ?? ''} />
+                <Campo name="nro_internacion" label="N° Internación" defaultValue={ocr?.nro_internacion ?? ''} />
+              </div>
+            </section>
+
+            {/* Fechas */}
+            <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Fechas</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Campo name="fecha_solicitud" label="Fecha de solicitud" type="date" defaultValue={ocr?.fecha_solicitud ?? ''} />
+                <Campo name="fecha_vencimiento" label="Fecha de vencimiento" type="date" defaultValue={ocr?.fecha_vencimiento ?? ''} />
+                <Campo name="fecha_prescripcion" label="Fecha de prescripción" type="date" defaultValue={ocr?.fecha_prescripcion ?? ''} />
+                <Campo name="fecha_emision" label="Fecha de emisión" type="date" defaultValue={ocr?.fecha_emision ?? ''} />
+                <Campo name="hora_emision" label="Hora de emisión" mono placeholder="HH:MM" defaultValue={ocr?.hora_emision ?? ''} />
+              </div>
+            </section>
+
+            {/* Titular y afiliado */}
+            <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Titular y afiliado</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Honorario calculado</p>
-                  <p className="text-sm font-mono" style={{ color: 'var(--color-foreground)' }}>
-                    {prestacionSeleccionada.codigo} - {prestacionSeleccionada.detalle}
-                  </p>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Obra Social *</label>
+                  <select value={obraSocial} onChange={(e) => setObraSocial(e.target.value)} required className={inputBase} style={inputStyle}>
+                    <option value="">Seleccionar...</option>
+                    {OBRAS_SOCIALES.map((os) => (<option key={os} value={os}>{os}</option>))}
+                  </select>
                 </div>
-                <p className="text-xl font-bold font-mono" style={{ color: 'var(--color-success)' }}>
-                  ${Number(prestacionSeleccionada.total ?? 0).toLocaleString('es-AR')}
-                </p>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Nro. Afiliado *</label>
+                  <input name="nro_afiliado" type="text" required placeholder="000000" defaultValue={ocr?.nro_afiliado ?? ''}
+                    className={inputBase} style={{ ...inputStyle, ...(isDudoso('nro_afiliado') ? { outline: '2px solid var(--color-warning)' } : {}) }} />
+                </div>
+                <Campo name="grupo_afiliado" label="Grupo" mono placeholder="01" defaultValue={ocr?.grupo_afiliado ?? ''} dudoso={isDudoso('grupo_afiliado')} />
+                <Campo name="titular_nombre" label="Titular (apellido y nombre)" defaultValue={ocr?.titular_nombre ?? ''} />
+                <Campo name="medico_solicitante" label="Prescriptor / médico solicitante" colSpan defaultValue={ocr?.medico_solicitante ?? ''} />
               </div>
+
+              {/* OSEP: token + firma */}
+              {obraSocial === 'OSEP' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Campo name="token_osep" label="Token OSEP (6 dígitos)" mono placeholder="123456" defaultValue={ocr?.token_osep ?? ''} dudoso={isDudoso('token_osep')} />
+                  <div className="flex items-end">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input name="firma_paciente" type="checkbox" defaultChecked={!!ocr?.firma_paciente} className="w-4 h-4 rounded" style={{ accentColor: 'var(--color-primary)' }} />
+                      <span className="text-sm" style={{ color: 'var(--color-foreground)' }}>Firma del paciente</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* Beneficiario / documento */}
+            <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Beneficiario y documento</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Campo name="cobertura" label="Cobertura" defaultValue={ocr?.cobertura ?? ''} />
+                <Campo name="parentesco" label="Parentesco" defaultValue={ocr?.parentesco ?? ''} />
+                <Campo name="tipo_documento" label="Tipo de documento" placeholder="DNI" defaultValue={ocr?.tipo_documento ?? ''} />
+                <Campo name="nro_documento" label="N° de documento (DNI)" mono placeholder="00000000" defaultValue={ocr?.nro_documento ?? ''} dudoso={isDudoso('nro_documento')} />
+                <Campo name="domicilio" label="Domicilio" colSpan defaultValue={ocr?.domicilio ?? ''} />
+              </div>
+            </section>
+
+            {/* Práctica */}
+            <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Práctica</h3>
+              <PracticaAutocomplete
+                obraSocial={obraSocial || 'OSEP'}
+                onSelect={handlePrestacionSelect}
+                value={prestacionSeleccionada ? `${prestacionSeleccionada.codigo} - ${prestacionSeleccionada.detalle}` : ocr?.codigo_practica ?? ''}
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Campo name="alias" label="Alias" defaultValue={ocr?.alias ?? ''} />
+                <Campo name="nombre_practica" label="Descripción" colSpan placeholder="Ej: Consulta médica" defaultValue={ocr?.nombre_practica ?? ''} dudoso={isDudoso('nombre_practica')} />
+                <Campo name="cantidad" label="Cantidad" type="number" min="0" step="1" mono defaultValue={ocr?.cantidad || 1} />
+                <Campo name="cara" label="Cara (odontología)" defaultValue={ocr?.cara ?? ''} />
+                <Campo name="pieza" label="Pieza (odontología)" defaultValue={ocr?.pieza ?? ''} />
+                <Campo name="diagnostico_cie10" label="Diagnóstico CIE-10" colSpan defaultValue={ocr?.diagnostico ?? ''} />
+              </div>
+
+              {/* Importe manual (fallback): si no se eligió práctica del nomenclador */}
+              {!prestacionSeleccionada && (
+                <Campo name="honorario_calculado" label="Importe / Honorario" type="number" min="0" step="0.01" mono placeholder="0.00" defaultValue={ocr?.importe || ''} dudoso={isDudoso('importe')} />
+              )}
+
+              {prestacionSeleccionada && (
+                <div className="p-3 rounded-lg" style={{ background: 'var(--color-background)', border: '1px solid var(--color-success)' }}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Honorario calculado</p>
+                      <p className="text-sm font-mono" style={{ color: 'var(--color-foreground)' }}>
+                        {prestacionSeleccionada.codigo} - {prestacionSeleccionada.detalle}
+                      </p>
+                    </div>
+                    <p className="text-xl font-bold font-mono" style={{ color: 'var(--color-success)' }}>
+                      ${Number(prestacionSeleccionada.total ?? 0).toLocaleString('es-AR')}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* Pago */}
+            <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Pago</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Campo name="forma_pago" label="Forma de pago" placeholder="Contado / Posnet Físico" defaultValue={ocr?.forma_pago ?? ''} />
+                <Campo name="origen" label="Origen" placeholder="Prestador / Web Service" defaultValue={ocr?.origen ?? ''} />
+                <Campo name="cod_pago" label="Cód. (solo posnet físico)" mono defaultValue={ocr?.cod_pago ?? ''} />
+              </div>
+            </section>
+
+            {/* Arancel / total */}
+            <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Arancel y total</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Campo name="arancelista" label="Arancelista" defaultValue={ocr?.arancelista ?? ''} />
+                <Campo name="cajero" label="Cajero" defaultValue={ocr?.cajero ?? ''} />
+                <Campo name="total_cargo_afiliado" label="Total a cargo afiliado" type="number" min="0" step="0.01" mono placeholder="0.00" defaultValue={ocr?.total_cargo_afiliado || ''} />
+                <Campo name="horario_realizacion" label="Hora de realización" mono placeholder="HH:MM" defaultValue={ocr?.horario_realizacion ?? ''} />
+              </div>
+            </section>
+
+            {/* Profesional */}
+            <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Profesional</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Campo name="matricula_profesional" label="Matrícula profesional" mono defaultValue={ocr?.matricula_profesional ?? ''} />
+                <Campo name="profesional" label="Profesional (realizador)" defaultValue={ocr?.profesional ?? ''} />
+                <Campo name="entidad" label="Entidad" defaultValue={ocr?.entidad ?? ''} />
+                <Campo name="responsable" label="Responsable" defaultValue={ocr?.responsable ?? ''} />
+              </div>
+            </section>
+          </>
+        )}
+
+        {/* ===== Campos Particular ===== */}
+        {tipo === 'particular' && (
+          <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-secondary)' }}>Prestacion Particular</h3>
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Descripcion de la prestacion *</label>
+              <input name="nombre_practica" type="text" required placeholder="Consulta, cirugia menor, etc." className={inputBase} style={inputStyle} />
             </div>
-          )}
-        </div>
-      )}
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Monto cobrado *</label>
+              <input name="monto_particular" type="number" required min="0" step="0.01" placeholder="0.00" className={`${inputBase} font-mono`} style={inputStyle} />
+            </div>
+          </section>
+        )}
 
-      {/* Campos Particular */}
-      {tipo === 'particular' && (
-        <div className="space-y-4 p-6 rounded-xl" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--color-secondary)' }}>
-            Prestacion Particular
-          </h3>
-
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-              Descripcion de la prestacion *
-            </label>
-            <input
-              name="nombre_practica"
-              type="text"
-              required
-              placeholder="Consulta, cirugia menor, etc."
-              className="w-full px-4 py-3 rounded-lg text-sm"
-              style={{
-                background: 'var(--color-background)',
-                border: '1px solid var(--color-border)',
-                color: 'var(--color-foreground)',
-              }}
-            />
+        {/* Plus (solo Obra Social) */}
+        {tipo === 'obra_social' && (
+          <div className="p-6 rounded-xl" style={{ background: 'var(--color-surface)', border: '1px dashed var(--color-border)' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--color-warning)' }}>
+                <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-warning)' }}>Plus (privado)</h3>
+            </div>
+            <p className="text-xs mb-3" style={{ color: 'var(--color-muted-foreground)' }}>Este dato es estrictamente privado. Solo vos podes verlo.</p>
+            <input name="monto_plus" type="number" min="0" step="0.01" defaultValue="0" placeholder="0.00" className={`${inputBase} font-mono`} style={inputStyle} />
           </div>
+        )}
 
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-              Monto cobrado *
-            </label>
-            <input
-              name="monto_particular"
-              type="number"
-              required
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-              style={{
-                background: 'var(--color-background)',
-                border: '1px solid var(--color-border)',
-                color: 'var(--color-foreground)',
-              }}
-            />
-          </div>
+        {/* Observaciones */}
+        <div>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Observaciones</label>
+          <textarea name="observaciones" rows={3} placeholder="Notas adicionales (opcional)" defaultValue={ocr?.observaciones ?? ''}
+            className={`${inputBase} resize-none`} style={inputStyle} />
         </div>
-      )}
 
-      {/* Plus (solo para Obra Social) */}
-      {tipo === 'obra_social' && (
-      <div className="p-6 rounded-xl" style={{ background: 'var(--color-surface)', border: '1px dashed var(--color-border)' }}>
-        <div className="flex items-center gap-2 mb-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--color-warning)' }}>
-            <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--color-warning)' }}>
-            Plus (privado)
-          </h3>
+        {/* Botones */}
+        <div className="flex gap-3 pt-2">
+          <button type="submit" disabled={loading} className="flex-1 px-4 py-3.5 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50" style={{ background: 'var(--color-primary)' }}>
+            {loading ? 'Guardando...' : 'Guardar orden'}
+          </button>
+          <a href="/ordenes" className="px-4 py-3.5 rounded-lg text-sm font-medium transition-colors text-center" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}>
+            Cancelar
+          </a>
         </div>
-        <p className="text-xs mb-3" style={{ color: 'var(--color-muted-foreground)' }}>
-          Este dato es estrictamente privado. Solo vos podes verlo.
-        </p>
-        <input
-          name="monto_plus"
-          type="number"
-          min="0"
-          step="0.01"
-          defaultValue="0"
-          placeholder="0.00"
-          className="w-full px-4 py-3 rounded-lg text-sm font-mono"
-          style={{
-            background: 'var(--color-background)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-foreground)',
-          }}
-        />
-      </div>
-      )}
-
-      {/* Observaciones */}
-      <div>
-        <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-          Observaciones
-        </label>
-        <textarea
-          name="observaciones"
-          rows={3}
-          placeholder="Notas adicionales (opcional)"
-          defaultValue={ocr?.observaciones ?? ''}
-          className="w-full px-4 py-3 rounded-lg text-sm resize-none"
-          style={{
-            background: 'var(--color-background)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-foreground)',
-          }}
-        />
-      </div>
-
-      {/* Botones */}
-      <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={loading}
-          className="flex-1 px-4 py-3.5 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50"
-          style={{ background: 'var(--color-primary)' }}
-        >
-          {loading ? 'Guardando...' : 'Guardar orden'}
-        </button>
-        <a
-          href="/ordenes"
-          className="px-4 py-3.5 rounded-lg text-sm font-medium transition-colors text-center"
-          style={{
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            color: 'var(--color-foreground)',
-          }}
-        >
-          Cancelar
-        </a>
-      </div>
       </form>
     </div>
   )

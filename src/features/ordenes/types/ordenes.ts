@@ -60,6 +60,32 @@ export interface Orden {
   cantidad: number | null
   medico_solicitante: string | null
   horario_realizacion: string | null
+  // Captura completa de la orden OSEP
+  delegacion: string | null
+  titulo_autorizacion: string | null
+  nro_internacion: string | null
+  fecha_solicitud: string | null
+  fecha_prescripcion: string | null
+  fecha_emision: string | null
+  hora_emision: string | null
+  titular_nombre: string | null
+  cobertura: string | null
+  parentesco: string | null
+  domicilio: string | null
+  tipo_documento: string | null
+  alias: string | null
+  cara: string | null
+  pieza: string | null
+  forma_pago: string | null
+  cod_pago: string | null
+  origen: string | null
+  arancelista: string | null
+  cajero: string | null
+  total_cargo_afiliado: number | null
+  matricula_profesional: string | null
+  profesional: string | null
+  entidad: string | null
+  responsable: string | null
   created_at: string
   updated_at: string
 }
@@ -114,6 +140,32 @@ export const ordenBaseSchema = z.object({
   cantidad: z.coerce.number().min(0).optional(),
   medico_solicitante: z.string().optional(),
   horario_realizacion: z.string().optional(),
+  // Captura completa de la orden OSEP
+  delegacion: z.string().optional(),
+  titulo_autorizacion: z.string().optional(),
+  nro_internacion: z.string().optional(),
+  fecha_solicitud: z.string().optional(),
+  fecha_prescripcion: z.string().optional(),
+  fecha_emision: z.string().optional(),
+  hora_emision: z.string().optional(),
+  titular_nombre: z.string().optional(),
+  cobertura: z.string().optional(),
+  parentesco: z.string().optional(),
+  domicilio: z.string().optional(),
+  tipo_documento: z.string().optional(),
+  alias: z.string().optional(),
+  cara: z.string().optional(),
+  pieza: z.string().optional(),
+  forma_pago: z.string().optional(),
+  cod_pago: z.string().optional(),
+  origen: z.string().optional(),
+  arancelista: z.string().optional(),
+  cajero: z.string().optional(),
+  total_cargo_afiliado: z.coerce.number().min(0).optional(),
+  matricula_profesional: z.string().optional(),
+  profesional: z.string().optional(),
+  entidad: z.string().optional(),
+  responsable: z.string().optional(),
 })
 
 export const ordenObraSocialSchema = ordenBaseSchema.extend({
