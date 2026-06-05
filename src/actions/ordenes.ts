@@ -22,11 +22,10 @@ export async function createOrden(formData: OrdenFormData) {
 
   // OSEP-specific validation
   if (data.tipo === 'obra_social' && data.obra_social === 'OSEP') {
-    if (!data.token_osep || data.token_osep.length !== 6) {
-      return { error: 'Token OSEP debe tener 6 digitos' }
-    }
-    if (!data.firma_paciente) {
-      return { error: 'Firma del paciente requerida para OSEP' }
+    // Token opcional: las órdenes electrónicas (Web Service) no traen token de 6 dígitos.
+    // Si el médico lo carga, validamos el formato.
+    if (data.token_osep && data.token_osep.length !== 6) {
+      return { error: 'El token OSEP, si lo cargás, debe tener 6 dígitos' }
     }
   }
 
@@ -84,6 +83,13 @@ export async function createOrden(formData: OrdenFormData) {
     profesional: data.profesional ?? null,
     entidad: data.entidad ?? null,
     responsable: data.responsable ?? null,
+    imagen_comprobante: data.imagen_comprobante ?? null,
+    // Nivel + foja quirúrgica (Nivel 2)
+    nivel: data.nivel ?? 1,
+    cirugia_adicional: data.cirugia_adicional ?? null,
+    cirugia_adicional_codigo: data.cirugia_adicional_codigo ?? null,
+    cirugia_adicional_honorario: data.cirugia_adicional_honorario ?? null,
+    rol_medico: data.rol_medico ?? null,
     estado: 'borrador',
   }
 
@@ -114,11 +120,10 @@ export async function updateOrden(ordenId: string, formData: OrdenFormData) {
   const data = parsed.data
 
   if (data.tipo === 'obra_social' && data.obra_social === 'OSEP') {
-    if (!data.token_osep || data.token_osep.length !== 6) {
-      return { error: 'Token OSEP debe tener 6 digitos' }
-    }
-    if (!data.firma_paciente) {
-      return { error: 'Firma del paciente requerida para OSEP' }
+    // Token opcional: las órdenes electrónicas (Web Service) no traen token de 6 dígitos.
+    // Si el médico lo carga, validamos el formato.
+    if (data.token_osep && data.token_osep.length !== 6) {
+      return { error: 'El token OSEP, si lo cargás, debe tener 6 dígitos' }
     }
   }
 

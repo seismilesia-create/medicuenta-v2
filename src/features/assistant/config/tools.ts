@@ -21,7 +21,7 @@ async function requireMedicoId() {
 // ============================================================================
 export const registrarOrdenTool = tool({
   description: `Registra una nueva orden de consulta o prestación menor (1° Nivel). Se guarda en estado 'borrador'.
-Usá esta tool cuando el médico diga "registrá una orden", "agregá una consulta", "cargá esta atención", etc.
+REQUISITO OBLIGATORIO: las órdenes SOLO se cargan desde una FOTO. Ejecutá esta tool únicamente DESPUÉS de analizar_imagen_orden, y pasá su 'imagen_comprobante'. Si el médico quiere registrar una orden sin foto (dictando datos), NO uses esta tool: pedile que te mande la foto de la orden.
 IMPORTANTE: Siempre confirmá los datos con el médico antes de ejecutar la tool.
 
 Ejemplo OS: { tipo: 'obra_social', nombre_paciente: 'Juan Pérez', fecha_atencion: '2026-04-16', obra_social: 'OSEP', nro_afiliado: '1234', agente_facturador: 'circulo_medico', codigo_practica: '420101', honorario_calculado: 5000, monto_plus: 0 }
@@ -69,6 +69,14 @@ Ejemplo particular: { tipo: 'particular', nombre_paciente: 'María Gómez', fech
     profesional: z.string().optional(),
     entidad: z.string().optional(),
     responsable: z.string().optional(),
+    imagen_comprobante: z.string().optional().describe('Ruta del comprobante que devolvió analizar_imagen_orden. OBLIGATORIA para Nivel 1: no registres una orden de foto sin esto.'),
+
+    // Nivel 2 (foja quirúrgica) — se carga por VOZ, sin foto
+    nivel: z.number().int().optional().describe('1 = consulta/práctica ambulatoria (foto). 2 = foja quirúrgica (voz). Default 1.'),
+    cirugia_adicional: z.string().optional().describe('Nivel 2: descripción de la cirugía adicional'),
+    cirugia_adicional_codigo: z.string().optional().describe('Nivel 2: código de nomenclador de la cirugía adicional'),
+    cirugia_adicional_honorario: z.number().min(0).optional().describe('Nivel 2: honorario de la cirugía adicional'),
+    rol_medico: z.enum(['cirujano_principal', 'ayudante']).optional().describe('Nivel 2: rol del médico'),
 
     // OS specific (required when tipo='obra_social')
     obra_social: z.string().optional(),
@@ -148,6 +156,13 @@ Ejemplo particular: { tipo: 'particular', nombre_paciente: 'María Gómez', fech
         profesional: input.profesional ?? null,
         entidad: input.entidad ?? null,
         responsable: input.responsable ?? null,
+        imagen_comprobante: input.imagen_comprobante ?? null,
+        // Nivel 2 (foja quirúrgica)
+        nivel: input.nivel ?? 1,
+        cirugia_adicional: input.cirugia_adicional ?? null,
+        cirugia_adicional_codigo: input.cirugia_adicional_codigo ?? null,
+        cirugia_adicional_honorario: input.cirugia_adicional_honorario ?? null,
+        rol_medico: input.rol_medico ?? null,
         estado: 'borrador',
       }
 
@@ -504,8 +519,25 @@ Devuelve estructura con nivel de confianza y lista de campos dudosos.`,
         ],
       })
 
+      // Subir la foto como comprobante (bucket privado). No bloquea el análisis si falla.
+      let imagen_comprobante: string | null = null
+      try {
+        const { supabase, medicoId } = await requireMedicoId()
+        const base64 = input.imagen_url.includes(',') ? input.imagen_url.split(',')[1] : input.imagen_url
+        const buffer = Buffer.from(base64, 'base64')
+        const path = `${medicoId}/${crypto.randomUUID()}.jpg`
+        const { error: upErr } = await supabase.storage
+          .from('comprobantes')
+          .upload(path, buffer, { contentType: 'image/jpeg', upsert: false })
+        if (!upErr) imagen_comprobante = path
+        else console.error('[ocr] comprobante upload error:', upErr.message)
+      } catch (e) {
+        console.error('[ocr] comprobante upload failed:', e)
+      }
+
       return {
         success: true,
+        imagen_comprobante,
         ...object,
       }
     } catch (err) {
@@ -532,7 +564,7 @@ Devuelve la respuesta ya formulada — vos después la explicás en tus palabras
       cobrado: 'En /dashboard tenés el KPI "Cobrado" del mes. En /reportes podés ver la evolución mensual y filtrar por OS o agente facturador.',
       nomenclador: 'Dos opciones: ir a /nomenclador o pedírmelo a mí directamente con una búsqueda.',
       debito: 'Cargá el débito en /debitos/nuevo o pedime que lo registre. Motivos como falta_token o falta_firma se marcan automáticamente como refacturables.',
-      cirugia: 'En /cirugias/nueva cargás la cirugía con nivel (1° o 2°), agente facturador e institución. Si el paciente queda internado, completá fecha_alta_paciente.',
+      cirugia: 'Las cirugías se cargan SOLO por voz: decime los datos (paciente, OS, cirugía principal, adicionales, rol) y te guío con preguntas hasta completarla. No hay formulario manual ni carga por foto.',
       reporte: 'En /reportes tenés KPIs, 6 gráficos y tabla 12 meses. Filtros por período, OS, tipo, nivel, agente e institución.',
     }
     const matched = Object.entries(tips).find(([k]) => tema.includes(k))
@@ -569,7 +601,6 @@ Después de navegar, el chat se achica a un panel lateral y la sección queda co
 // ============================================================================
 export const assistantTools = {
   registrar_orden: registrarOrdenTool,
-  registrar_cirugia: registrarCirugiaTool,
   registrar_debito: registrarDebitoTool,
   consultar_nomenclador: consultarNomencladorTool,
   analizar_imagen_orden: analizarImagenOrdenTool,

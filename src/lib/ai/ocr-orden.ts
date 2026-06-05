@@ -95,6 +95,8 @@ export const OCR_ORDEN_PROMPT = `Analizá esta imagen de una orden médica de OS
 
 Valores vacíos: texto que no se lee/no figura → "". Numéricos sin valor → 0. agente_facturador sin dato → "". NUNCA inventes datos.
 
+**REGLA DE ORO — ante la duda, vacío**: si NO estás seguro de lo que dice un campo (ilegible, borroso, ambiguo, o no sabés qué corresponde ahí), DEJALO VACÍO ("" o 0) y agregalo a campos_dudosos. Es MEJOR dejar un campo en blanco que rellenarlo con un valor adivinado o "que podría ser". No completes un campo solo porque parece que algo debería ir ahí. Solo poné un valor cuando lo leíste con razonable certeza.
+
 Lectura campo por campo:
 - **Beneficiario vs Titular**: "paciente" = el BENEFICIARIO; "titular_nombre" = el TITULAR (a veces son la misma persona, a veces no).
 - **Afiliado**: separá "Grupo" (ej: 01) del "N° Afiliado" (ej: 033883).

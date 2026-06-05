@@ -226,7 +226,6 @@ export function EditarOrdenForm({ orden }: Props) {
               <Campo name="delegacion" label="Delegación" defaultValue={orden.delegacion ?? ''} />
               <Campo name="nro_comprobante" label="N° Comprobante" mono defaultValue={orden.nro_comprobante ?? ''} />
               <Campo name="titulo_autorizacion" label="Título de autorización" defaultValue={orden.titulo_autorizacion ?? ''} />
-              <Campo name="nro_internacion" label="N° Internación" defaultValue={orden.nro_internacion ?? ''} />
             </div>
           </section>
 
@@ -289,7 +288,6 @@ export function EditarOrdenForm({ orden }: Props) {
             <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Práctica</h3>
             <PracticaAutocomplete obraSocial={obraSocial || 'OSEP'} onSelect={handlePrestacionSelect} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Campo name="alias" label="Alias" defaultValue={orden.alias ?? ''} />
               <Campo name="nombre_practica" label="Descripción" colSpan placeholder="Ej: Consulta médica" defaultValue={orden.nombre_practica ?? ''} />
               <Campo name="cantidad" label="Cantidad" type="number" min="0" step="1" mono defaultValue={orden.cantidad ?? 1} />
               <Campo name="cara" label="Cara (odontología)" defaultValue={orden.cara ?? ''} />
@@ -318,14 +316,11 @@ export function EditarOrdenForm({ orden }: Props) {
             )}
           </section>
 
-          {/* Pago */}
+
+          {/* Origen */}
           <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Pago</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Campo name="forma_pago" label="Forma de pago" placeholder="Contado / Posnet Físico" defaultValue={orden.forma_pago ?? ''} />
-              <Campo name="origen" label="Origen" placeholder="Prestador / Web Service" defaultValue={orden.origen ?? ''} />
-              <Campo name="cod_pago" label="Cód. (solo posnet físico)" mono defaultValue={orden.cod_pago ?? ''} />
-            </div>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Origen</h3>
+            <Campo name="origen" label="Origen" placeholder="Prestador / Web Service" defaultValue={orden.origen ?? ''} />
           </section>
 
           {/* Arancel / total */}
@@ -339,16 +334,6 @@ export function EditarOrdenForm({ orden }: Props) {
             </div>
           </section>
 
-          {/* Profesional */}
-          <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Profesional</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Campo name="matricula_profesional" label="Matrícula profesional" mono defaultValue={orden.matricula_profesional ?? ''} />
-              <Campo name="profesional" label="Profesional (realizador)" defaultValue={orden.profesional ?? ''} />
-              <Campo name="entidad" label="Entidad" defaultValue={orden.entidad ?? ''} />
-              <Campo name="responsable" label="Responsable" defaultValue={orden.responsable ?? ''} />
-            </div>
-          </section>
         </>
       )}
 

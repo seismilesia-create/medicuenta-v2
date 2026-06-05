@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { NuevaCirugiaForm } from '@/features/cirugias/components'
+import { CirugiaVozCard } from './CirugiaVozCard'
 
 export const metadata = { title: 'Nueva Cirugia | MediCuenta' }
 
@@ -26,12 +26,12 @@ export default function NuevaCirugiaPage() {
           Nueva cirugia
         </h1>
         <p className="mt-1.5 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-          Registra una nueva cirugia o procedimiento quirurgico
+          Las cirugias (fojas quirurgicas) se registran dictandoselas al asistente.
         </p>
       </div>
 
-      {/* Form */}
-      <NuevaCirugiaForm />
+      {/* Carga por voz */}
+      <CirugiaVozCard />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { NuevaOrdenForm } from '@/features/ordenes/components'
+import { NuevaOrdenSwitcher } from '@/features/ordenes/components'
 
 export const metadata = {
   title: 'Nueva Orden | MediCuenta',
@@ -28,7 +28,7 @@ export default function NuevaOrdenPage() {
         </p>
       </div>
 
-      <NuevaOrdenForm />
+      <NuevaOrdenSwitcher />
     </div>
   )
 }

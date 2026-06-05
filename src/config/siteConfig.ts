@@ -72,7 +72,6 @@ export const siteConfig: MediCuentaConfig = {
       { label: 'Liquidaciones', href: '/liquidaciones', icon: 'settlements' },
       { label: 'Debitos', href: '/debitos', icon: 'debits' },
       { label: 'Nomenclador', href: '/nomenclador', icon: 'nomenclator', phase: 2, disabled: true },
-      { label: 'Cirugias', href: '/cirugias', icon: 'surgeries', phase: 3, disabled: true },
     ],
     footer: [
       { label: 'Perfil', href: '/perfil', icon: 'profile' },

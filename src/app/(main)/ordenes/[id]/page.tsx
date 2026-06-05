@@ -110,6 +110,15 @@ export default async function OrdenDetallePage({
 
   const typedOrden = orden as Orden
 
+  // Comprobante (foto): URL firmada temporal desde el bucket privado.
+  let comprobanteUrl: string | null = null
+  if (typedOrden.imagen_comprobante) {
+    const { data: signed } = await supabase.storage
+      .from('comprobantes')
+      .createSignedUrl(typedOrden.imagen_comprobante, 3600)
+    comprobanteUrl = signed?.signedUrl ?? null
+  }
+
   const honorario = typedOrden.honorario_calculado ?? 0
   const particular = typedOrden.monto_particular ?? 0
   const plus = typedOrden.monto_plus ?? 0
@@ -329,6 +338,37 @@ export default async function OrdenDetallePage({
           </div>
         </dl>
       </section>
+
+      {/* ------------------------------------------------------------------
+          Comprobante (foto escaneada)
+      ------------------------------------------------------------------ */}
+      {comprobanteUrl && (
+        <section
+          className="rounded-xl p-5 md:p-6 space-y-3"
+          style={{ backgroundColor: 'var(--color-surface)' }}
+          aria-labelledby="section-comprobante"
+        >
+          <h2
+            id="section-comprobante"
+            className="text-sm font-semibold uppercase tracking-wide"
+            style={{ color: 'var(--color-muted-foreground)' }}
+          >
+            Comprobante
+          </h2>
+          <a href={comprobanteUrl} target="_blank" rel="noopener noreferrer" className="block">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={comprobanteUrl}
+              alt="Foto de la orden (comprobante)"
+              className="max-h-96 w-auto rounded-lg border"
+              style={{ borderColor: 'var(--color-border)' }}
+            />
+          </a>
+          <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+            Tocá la imagen para verla en grande.
+          </p>
+        </section>
+      )}
 
       {/* ------------------------------------------------------------------
           Observaciones (conditional)

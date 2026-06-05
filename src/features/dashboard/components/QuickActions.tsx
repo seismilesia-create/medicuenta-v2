@@ -25,7 +25,6 @@ const quickActions: QuickActionItem[] = [
   { label: 'Nueva orden', icon: FileText, href: '/ordenes/nueva', color: 'primary' },
   { label: 'Nueva liquidacion', icon: Receipt, href: '/liquidaciones/nueva', color: 'sky' },
   { label: 'Nuevo debito', icon: AlertTriangle, href: '/debitos/nuevo', color: 'amber' },
-  { label: 'Nueva cirugia', icon: Scissors, href: '/cirugias/nueva', color: 'blue' },
 ]
 
 const colorVariants: Record<QuickActionItem['color'], { bg: string; text: string; hover: string }> = {

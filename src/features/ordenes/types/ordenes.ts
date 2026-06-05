@@ -11,6 +11,18 @@ export type EstadoOrden = (typeof ESTADOS_ORDEN)[number]
 export const AGENTES_FACTURADORES = ['circulo_medico', 'medical_group', 'comunidad'] as const
 export type AgenteFacturador = (typeof AGENTES_FACTURADORES)[number]
 
+// Nivel 1 = consulta / práctica ambulatoria (foto). Nivel 2 = foja quirúrgica (voz).
+export const NIVELES = [1, 2] as const
+export type Nivel = (typeof NIVELES)[number]
+
+export const ROLES_MEDICO = ['cirujano_principal', 'ayudante'] as const
+export type RolMedico = (typeof ROLES_MEDICO)[number]
+
+export const ROL_MEDICO_LABELS: Record<RolMedico, string> = {
+  cirujano_principal: 'Cirujano principal',
+  ayudante: 'Ayudante',
+}
+
 export const AGENTE_LABELS: Record<AgenteFacturador, string> = {
   circulo_medico: 'Círculo Médico',
   medical_group: 'Medical Group',
@@ -86,6 +98,13 @@ export interface Orden {
   profesional: string | null
   entidad: string | null
   responsable: string | null
+  imagen_comprobante: string | null
+  // Nivel (1 = ambulatoria/consulta, 2 = foja quirúrgica)
+  nivel: number
+  cirugia_adicional: string | null
+  cirugia_adicional_codigo: string | null
+  cirugia_adicional_honorario: number | null
+  rol_medico: string | null
   created_at: string
   updated_at: string
 }
@@ -166,15 +185,22 @@ export const ordenBaseSchema = z.object({
   profesional: z.string().optional(),
   entidad: z.string().optional(),
   responsable: z.string().optional(),
+  imagen_comprobante: z.string().optional(),
+  // Nivel + foja quirúrgica (Nivel 2)
+  nivel: z.coerce.number().optional(),
+  cirugia_adicional: z.string().optional(),
+  cirugia_adicional_codigo: z.string().optional(),
+  cirugia_adicional_honorario: z.coerce.number().min(0).optional(),
+  rol_medico: z.enum(ROLES_MEDICO).optional(),
 })
 
 export const ordenObraSocialSchema = ordenBaseSchema.extend({
   tipo: z.literal('obra_social'),
   obra_social: z.string().min(1, 'Obra social requerida'),
-  nro_afiliado: z.string().min(1, 'Numero de afiliado requerido'),
+  nro_afiliado: z.string().optional(),
   token_osep: z.string().optional(),
   firma_paciente: z.boolean().default(false),
-  codigo_practica: z.string().min(1, 'Codigo de practica requerido'),
+  codigo_practica: z.string().optional(),
   nombre_practica: z.string().optional(),
   diagnostico_cie10: z.string().optional(),
   honorario_calculado: z.coerce.number().min(0).default(0),

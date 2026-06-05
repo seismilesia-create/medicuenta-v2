@@ -78,6 +78,57 @@ function matchesOsFromScan(scanned: string | null): string {
   return ''
 }
 
+// El código en la orden viene envuelto (ej: "01-420101-01"); el núcleo es el
+// segmento de dígitos más largo (ej: "420101"), que es lo que guarda el nomenclador.
+function nucleoCodigo(raw: string): string {
+  const segs = raw.split(/[^0-9]+/).filter(Boolean)
+  if (segs.length === 0) return raw.trim()
+  return segs.reduce((a, b) => (b.length >= a.length ? b : a))
+}
+
+const PRESTACION_SELECT = 'id, codigo, detalle, honorarios, gastos, total, seccion, categoria, obra_social'
+
+/** Convierte un data URL (base64) a Blob para subir a Storage. */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [meta, b64] = dataUrl.split(',')
+  const mime = meta.match(/:(.*?);/)?.[1] ?? 'image/jpeg'
+  const bin = atob(b64)
+  const arr = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i)
+  return new Blob([arr], { type: mime })
+}
+
+/** Busca una prestación del nomenclador a partir del código escaneado, tolerante al formato. */
+async function buscarPrestacionPorCodigo(obraSocial: string, rawCodigo: string): Promise<Prestacion | null> {
+  const supabase = createClient()
+  const nucleo = nucleoCodigo(rawCodigo)
+  const candidatos = Array.from(new Set([nucleo, rawCodigo.trim()].filter(Boolean)))
+
+  // 1) Match exacto por núcleo o por el código completo.
+  for (const cand of candidatos) {
+    const { data } = await supabase
+      .from('prestaciones')
+      .select(PRESTACION_SELECT)
+      .eq('obra_social', obraSocial)
+      .eq('codigo', cand)
+      .limit(1)
+    if (data && data.length) return data[0] as Prestacion
+  }
+
+  // 2) Match por substring del núcleo (cubre códigos guardados envueltos).
+  if (nucleo.length >= 3) {
+    const { data } = await supabase
+      .from('prestaciones')
+      .select(PRESTACION_SELECT)
+      .eq('obra_social', obraSocial)
+      .ilike('codigo', `%${nucleo}%`)
+      .limit(1)
+    if (data && data.length) return data[0] as Prestacion
+  }
+
+  return null
+}
+
 export function NuevaOrdenForm() {
   const [tipo, setTipo] = useState<TipoAtencion>('obra_social')
   const [obraSocial, setObraSocial] = useState('')
@@ -86,6 +137,7 @@ export function NuevaOrdenForm() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [ocr, setOcr] = useState<OrdenEscaneada | null>(null)
+  const [imagenComprobante, setImagenComprobante] = useState<string | null>(null)
   const [formKey, setFormKey] = useState(0)
 
   async function handleOcrExtracted(data: OrdenEscaneada) {
@@ -94,24 +146,15 @@ export function NuevaOrdenForm() {
     const matched = matchesOsFromScan(data.obra_social)
     if (matched) setObraSocial(matched)
     if (data.agente_facturador) setAgenteFacturador(data.agente_facturador)
-    setPrestacionSeleccionada(null) // limpio cualquier previa antes del lookup
-    setFormKey((k) => k + 1)
 
-    // Auto-buscar la prestacion en el nomenclador por codigo.
+    // Escanear el código → traer descripción + honorarios desde el nomenclador.
+    let prestacion: Prestacion | null = null
     if (data.codigo_practica) {
-      const supabase = createClient()
-      const osForQuery = matched || 'OSEP'
-      const { data: prestacion } = await supabase
-        .from('prestaciones')
-        .select('id, codigo, detalle, honorarios, gastos, total, seccion, categoria, obra_social')
-        .eq('obra_social', osForQuery)
-        .eq('codigo', data.codigo_practica)
-        .maybeSingle()
-
-      if (prestacion) {
-        setPrestacionSeleccionada(prestacion as Prestacion)
-      }
+      prestacion = await buscarPrestacionPorCodigo(matched || 'OSEP', data.codigo_practica)
     }
+    setPrestacionSeleccionada(prestacion)
+    // Un solo re-render con OCR + prestación ya resuelta.
+    setFormKey((k) => k + 1)
   }
 
   function isDudoso(campo: string): boolean {
@@ -129,6 +172,25 @@ export function NuevaOrdenForm() {
 
     const form = new FormData(e.currentTarget)
     const str = (k: string) => (form.get(k) as string) || undefined
+
+    // Subir la foto escaneada como comprobante (bucket privado). No bloquea el guardado si falla.
+    let imagenPath: string | undefined
+    if (imagenComprobante) {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const path = `${user.id}/${crypto.randomUUID()}.jpg`
+          const { error: upErr } = await supabase.storage
+            .from('comprobantes')
+            .upload(path, dataUrlToBlob(imagenComprobante), { contentType: 'image/jpeg', upsert: false })
+          if (!upErr) imagenPath = path
+          else console.error('[comprobante] upload error:', upErr.message)
+        }
+      } catch (err) {
+        console.error('[comprobante] upload failed:', err)
+      }
+    }
 
     // Campos adicionales comunes (OCR / orden completa)
     const comunes = {
@@ -164,6 +226,7 @@ export function NuevaOrdenForm() {
       profesional: str('profesional'),
       entidad: str('entidad'),
       responsable: str('responsable'),
+      imagen_comprobante: imagenPath,
     }
 
     const formData: OrdenFormData = tipo === 'obra_social'
@@ -211,7 +274,11 @@ export function NuevaOrdenForm() {
 
   return (
     <div className="max-w-2xl">
-      <EscanearOrdenButton onExtracted={handleOcrExtracted} />
+      <EscanearOrdenButton
+        onExtracted={handleOcrExtracted}
+        onImage={setImagenComprobante}
+        variant={ocr ? 'compact' : 'hero'}
+      />
 
       {ocr && (
         <div
@@ -229,6 +296,7 @@ export function NuevaOrdenForm() {
         </div>
       )}
 
+      {ocr && (
       <form key={formKey} onSubmit={handleSubmit} className="space-y-6">
         {error && (
           <div className="p-3 rounded-lg text-sm bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400" style={{ border: '1px solid var(--color-error)' }}>
@@ -325,7 +393,6 @@ export function NuevaOrdenForm() {
                 <Campo name="delegacion" label="Delegación" defaultValue={ocr?.delegacion ?? ''} />
                 <Campo name="nro_comprobante" label="N° Comprobante" mono defaultValue={ocr?.nro_comprobante ?? ''} dudoso={isDudoso('nro_comprobante')} />
                 <Campo name="titulo_autorizacion" label="Título de autorización" defaultValue={ocr?.titulo_autorizacion ?? ''} />
-                <Campo name="nro_internacion" label="N° Internación" defaultValue={ocr?.nro_internacion ?? ''} />
               </div>
             </section>
 
@@ -397,8 +464,7 @@ export function NuevaOrdenForm() {
                 value={prestacionSeleccionada ? `${prestacionSeleccionada.codigo} - ${prestacionSeleccionada.detalle}` : ocr?.codigo_practica ?? ''}
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Campo name="alias" label="Alias" defaultValue={ocr?.alias ?? ''} />
-                <Campo name="nombre_practica" label="Descripción" colSpan placeholder="Ej: Consulta médica" defaultValue={ocr?.nombre_practica ?? ''} dudoso={isDudoso('nombre_practica')} />
+                <Campo name="nombre_practica" label="Descripción" colSpan placeholder="Ej: Consulta médica" defaultValue={prestacionSeleccionada?.detalle ?? ocr?.nombre_practica ?? ''} dudoso={isDudoso('nombre_practica')} />
                 <Campo name="cantidad" label="Cantidad" type="number" min="0" step="1" mono defaultValue={ocr?.cantidad || 1} />
                 <Campo name="cara" label="Cara (odontología)" defaultValue={ocr?.cara ?? ''} />
                 <Campo name="pieza" label="Pieza (odontología)" defaultValue={ocr?.pieza ?? ''} />
@@ -427,14 +493,11 @@ export function NuevaOrdenForm() {
               )}
             </section>
 
-            {/* Pago */}
+
+            {/* Origen */}
             <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Pago</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Campo name="forma_pago" label="Forma de pago" placeholder="Contado / Posnet Físico" defaultValue={ocr?.forma_pago ?? ''} />
-                <Campo name="origen" label="Origen" placeholder="Prestador / Web Service" defaultValue={ocr?.origen ?? ''} />
-                <Campo name="cod_pago" label="Cód. (solo posnet físico)" mono defaultValue={ocr?.cod_pago ?? ''} />
-              </div>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Origen</h3>
+              <Campo name="origen" label="Origen" placeholder="Prestador / Web Service" defaultValue={ocr?.origen ?? ''} />
             </section>
 
             {/* Arancel / total */}
@@ -448,16 +511,6 @@ export function NuevaOrdenForm() {
               </div>
             </section>
 
-            {/* Profesional */}
-            <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Profesional</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Campo name="matricula_profesional" label="Matrícula profesional" mono defaultValue={ocr?.matricula_profesional ?? ''} />
-                <Campo name="profesional" label="Profesional (realizador)" defaultValue={ocr?.profesional ?? ''} />
-                <Campo name="entidad" label="Entidad" defaultValue={ocr?.entidad ?? ''} />
-                <Campo name="responsable" label="Responsable" defaultValue={ocr?.responsable ?? ''} />
-              </div>
-            </section>
           </>
         )}
 
@@ -507,6 +560,7 @@ export function NuevaOrdenForm() {
           </a>
         </div>
       </form>
+      )}
     </div>
   )
 }
