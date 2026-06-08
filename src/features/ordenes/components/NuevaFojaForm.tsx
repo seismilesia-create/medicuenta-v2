@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef, useState } from 'react'
-import { Mic, MicOff, Loader2, Check, RotateCcw } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Mic, MicOff, Loader2, Check, RotateCcw, Hand, ListChecks } from 'lucide-react'
 import { createOrden } from '@/actions/ordenes'
 import { createClient } from '@/lib/supabase/client'
 import { useVoiceInput } from '@/features/assistant/hooks/useVoiceInput'
@@ -16,6 +16,7 @@ import {
 const PRESTACION_SELECT = 'id, codigo, detalle, honorarios, gastos, total, seccion, categoria, obra_social'
 
 type StepKey = 'paciente' | 'obra_social' | 'principal' | 'adicional' | 'rol' | 'confirmar'
+type Modo = 'paso' | 'manos'
 
 const STEPS: { key: StepKey; pregunta: string; ayuda: string }[] = [
   { key: 'paciente', pregunta: '¿Nombre y apellido del paciente?', ayuda: 'Decí el nombre completo.' },
@@ -52,7 +53,7 @@ function esNegacion(t: string): boolean {
 
 function esAfirmacion(t: string): boolean {
   const low = quitarAcentos(t.toLowerCase()).trim()
-  return /\b(si|sí|dale|confirmo|correcto|guardar|ok|listo)\b/.test(low)
+  return /\b(si|dale|confirmo|correcto|guardar|ok|listo)\b/.test(low)
 }
 
 async function buscarCirugia(obraSocial: string, termino: string): Promise<Prestacion | null> {
@@ -68,7 +69,26 @@ async function buscarCirugia(obraSocial: string, termino: string): Promise<Prest
   return data && data.length ? (data[0] as Prestacion) : null
 }
 
+/** Text-to-speech (es-AR). Llama onDone al terminar (o si no hay soporte). */
+function hablar(texto: string, onDone?: () => void) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    onDone?.()
+    return
+  }
+  window.speechSynthesis.cancel()
+  const u = new SpeechSynthesisUtterance(texto)
+  u.lang = 'es-AR'
+  u.rate = 1.05
+  u.onend = () => onDone?.()
+  u.onerror = () => onDone?.()
+  window.speechSynthesis.speak(u)
+}
+
 export function NuevaFojaForm() {
+  const [modo, setModo] = useState<Modo>('paso')
+  const modoRef = useRef<Modo>('paso')
+  modoRef.current = modo
+
   const [stepIdx, setStepIdx] = useState(0)
   const stepRef = useRef(0)
   stepRef.current = stepIdx
@@ -129,12 +149,41 @@ export function NuevaFojaForm() {
 
   const voice = useVoiceInput({ onFinalTranscript: onHeard })
 
-  function hablar() {
+  // ── Modo MANOS LIBRES: la app lee la pregunta y escucha sola en cada paso ──
+  useEffect(() => {
+    if (modo !== 'manos') return
+    if (loading) return
+    const step = STEPS[stepIdx]
+    const texto = step.key === 'confirmar' ? resumenHablado() : `${step.pregunta} ${step.ayuda}`.trim()
+    // Cortamos cualquier escucha previa, leemos, y al terminar arrancamos a escuchar.
+    voice.abort()
+    hablar(texto, () => {
+      if (modoRef.current === 'manos') voice.start()
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepIdx, modo])
+
+  // Cleanup: cortar voz/TTS al desmontar.
+  useEffect(() => {
+    return () => {
+      voice.abort()
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function hablarManual() {
     if (voice.isListening) voice.stop()
     else voice.start()
   }
 
+  function activarManosLibres() {
+    setModo('manos') // el effect lee la pregunta del paso actual y escucha
+  }
+
   function reiniciar() {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel()
+    voice.abort()
     setStepIdx(0)
     setPaciente(''); setObraSocial('')
     setPrincipal(null); setPrincipalTexto('')
@@ -142,9 +191,18 @@ export function NuevaFojaForm() {
     setRol(''); setError(null)
   }
 
+  function resumenHablado(): string {
+    const cir = principal?.detalle ?? principalTexto
+    const adi = adicional?.detalle ?? adicionalTexto
+    const rolTxt = rol ? ROL_MEDICO_LABELS[rol] : 'sin rol'
+    return `Confirmo: paciente ${paciente || 'sin nombre'}, obra social ${obraSocial || 'sin OS'}, cirugía principal ${cir || 'sin cirugía'}, ${adi ? `adicional ${adi}` : 'sin adicional'}, rol ${rolTxt}. ¿Guardo? Decí sí o no.`
+  }
+
   async function handleGuardar() {
     setLoading(true)
     setError(null)
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel()
+    voice.abort()
     const formData: OrdenFormData = {
       tipo: 'obra_social',
       nombre_paciente: paciente,
@@ -173,7 +231,6 @@ export function NuevaFojaForm() {
   const step = STEPS[stepIdx]
   const totalHonorarios = Number(principal?.total ?? 0) + Number(adicional?.total ?? 0)
 
-  // Resumen de lo capturado hasta ahora (para ver cómo se va llenando).
   const filas: { label: string; valor: string; ok: boolean }[] = [
     { label: 'Paciente', valor: paciente, ok: !!paciente },
     { label: 'Obra social', valor: obraSocial, ok: !!obraSocial },
@@ -184,6 +241,38 @@ export function NuevaFojaForm() {
 
   return (
     <div className="max-w-2xl space-y-6">
+      {/* Selector de modo */}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={activarManosLibres}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all"
+          style={modo === 'manos'
+            ? { background: 'var(--color-primary)', color: '#fff', boxShadow: '0 0 0 2px var(--color-primary)' }
+            : { background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-muted-foreground)' }}
+        >
+          <Hand className="h-5 w-5 shrink-0" />
+          <span>
+            <span className="block text-sm font-medium">Manos libres</span>
+            <span className="block text-xs opacity-80">La app pregunta y escucha sola</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => { setModo('paso'); voice.abort(); if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel() }}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all"
+          style={modo === 'paso'
+            ? { background: 'var(--color-primary)', color: '#fff', boxShadow: '0 0 0 2px var(--color-primary)' }
+            : { background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-muted-foreground)' }}
+        >
+          <ListChecks className="h-5 w-5 shrink-0" />
+          <span>
+            <span className="block text-sm font-medium">Paso a paso</span>
+            <span className="block text-xs opacity-80">Tocás el micrófono en cada campo</span>
+          </span>
+        </button>
+      </div>
+
       {/* Progreso */}
       <div className="flex items-center gap-1.5">
         {STEPS.map((s, i) => (
@@ -194,12 +283,12 @@ export function NuevaFojaForm() {
       {/* Pregunta + micrófono */}
       <div className="rounded-2xl p-8 text-center" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
         <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--color-muted-foreground)' }}>
-          Paso {stepIdx + 1} de {STEPS.length}
+          Paso {stepIdx + 1} de {STEPS.length}{modo === 'manos' ? ' · manos libres' : ''}
         </p>
         <h2 className="text-xl font-semibold" style={{ color: 'var(--color-foreground)' }}>{step.pregunta}</h2>
         {step.ayuda && <p className="text-sm mt-1.5" style={{ color: 'var(--color-muted-foreground)' }}>{step.ayuda}</p>}
 
-        {step.key === 'confirmar' ? (
+        {step.key === 'confirmar' && (
           <div className="mt-5 space-y-2 text-left rounded-xl p-4" style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)' }}>
             {filas.map((f) => (
               <div key={f.label} className="flex justify-between gap-3 text-sm">
@@ -214,17 +303,17 @@ export function NuevaFojaForm() {
               </div>
             )}
           </div>
-        ) : null}
+        )}
 
         <button
           type="button"
-          onClick={hablar}
+          onClick={hablarManual}
           disabled={!voice.isSupported || procesando || loading}
           className="mt-6 inline-flex items-center gap-2 px-6 py-4 rounded-2xl text-base font-semibold text-white transition-opacity disabled:opacity-50"
           style={{ background: voice.isListening ? 'var(--color-error)' : 'var(--color-primary)' }}
         >
           {procesando || loading ? <Loader2 className="h-5 w-5 animate-spin" /> : voice.isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-          {loading ? 'Guardando...' : procesando ? 'Buscando...' : voice.isListening ? 'Detener' : step.key === 'confirmar' ? 'Responder por voz' : 'Hablar'}
+          {loading ? 'Guardando...' : procesando ? 'Buscando...' : voice.isListening ? 'Detener' : modo === 'manos' ? 'Repetir / hablar' : 'Hablar'}
         </button>
 
         <div className="h-5 mt-3 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
