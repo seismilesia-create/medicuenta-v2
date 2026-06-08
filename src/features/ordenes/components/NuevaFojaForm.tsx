@@ -86,35 +86,36 @@ function esNegacion(t: string): boolean {
   return /^(no|ninguna|ninguno|nada|sin adicional|no hubo|no hay)\b/.test(low)
 }
 
-// Cirugía tolerante: busca por el término y por palabras largas, y rankea por similitud.
+// Cirugía tolerante: busca por el término y por palabras largas (con y sin
+// acentos), primero en tu OS y si no hay, en todas. Rankea por similitud.
 async function buscarCirugia(obraSocial: string, termino: string): Promise<Prestacion | null> {
-  const t = normalizar(termino)
-  if (t.length < 3) return null
+  const orig = termino.toLowerCase().trim()
+  const norm = normalizar(termino)
+  if (norm.length < 3) return null
   const supabase = createClient()
-  const palabras = t.split(/\s+/).filter((w) => w.length >= 4)
-  const claves = Array.from(new Set([t, ...palabras]))
 
-  let candidatos: Prestacion[] = []
-  for (const k of claves) {
-    const { data } = await supabase
-      .from('prestaciones')
-      .select(PRESTACION_SELECT)
-      .eq('obra_social', obraSocial || 'OSEP')
-      .ilike('detalle', `%${k}%`)
-      .limit(15)
-    if (data && data.length) {
-      candidatos = data as Prestacion[]
-      break
+  const palabras = [...orig.split(/\s+/), ...norm.split(/\s+/)].filter((w) => w.length >= 4)
+  const claves = Array.from(new Set([orig, norm, ...palabras]))
+
+  // 1) con filtro de OS  2) sin filtro (las cirugías pueden no estar bajo esa OS)
+  for (const conOs of [true, false] as const) {
+    let candidatos: Prestacion[] = []
+    for (const k of claves) {
+      let q = supabase.from('prestaciones').select(PRESTACION_SELECT).ilike('detalle', `%${k}%`).limit(20)
+      if (conOs) q = q.eq('obra_social', obraSocial || 'OSEP')
+      const { data } = await q
+      if (data && data.length) { candidatos = data as Prestacion[]; break }
+    }
+    if (candidatos.length) {
+      let best: Prestacion | null = null, score = -1
+      for (const c of candidatos) {
+        const s = similitud(termino, c.detalle)
+        if (s > score) { score = s; best = c }
+      }
+      return best
     }
   }
-  if (!candidatos.length) return null
-
-  let best: Prestacion | null = null, score = -1
-  for (const c of candidatos) {
-    const s = similitud(termino, c.detalle)
-    if (s > score) { score = s; best = c }
-  }
-  return best
+  return null
 }
 
 export function NuevaFojaForm() {
