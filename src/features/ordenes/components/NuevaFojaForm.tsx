@@ -25,50 +25,102 @@ const STEPS: { key: StepKey; label: string; pregunta: string; ayuda: string }[] 
   { key: 'rol', label: 'Rol', pregunta: '¿Tu rol? Cirujano principal o ayudante.', ayuda: '' },
 ]
 
-function quitarAcentos(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '')
+const MSG_ERROR: Record<StepKey, string> = {
+  paciente: '',
+  obra_social: 'No reconocí la obra social. Tocá Hablar y repetí (ej: OSEP, PAMI).',
+  principal: 'No encontré esa cirugía en el nomenclador. Repetí el nombre.',
+  adicional: 'No encontré esa cirugía. Repetí, o decí "no".',
+  rol: 'Decí "cirujano principal" o "ayudante".',
 }
 
-function matchOs(t: string): string {
-  const low = t.toLowerCase()
-  for (const os of OBRAS_SOCIALES) {
-    if (low.includes(os.toLowerCase()) || os.toLowerCase().includes(low)) return os
+function normalizar(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+}
+
+function tituloCase(s: string): string {
+  return s.trim().toLowerCase().split(/\s+/).map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w)).join(' ')
+}
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length
+  const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)])
+  for (let j = 0; j <= n; j++) dp[0][j] = j
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+    }
   }
-  return t.trim().toUpperCase()
+  return dp[m][n]
+}
+
+function similitud(a: string, b: string): number {
+  const A = normalizar(a), B = normalizar(b)
+  if (!A || !B) return 0
+  return 1 - levenshtein(A, B) / Math.max(A.length, B.length)
+}
+
+// OS tolerante: substring, y si no, la más parecida (umbral).
+function matchOsFuzzy(t: string): string {
+  const low = normalizar(t)
+  for (const os of OBRAS_SOCIALES) {
+    const o = normalizar(os)
+    if (low.includes(o) || o.includes(low)) return os
+  }
+  let best = '', score = 0
+  for (const os of OBRAS_SOCIALES) {
+    const s = similitud(low, os)
+    if (s > score) { score = s; best = os }
+  }
+  return score >= 0.5 ? best : ''
 }
 
 function detectarRol(t: string): RolMedico | '' {
-  const low = quitarAcentos(t.toLowerCase())
-  if (low.includes('ayudante')) return 'ayudante'
-  if (low.includes('principal') || low.includes('cirujano')) return 'cirujano_principal'
+  const low = normalizar(t)
+  if (low.includes('ayudante') || low.includes('ayude') || low.includes('asisti')) return 'ayudante'
+  if (low.includes('principal') || low.includes('cirujano') || low.includes('opere') || low.includes('titular')) return 'cirujano_principal'
   return ''
 }
 
 function esNegacion(t: string): boolean {
-  const low = quitarAcentos(t.toLowerCase()).trim()
+  const low = normalizar(t)
   return /^(no|ninguna|ninguno|nada|sin adicional|no hubo|no hay)\b/.test(low)
 }
 
+// Cirugía tolerante: busca por el término y por palabras largas, y rankea por similitud.
 async function buscarCirugia(obraSocial: string, termino: string): Promise<Prestacion | null> {
-  const t = quitarAcentos(termino).trim()
+  const t = normalizar(termino)
   if (t.length < 3) return null
   const supabase = createClient()
-  const { data } = await supabase
-    .from('prestaciones')
-    .select(PRESTACION_SELECT)
-    .eq('obra_social', obraSocial || 'OSEP')
-    .ilike('detalle', `%${t}%`)
-    .limit(1)
-  return data && data.length ? (data[0] as Prestacion) : null
+  const palabras = t.split(/\s+/).filter((w) => w.length >= 4)
+  const claves = Array.from(new Set([t, ...palabras]))
+
+  let candidatos: Prestacion[] = []
+  for (const k of claves) {
+    const { data } = await supabase
+      .from('prestaciones')
+      .select(PRESTACION_SELECT)
+      .eq('obra_social', obraSocial || 'OSEP')
+      .ilike('detalle', `%${k}%`)
+      .limit(15)
+    if (data && data.length) {
+      candidatos = data as Prestacion[]
+      break
+    }
+  }
+  if (!candidatos.length) return null
+
+  let best: Prestacion | null = null, score = -1
+  for (const c of candidatos) {
+    const s = similitud(termino, c.detalle)
+    if (s > score) { score = s; best = c }
+  }
+  return best
 }
 
 export function NuevaFojaForm() {
-  // stepIdx 0..4 = capturando ese campo; 5 = resumen.
   const [stepIdx, setStepIdx] = useState(0)
-  // Cuando se edita un campo desde el resumen, guarda su key (si no, null).
   const [editando, setEditando] = useState<StepKey | null>(null)
-
-  const targetRef = useRef<StepKey | null>(null) // a qué campo va la próxima respuesta
+  const targetRef = useRef<StepKey | null>(null)
 
   const [paciente, setPaciente] = useState('')
   const [obraSocial, setObraSocial] = useState('')
@@ -83,16 +135,22 @@ export function NuevaFojaForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function aplicar(key: StepKey, t: string) {
-    if (key === 'paciente') setPaciente(t)
-    else if (key === 'obra_social') setObraSocial(matchOs(t))
-    else if (key === 'principal') {
-      setProcesando(true); setPrincipalTexto(t); setPrincipal(await buscarCirugia(obraSocial, t)); setProcesando(false)
-    } else if (key === 'adicional') {
+  // Devuelve true si capturó un valor VÁLIDO (acotado); false si no reconoció.
+  async function aplicar(key: StepKey, t: string): Promise<boolean> {
+    if (key === 'paciente') { setPaciente(tituloCase(t)); return true }
+    if (key === 'obra_social') { const os = matchOsFuzzy(t); if (!os) return false; setObraSocial(os); return true }
+    if (key === 'principal') {
+      setProcesando(true); const p = await buscarCirugia(obraSocial, t); setProcesando(false)
+      setPrincipalTexto(t); setPrincipal(p); return !!p
+    }
+    if (key === 'adicional') {
       setAdicionalResp(true)
-      if (esNegacion(t)) { setAdicional(null); setAdicionalTexto('') }
-      else { setProcesando(true); setAdicionalTexto(t); setAdicional(await buscarCirugia(obraSocial, t)); setProcesando(false) }
-    } else if (key === 'rol') setRol(detectarRol(t))
+      if (esNegacion(t)) { setAdicional(null); setAdicionalTexto(''); return true }
+      setProcesando(true); const p = await buscarCirugia(obraSocial, t); setProcesando(false)
+      setAdicionalTexto(t); setAdicional(p); return !!p
+    }
+    if (key === 'rol') { const r = detectarRol(t); if (!r) return false; setRol(r); return true }
+    return false
   }
 
   async function onHeard(transcript: string) {
@@ -100,17 +158,14 @@ export function NuevaFojaForm() {
     if (!t) return
     setError(null)
     const editKey = targetRef.current
-    if (editKey) {
-      // Edición de un campo puntual desde el resumen.
-      await aplicar(editKey, t)
-      targetRef.current = null
-      setEditando(null)
-    } else {
-      // Captura secuencial.
-      const key = STEPS[stepIdx].key
-      await aplicar(key, t)
-      setStepIdx((i) => i + 1)
+    const key = editKey ?? STEPS[stepIdx].key
+    const ok = await aplicar(key, t)
+    if (!ok) {
+      setError(MSG_ERROR[key])
+      return // no avanza ni cierra edición: que repita
     }
+    if (editKey) { targetRef.current = null; setEditando(null) }
+    else setStepIdx((i) => i + 1)
   }
 
   const voice = useVoiceInput({ onFinalTranscript: onHeard })
@@ -122,6 +177,7 @@ export function NuevaFojaForm() {
   }
 
   function editarCampo(key: StepKey) {
+    setError(null)
     targetRef.current = key
     setEditando(key)
     voice.start()
@@ -150,26 +206,28 @@ export function NuevaFojaForm() {
       obra_social: obraSocial || 'OSEP',
       firma_paciente: false,
       codigo_practica: principal?.codigo ?? undefined,
-      nombre_practica: principal?.detalle ?? principalTexto ?? undefined,
+      nombre_practica: principal?.detalle ?? undefined,
       honorario_calculado: Number(principal?.total ?? 0),
       nivel: 2,
-      cirugia_adicional: adicional?.detalle ?? (adicionalTexto || undefined),
+      cirugia_adicional: adicional?.detalle ?? undefined,
       cirugia_adicional_codigo: adicional?.codigo ?? undefined,
       cirugia_adicional_honorario: adicional?.total ?? undefined,
       rol_medico: rol || undefined,
     }
     const result = await createOrden(formData)
     if (result?.error) { setError(result.error); setLoading(false) }
-    // success → redirect a /ordenes
   }
 
-  // Valor mostrado + si está completo, por campo.
   function valorDe(key: StepKey): { valor: string; ok: boolean } {
     switch (key) {
       case 'paciente': return { valor: paciente, ok: !!paciente }
       case 'obra_social': return { valor: obraSocial, ok: !!obraSocial }
-      case 'principal': return { valor: principal ? `${principal.codigo} · ${principal.detalle}` : principalTexto, ok: !!(principal || principalTexto) }
-      case 'adicional': return { valor: adicional ? `${adicional.codigo} · ${adicional.detalle}` : (adicionalTexto || (adicionalResp ? 'Sin adicional' : '')), ok: adicionalResp }
+      case 'principal': return principal
+        ? { valor: `${principal.codigo} · ${principal.detalle}`, ok: true }
+        : { valor: principalTexto ? `"${principalTexto}" (no encontrada)` : '', ok: false }
+      case 'adicional': return adicional
+        ? { valor: `${adicional.codigo} · ${adicional.detalle}`, ok: true }
+        : { valor: adicionalResp ? (adicionalTexto ? `"${adicionalTexto}" (no encontrada)` : 'Sin adicional') : '', ok: adicionalResp && !adicionalTexto }
       case 'rol': return { valor: rol ? ROL_MEDICO_LABELS[rol] : '', ok: !!rol }
     }
   }
@@ -187,12 +245,9 @@ export function NuevaFojaForm() {
         ))}
       </div>
 
-      {/* Pregunta del paso actual (solo mientras se captura) */}
       {!enResumen && (
         <div className="rounded-2xl p-8 text-center" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-          <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--color-muted-foreground)' }}>
-            Paso {stepIdx + 1} de {STEPS.length}
-          </p>
+          <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--color-muted-foreground)' }}>Paso {stepIdx + 1} de {STEPS.length}</p>
           <h2 className="text-xl font-semibold" style={{ color: 'var(--color-foreground)' }}>{STEPS[stepIdx].pregunta}</h2>
           {STEPS[stepIdx].ayuda && <p className="text-sm mt-1.5" style={{ color: 'var(--color-muted-foreground)' }}>{STEPS[stepIdx].ayuda}</p>}
 
@@ -211,32 +266,28 @@ export function NuevaFojaForm() {
             {escuchando && (voice.interimTranscript || 'Te escucho...')}
             {!voice.isSupported && 'Este dispositivo no soporta dictado por voz.'}
           </div>
+          {error && <p className="text-sm mt-1" style={{ color: 'var(--color-error)' }}>{error}</p>}
         </div>
       )}
 
-      {/* Resumen (al terminar) */}
       {enResumen && (
         <div className="rounded-2xl p-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
           <h2 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-foreground)' }}>Revisá la foja</h2>
-          <p className="text-sm mb-4" style={{ color: 'var(--color-muted-foreground)' }}>Tocá el 🎤 de un campo para corregirlo hablando.</p>
-          {totalHonorarios > 0 && (
-            <p className="text-sm mb-4 font-mono" style={{ color: 'var(--color-success)' }}>Honorario total: ${totalHonorarios.toLocaleString('es-AR')}</p>
-          )}
+          <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>Tocá el 🎤 de un campo para corregirlo hablando.</p>
+          {totalHonorarios > 0 && <p className="text-sm mt-3 font-mono" style={{ color: 'var(--color-success)' }}>Honorario total: ${totalHonorarios.toLocaleString('es-AR')}</p>}
+          {error && <p className="text-sm mt-2" style={{ color: 'var(--color-error)' }}>{error}</p>}
         </div>
       )}
 
-      {/* Panel de campos: se van tildando en verde; en el resumen son editables */}
+      {/* Panel de campos */}
       <div className="rounded-2xl p-4 space-y-2" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
         {STEPS.map((s, i) => {
           const { valor, ok } = valorDe(s.key)
           const activo = !enResumen && i === stepIdx
           const editandoEste = editando === s.key
           return (
-            <div
-              key={s.key}
-              className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5"
-              style={{ background: activo || editandoEste ? 'var(--color-background)' : 'transparent', border: activo || editandoEste ? '1px solid var(--color-primary)' : '1px solid transparent' }}
-            >
+            <div key={s.key} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5"
+              style={{ background: activo || editandoEste ? 'var(--color-background)' : 'transparent', border: activo || editandoEste ? '1px solid var(--color-primary)' : '1px solid transparent' }}>
               <div className="flex items-center gap-2.5 min-w-0">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full shrink-0" style={{ background: ok ? 'var(--color-success)' : 'var(--color-border)' }}>
                   {ok && <Check className="h-3 w-3 text-white" />}
@@ -249,13 +300,9 @@ export function NuevaFojaForm() {
                 </div>
               </div>
               {enResumen && (
-                <button
-                  type="button"
-                  onClick={() => editarCampo(s.key)}
-                  disabled={procesando || (escuchando && !editandoEste)}
+                <button type="button" onClick={() => editarCampo(s.key)} disabled={procesando || (escuchando && !editandoEste)}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium shrink-0 disabled:opacity-40"
-                  style={{ background: editandoEste ? 'var(--color-error)' : 'var(--color-background)', border: '1px solid var(--color-border)', color: editandoEste ? '#fff' : 'var(--color-foreground)' }}
-                >
+                  style={{ background: editandoEste ? 'var(--color-error)' : 'var(--color-background)', border: '1px solid var(--color-border)', color: editandoEste ? '#fff' : 'var(--color-foreground)' }}>
                   {editandoEste ? <MicOff className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
                   {editandoEste ? 'Grabando' : 'Editar'}
                 </button>
@@ -265,9 +312,6 @@ export function NuevaFojaForm() {
         })}
       </div>
 
-      {error && <p className="text-sm" style={{ color: 'var(--color-error)' }}>{error}</p>}
-
-      {/* Acciones */}
       <div className="flex gap-3">
         {enResumen && (
           <button type="button" onClick={handleGuardar} disabled={loading} className="flex-1 px-4 py-3.5 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50" style={{ background: 'var(--color-primary)' }}>
