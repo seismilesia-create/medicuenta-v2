@@ -1224,6 +1224,16 @@ export function buildPacienteTools(ctx: PacienteToolsCtx) {
         if (!receta || receta.estado !== 'pendiente_pago' || receta.monto == null) {
           return { error: 'Esa receta no está disponible para cobro.' }
         }
+        // Anti-secuestro de entrega (revisión Lote B): el PRIMER teléfono que gestiona
+        // la receta queda como destinatario; otro número (aunque sepa nombre+DNI) no
+        // puede desviar la entrega — se lo deriva al médico.
+        const telefonoNorm = normalizeRecipient(ctx.telefonoPaciente)
+        if (receta.paciente_telefono && receta.paciente_telefono !== telefonoNorm) {
+          return {
+            error:
+              'Esa receta ya está siendo gestionada desde otro número de WhatsApp. Si sos el paciente, avisale a tu médico para que lo verifique.',
+          }
+        }
         const baseUrl = process.env.PUBLIC_BASE_URL
         if (!baseUrl) return { error: 'El sistema de pagos no está configurado todavía (falta PUBLIC_BASE_URL).' }
         const conexion = await getConexionActiva(ctx.db, ctx.medicoId)
@@ -1680,6 +1690,7 @@ function pagoAprobado(): PagoMP {
     status: 'approved',
     externalReference: `receta:${RECETA_ID}`,
     transactionAmount: 5000,
+    currencyId: 'ARS',
     collectorId: '111',
   }
 }

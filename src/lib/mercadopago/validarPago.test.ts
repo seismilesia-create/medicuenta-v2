@@ -11,6 +11,7 @@ function pago(over: Partial<PagoMP> = {}): PagoMP {
     status: 'approved',
     externalReference: `receta:${RECETA.id}`,
     transactionAmount: 5000,
+    currencyId: 'ARS',
     collectorId: MP_USER,
     ...over,
   }
@@ -35,6 +36,10 @@ describe('decidirAccionPago', () => {
   })
   it('cobrador distinto al médico → ignorar (cross-tenant)', () => {
     const d = decidirAccionPago({ pago: pago({ collectorId: '999' }), receta: RECETA, mpUserId: MP_USER })
+    expect(d.accion).toBe('ignorar')
+  })
+  it('moneda distinta de ARS → ignorar (hardening)', () => {
+    const d = decidirAccionPago({ pago: pago({ currencyId: 'USD' }), receta: RECETA, mpUserId: MP_USER })
     expect(d.accion).toBe('ignorar')
   })
   it('monto no coincide → ignorar', () => {

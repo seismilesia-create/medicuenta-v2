@@ -35,6 +35,9 @@ export function decidirAccionPago(args: {
   if (pago.status !== 'approved') {
     return { accion: 'ignorar', motivo: `status ${pago.status} no aprueba entrega` }
   }
+  if (pago.currencyId !== 'ARS') {
+    return { accion: 'ignorar', motivo: `moneda ${pago.currencyId || 'desconocida'} distinta de ARS` }
+  }
   if (receta.monto == null || pago.transactionAmount !== Number(receta.monto)) {
     return { accion: 'ignorar', motivo: 'el monto pagado no coincide con la receta' }
   }

@@ -55,6 +55,7 @@ export interface PagoMP {
   status: string
   externalReference: string
   transactionAmount: number
+  currencyId: string
   collectorId: string
 }
 
@@ -65,6 +66,7 @@ function mapPago(json: Record<string, unknown>): PagoMP {
     status: String(json.status ?? ''),
     externalReference: String(json.external_reference ?? ''),
     transactionAmount: Number(json.transaction_amount ?? NaN),
+    currencyId: String(json.currency_id ?? ''),
     collectorId: String(json.collector_id ?? collector?.id ?? ''),
   }
 }
