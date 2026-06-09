@@ -85,7 +85,7 @@ export async function handleIncomingWhatsApp(payload: unknown): Promise<void> {
 
   let reply: string
   try {
-    reply = await runAgentTurn({ systemPrompt, historial, deps: { medicoId: canal.medicoId } })
+    reply = await runAgentTurn({ systemPrompt, historial })
   } catch (e) {
     console.error('[wa] agent error:', e)
     return
