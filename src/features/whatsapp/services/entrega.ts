@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { uploadWhatsAppMedia, sendWhatsAppDocument } from '@/lib/whatsapp/client'
-import { buildExternalReference, buscarPagoAprobadoPorReferencia } from '@/lib/mercadopago/client'
+import { uploadWhatsAppMedia, sendWhatsAppDocument, sendWhatsAppText } from '@/lib/whatsapp/client'
+import { buildExternalReference, buscarPagoAprobadoPorReferencia, consultarPago } from '@/lib/mercadopago/client'
 import { decidirAccionPago } from '@/lib/mercadopago/validarPago'
 import type { CanalResuelto } from './canales'
 import { descargarPdfReceta } from './storageRecetas'
@@ -9,6 +9,7 @@ import {
   listarPagadasSinEntregar,
   listarPendientesConPreferencia,
   marcarPagada,
+  marcarDevuelta,
   marcarEntregada,
   type RecetaRow,
 } from './recetasService'
@@ -52,13 +53,40 @@ export async function entregarPendientes(
 ): Promise<number> {
   let entregadas = 0
 
-  for (const receta of await listarPagadasSinEntregar(db, medicoId, telefonoNormalizado)) {
+  const pagadas = await listarPagadasSinEntregar(db, medicoId, telefonoNormalizado)
+  const pendientes = await listarPendientesConPreferencia(db, medicoId, telefonoNormalizado)
+  if (!pagadas.length && !pendientes.length) return 0
+
+  const conexion = await getConexionActiva(db, medicoId)
+
+  for (const receta of pagadas) {
+    // Re-validar contra MP antes de entregar: el pago pudo haberse devuelto
+    // mientras la entrega estaba pendiente (ventana 24h). Best-effort: si no hay
+    // conexión MP utilizable, se entrega igual (el pago YA fue validado al marcarse pagada).
+    if (conexion && receta.mp_payment_id) {
+      const pago = await consultarPago(conexion.accessToken, receta.mp_payment_id)
+      if (!pago) continue // MP no responde → reintentar al próximo mensaje
+      const d = decidirAccionPago({
+        pago,
+        receta: { id: receta.id, monto: receta.monto, estado: receta.estado },
+        mpUserId: conexion.mpUserId,
+      })
+      if (d.accion === 'avisar_devolucion') {
+        await marcarDevuelta(db, medicoId, receta.id)
+        await sendWhatsAppText({
+          phoneNumberId: canal.phoneNumberId,
+          accessToken: canal.accessToken,
+          to: canal.numeroPersonal,
+          text: '⚠️ Un pago de receta figura devuelto en MercadoPago: no se entregará el PDF (quedó como devuelta). Revisalo en tu cuenta de MP.',
+        })
+        continue
+      }
+      if (d.accion !== 'marcar_pagada_y_entregar') continue
+    }
     if (await entregarReceta(db, canal, receta)) entregadas++
   }
 
-  const pendientes = await listarPendientesConPreferencia(db, medicoId, telefonoNormalizado)
   if (pendientes.length) {
-    const conexion = await getConexionActiva(db, medicoId)
     if (conexion) {
       for (const receta of pendientes) {
         const pago = await buscarPagoAprobadoPorReferencia(conexion.accessToken, buildExternalReference(receta.id))

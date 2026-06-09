@@ -107,7 +107,7 @@ CREATE TABLE recetas (
   nro_receta TEXT,
   monto DECIMAL(12,2),
   estado TEXT NOT NULL DEFAULT 'pendiente_pago'
-    CHECK (estado IN ('pendiente_datos', 'pendiente_pago', 'pagada', 'entregada', 'vencida')),
+    CHECK (estado IN ('pendiente_datos', 'pendiente_pago', 'pagada', 'entregada', 'vencida', 'devuelta')),
   mp_preference_id TEXT,
   mp_payment_id TEXT,
   datos_ocr JSONB NOT NULL DEFAULT '{}'::jsonb,

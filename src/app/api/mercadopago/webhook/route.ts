@@ -3,7 +3,7 @@ import { consultarPago } from '@/lib/mercadopago/client'
 import { procesarPagoNotificado, type ProcesarPagoDeps } from '@/lib/mercadopago/procesarPago'
 import { getConexionActiva } from '@/features/whatsapp/services/mpConexiones'
 import { getCanalByMedicoId } from '@/features/whatsapp/services/canales'
-import { getRecetaDelMedico, marcarPagada } from '@/features/whatsapp/services/recetasService'
+import { getRecetaDelMedico, marcarPagada, marcarDevuelta } from '@/features/whatsapp/services/recetasService'
 import { entregarReceta } from '@/features/whatsapp/services/entrega'
 import { sendWhatsAppText } from '@/lib/whatsapp/client'
 
@@ -47,6 +47,7 @@ export async function POST(req: Request) {
       getConexion: (medicoId) => getConexionActiva(db, medicoId),
       consultarPago: (token, id) => consultarPago(token, id),
       marcarPagada: (medicoId, id, paymentId2) => marcarPagada(db, medicoId, id, paymentId2),
+      marcarDevuelta: (medicoId, id) => marcarDevuelta(db, medicoId, id),
       entregar: async (id) => {
         const medicoId = (recetaRow as { medico_id: string } | null)?.medico_id
         if (!medicoId) return false

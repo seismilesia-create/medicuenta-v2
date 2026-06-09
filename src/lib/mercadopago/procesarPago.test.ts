@@ -22,6 +22,7 @@ function fakes(over: Partial<ProcesarPagoDeps> = {}): ProcesarPagoDeps {
     getConexion: vi.fn(async () => ({ mpUserId: '111', accessToken: 'tok' })),
     consultarPago: vi.fn(async () => pagoAprobado()),
     marcarPagada: vi.fn(async () => {}),
+    marcarDevuelta: vi.fn(async () => {}),
     entregar: vi.fn(async () => true),
     avisarMedico: vi.fn(async () => {}),
     ...over,
@@ -65,10 +66,12 @@ describe('procesarPagoNotificado', () => {
     expect(deps.marcarPagada).not.toHaveBeenCalled()
     expect(deps.entregar).not.toHaveBeenCalled()
   })
-  it('refunded → avisa al médico', async () => {
+  it('refunded → marca devuelta (bloquea re-entrega) y avisa al médico', async () => {
     const deps = fakes({ consultarPago: vi.fn(async () => ({ ...pagoAprobado(), status: 'refunded' })) })
     const out = await procesarPagoNotificado(deps, { recetaId: RECETA_ID, paymentId: '555' })
     expect(out).toBe('devolucion')
+    expect(deps.marcarDevuelta).toHaveBeenCalledWith(MEDICO_ID, RECETA_ID)
     expect(deps.avisarMedico).toHaveBeenCalled()
+    expect(deps.entregar).not.toHaveBeenCalled()
   })
 })

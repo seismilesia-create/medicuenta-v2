@@ -122,7 +122,11 @@ export async function getRecetaDelMedico(
   return (data as RecetaRow | null) ?? null
 }
 
-/** Al generar el link: asocia preferencia + teléfono + contacto del paciente (§6.2: se capturan al escribir). */
+/**
+ * Al generar el link: asocia preferencia + teléfono + contacto del paciente (§6.2:
+ * se capturan al escribir). Condicional anti-TOCTOU: solo escribe si el teléfono
+ * está libre o es el mismo — dos solicitantes simultáneos no pueden pisarse.
+ */
 export async function vincularPago(
   db: SupabaseClient,
   medicoId: string,
@@ -139,6 +143,7 @@ export async function vincularPago(
     })
     .eq('medico_id', medicoId)
     .eq('id', recetaId)
+    .or(`paciente_telefono.is.null,paciente_telefono.eq.${args.pacienteTelefono}`)
 }
 
 /** Condicional por estado: reduce la ventana de carrera entre webhooks concurrentes. */
@@ -154,6 +159,19 @@ export async function marcarPagada(
     .eq('medico_id', medicoId)
     .eq('id', recetaId)
     .eq('estado', 'pendiente_pago')
+}
+
+/**
+ * Devolución/contracargo ANTES de la entrega: bloquea la re-entrega del PDF.
+ * Si ya estaba entregada no se transiciona (el PDF ya salió; al médico se le avisa).
+ */
+export async function marcarDevuelta(db: SupabaseClient, medicoId: string, recetaId: string): Promise<void> {
+  await db
+    .from('recetas')
+    .update({ estado: 'devuelta', updated_at: new Date().toISOString() })
+    .eq('medico_id', medicoId)
+    .eq('id', recetaId)
+    .eq('estado', 'pagada')
 }
 
 export async function marcarEntregada(db: SupabaseClient, medicoId: string, recetaId: string): Promise<void> {
@@ -183,6 +201,7 @@ export async function resumenRecetas(db: SupabaseClient, medicoId: string): Prom
     entregada: '✅ entregadas',
     pendiente_datos: '⚠️ con datos dudosos',
     vencida: '🗑 vencidas',
+    devuelta: '↩️ devueltas (reembolso)',
   }
   const resumen = Object.entries(cuenta)
     .map(([estado, n]) => `${etiqueta[estado] ?? estado}: ${n}`)

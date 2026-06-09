@@ -13,6 +13,7 @@ export interface ProcesarPagoDeps {
   getConexion(medicoId: string): Promise<{ mpUserId: string; accessToken: string } | null>
   consultarPago(accessToken: string, paymentId: string): Promise<PagoMP | null>
   marcarPagada(medicoId: string, recetaId: string, paymentId: string): Promise<void>
+  marcarDevuelta(medicoId: string, recetaId: string): Promise<void>
   entregar(recetaId: string): Promise<boolean>
   avisarMedico(medicoId: string, texto: string): Promise<void>
 }
@@ -43,6 +44,8 @@ export async function procesarPagoNotificado(
 
   if (decision.accion === 'ignorar') return `ignorado: ${decision.motivo}`
   if (decision.accion === 'avisar_devolucion') {
+    // Bloquea la re-entrega (pagada → devuelta) y avisa al médico.
+    await deps.marcarDevuelta(receta.medico_id, receta.id)
     await deps.avisarMedico(
       receta.medico_id,
       `⚠️ MercadoPago reportó una devolución/contracargo de un pago de receta (${decision.motivo}). Revisalo en tu cuenta de MP.`,
