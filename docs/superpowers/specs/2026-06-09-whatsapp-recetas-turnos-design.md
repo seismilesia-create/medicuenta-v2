@@ -125,7 +125,7 @@ Todas siguen el molde canónico de MediCuenta (ver §9): `medico_id UUID NOT NUL
 | Tabla | Propósito | Columnas clave |
 |---|---|---|
 | `mp_conexiones` | OAuth de MercadoPago por médico (token cifrado). | `medico_id` (UNIQUE), `mp_user_id`, `access_token_cifrado`, `refresh_token_cifrado`, `expires_at`, `estado` |
-| `recetas` | Receta + estado de cobro. | `medico_id`, `paciente_nombre` + `paciente_dni` (leídos del OCR — clave para identificar al paciente), `contacto_id` (FK, nullable; se asocia cuando el paciente escribe), `paciente_telefono` (nullable; se captura al escribir el paciente), `pdf_path` (Storage), `external_reference` (UNIQUE, `receta:<uuid>`), `monto` (del precio configurado), `estado` (`pendiente_pago`/`pagada`/`entregada`/`vencida`; `pendiente_datos` solo si el OCR quedó dudoso), `mp_preference_id`, `mp_payment_id`, `datos_ocr` (JSONB con lo extraído) |
+| `recetas` | Receta + estado de cobro. | `medico_id`, `paciente_nombre` + `paciente_dni` (leídos del OCR — clave para identificar al paciente), `contacto_id` (FK, nullable; se asocia cuando el paciente escribe), `paciente_telefono` (nullable; se captura al escribir el paciente), `pdf_path` (Storage), `external_reference` (UNIQUE, `receta:<uuid>`), `monto` (del precio configurado), `estado` (`pendiente_pago`/`pagada`/`entregada`/`vencida`; `pendiente_datos` solo si el OCR quedó dudoso), `mp_preference_id`, `mp_payment_id`, `datos_ocr` (JSONB con lo extraído), `nro_receta` (`UNIQUE(medico_id, nro_receta)` — del código de barras de la receta, para no duplicar cargas) |
 
 > Bucket de Storage nuevo y **privado** `recetas`, path `<medico_id>/<uuid>.pdf`, policies `(storage.foldername(name))[1] = auth.uid()::text` (mismo patrón que `comprobantes`). Separado de `comprobantes` para no mezclar facturación-a-OS con cobro-de-receta.
 
@@ -232,8 +232,20 @@ Una vista simple (o una consulta al bot) del estado de cada receta (`pendiente_p
 
 ### 6.9. Spikes a cerrar ANTES de codear la Fase 1
 
-- **OCR de PDF:** verificar que Claude vía OpenRouter acepta un content-part `file`/PDF dentro de `generateObject`. Si **no** funciona, plan B: renderizar la primera página del PDF a imagen en el server antes del OCR (agrega una dependencia; evaluar viabilidad en Vercel). El primer PDF de muestra (A1) sirve para este spike.
+- **OCR de PDF:** la muestra real es un **PDF digital nativo con capa de texto** y el contenido se lee sin problemas con Claude (nombre, DNI, OS, medicamento, diagnóstico, prescriptor, código de barras — todo claro). Queda **un solo check de plomería**: que `generateObject` + `{type:'file', mediaType:'application/pdf'}` a través de `@openrouter/ai-sdk-provider` propague bien el PDF a Claude (bajo riesgo). Plan B (PDF→imagen server-side) solo si aparecieran recetas escaneadas — improbable en las RCD digitales.
 - **Ventana de 24h en la entrega** (§6.5): confirmar el comportamiento real de Meta (rechazo fuera de ventana) para implementar bien el reintento por re-mensaje. **No** requiere plantilla.
+
+### 6.10. Schema de OCR de receta (definido con la muestra real de OSEP)
+
+La receta de OSEP Catamarca es un **PDF digital nativo con capa de texto** (RCD — "Tu Recetario Digital", validado por el Ministerio de Salud de la Nación). Una muestra real se leyó sin problemas. Campos a extraer (schema Zod nuevo en `src/lib/ai/`, siguiendo el estilo anti-Claude de `ocr-orden.ts`):
+
+- **Paciente:** `nombre`, `dni`, `cuil`, `sexo`, `fecha_nacimiento`, `obra_social` (ej. "OSEP Catamarca"), `plan`, `nro_credencial`.
+- **Receta:** `nro_receta` (código de barras — identifica la receta de forma única, sirve para dedup de carga), `fecha_creada`, `valida_desde`, `institucion`.
+- **Prescriptor:** `nombre`, `matricula` (MP / Matrícula Provincial).
+- **Medicamentos** (lista): `droga` (genérico), `presentacion` (ej. "X mg comp. x N"), `cantidad`, `marca` (comercial, si figura).
+- **Diagnósticos** (lista): `texto` + `codigo` (CIE-10, ej. "Z76.9").
+
+Para identificar al paciente y cobrar solo se usan `nombre` + `dni`; el resto se guarda en `datos_ocr` (JSONB). *(Nota de privacidad: este doc no incluye datos médicos reales; van en la DB con RLS por `medico_id`, no en el repo.)*
 
 **Modelo de negocio:** las preferencias se crean **a nombre del médico** → la plata va directo a él. Héctor cobra su suscripción aparte (sin comisión por transacción por ahora).
 
@@ -306,8 +318,8 @@ Como dijiste "vos decidís el cómo", tomé estas decisiones técnicas con su ra
 
 ## 12. Lo que necesito de vos (acciones del dueño)
 
-- **A1 — Recetas OSEP de ejemplo:** el dueño sube **1 PDF** de receta ahora (el que tiene) y conseguirá **más muestras** con un médico amigo. Con el primero se define el schema de OCR y se hace el spike de PDF (§6.9). Confirmar que el PDF trae **nombre + DNI** del paciente (clave para la identificación) y si tiene texto seleccionable o es imagen.
-- **A2 — MercadoPago de prueba:** un **médico amigo** prestará su cuenta de MercadoPago; arrancamos en **modo sandbox** (plata de mentira) antes de mover plata real. Hay que crear/obtener las credenciales de la app MP (`MP_CLIENT_ID`/`MP_CLIENT_SECRET`).
+- **A1 — Receta OSEP de ejemplo:** ✅ **recibida y verificada.** PDF digital nativo de RCD/OSEP Catamarca, con **nombre + DNI** del paciente y todos los campos claros (§6.10). Schema de OCR definido. Conseguir **2-3 muestras más** (otros medicamentos/pacientes) para validar variantes del formato.
+- **A2 — MercadoPago de prueba:** ✅ usamos **tu propia cuenta de MercadoPago en modo sandbox** (plata de mentira) para las pruebas. Hay que crear una app en el panel de desarrolladores de MP y obtener `MP_CLIENT_ID`/`MP_CLIENT_SECRET` (te guío en la Fase 1).
 - **A3 — Número de WhatsApp:** ✅ número de **prueba de Meta** (gratis) hasta producción.
 - **A4 — `WHATSAPP_APP_SECRET`:** obtenerlo del panel de la App de Meta (Configuración → Básico) para activar la verificación de firma del webhook.
 
