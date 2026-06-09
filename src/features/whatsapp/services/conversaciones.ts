@@ -51,10 +51,15 @@ export async function ensureConversacion(
   return (data as { id: string }).id
 }
 
-export async function isBotPausado(db: SupabaseClient, conversacionId: string): Promise<boolean> {
+export async function isBotPausado(
+  db: SupabaseClient,
+  medicoId: string,
+  conversacionId: string,
+): Promise<boolean> {
   const { data } = await db
     .from('wa_conversaciones')
     .select('bot_pausado')
+    .eq('medico_id', medicoId)
     .eq('id', conversacionId)
     .single()
   return (data as { bot_pausado: boolean } | null)?.bot_pausado ?? false
@@ -82,17 +87,20 @@ export async function addMensaje(
   await db
     .from('wa_conversaciones')
     .update({ last_message_at: new Date().toISOString() })
+    .eq('medico_id', args.medicoId)
     .eq('id', args.conversacionId)
 }
 
 export async function loadHistorial(
   db: SupabaseClient,
+  medicoId: string,
   conversacionId: string,
   limite = 12,
 ): Promise<HistorialMsg[]> {
   const { data } = await db
     .from('wa_mensajes')
     .select('origen, contenido')
+    .eq('medico_id', medicoId)
     .eq('conversacion_id', conversacionId)
     .order('created_at', { ascending: false })
     .limit(limite)
