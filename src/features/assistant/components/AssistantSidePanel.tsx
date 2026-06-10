@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { Bot, X, ChevronLeft, Sparkles } from 'lucide-react'
 import { useAssistantChat } from '../hooks/useAssistantChat'
 import { useSidePanelStore } from '../store/sidePanelStore'
@@ -22,6 +23,11 @@ export function AssistantSidePanel() {
   const open = useSidePanelStore((s) => s.open)
   const close = useSidePanelStore((s) => s.close)
   const [mounted, setMounted] = useState(false)
+  const pathname = usePathname()
+
+  // En /asistente la pantalla completa YA es el asistente; el panel flotante
+  // sería un segundo asistente redundante, así que no lo mostramos ahí.
+  const ocultarEnRuta = pathname === '/asistente'
 
   // Para evitar hydration mismatch con localStorage
   useEffect(() => setMounted(true), [])
@@ -35,7 +41,7 @@ export function AssistantSidePanel() {
   }
 
   // Si no montó aún, no renderizar nada — evita layout shift
-  if (!mounted) return null
+  if (!mounted || ocultarEnRuta) return null
 
   return (
     <>

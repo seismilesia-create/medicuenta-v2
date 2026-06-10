@@ -55,7 +55,7 @@ const navigation: { principal: NavItem[]; avanzado: NavItem[] } = {
   ],
 }
 
-export function Sidebar() {
+export function Sidebar({ nombre }: { nombre?: string | null }) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const { theme, setTheme } = useTheme()
@@ -141,7 +141,7 @@ export function Sidebar() {
                 <User className="h-[18px] w-[18px] text-primary" />
               </div>
               <div className="flex-1 text-left">
-                <p className="text-sm font-medium text-foreground">Doctor</p>
+                <p className="text-sm font-medium text-foreground">{nombre ?? 'Doctor'}</p>
                 <p className="text-xs text-muted-foreground">Perfil</p>
               </div>
             </button>

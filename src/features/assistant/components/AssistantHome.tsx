@@ -59,7 +59,25 @@ export function AssistantHome({ nombre }: Props) {
             Error: {error.message}
           </div>
         )}
+        {voice.isListening && (
+          <p className="px-4 pt-2 text-xs text-foreground/80 animate-pulse text-center">
+            {voice.interimTranscript || 'Te escucho...'}
+          </p>
+        )}
         <form onSubmit={handleSubmit} className="p-3 border-t border-border flex gap-2">
+          <button
+            type="button"
+            onClick={toggleVoice}
+            disabled={!voice.isSupported || isLoading}
+            aria-label={voice.isListening ? 'Detener grabación' : 'Hablar'}
+            className={`p-2 rounded-lg shrink-0 transition-colors disabled:opacity-30 ${
+              voice.isListening
+                ? 'bg-red-500 text-white animate-pulse'
+                : 'bg-muted text-foreground hover:bg-accent'
+            }`}
+          >
+            {voice.isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+          </button>
           <input
             type="text"
             value={text}

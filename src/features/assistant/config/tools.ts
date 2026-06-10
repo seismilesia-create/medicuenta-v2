@@ -96,8 +96,16 @@ Ejemplo particular: { tipo: 'particular', nombre_paciente: 'María Gómez', fech
       const { supabase, medicoId } = await requireMedicoId()
 
       if (input.tipo === 'obra_social') {
-        if (!input.obra_social || !input.nro_afiliado || !input.codigo_practica) {
-          return { success: false, error: 'Obra social, número de afiliado y código de práctica son requeridos' }
+        // Nivel 2 (foja quirúrgica por voz) NO captura nro de afiliado: ese dato
+        // solo viene del OCR en Nivel 1 (orden por foto). No lo exijas en Nivel 2.
+        const esNivel2 = input.nivel === 2
+        if (!input.obra_social || !input.codigo_practica || (!esNivel2 && !input.nro_afiliado)) {
+          return {
+            success: false,
+            error: esNivel2
+              ? 'Obra social y código de práctica (cirugía principal) son requeridos'
+              : 'Obra social, número de afiliado y código de práctica son requeridos',
+          }
         }
       } else {
         if (!input.nombre_practica || !input.monto_particular) {
@@ -114,7 +122,7 @@ Ejemplo particular: { tipo: 'particular', nombre_paciente: 'María Gómez', fech
         monto_plus: input.monto_plus ?? 0,
         agente_facturador: input.agente_facturador,
         obra_social: input.tipo === 'obra_social' ? input.obra_social : null,
-        nro_afiliado: input.tipo === 'obra_social' ? input.nro_afiliado : null,
+        nro_afiliado: input.tipo === 'obra_social' ? (input.nro_afiliado ?? null) : null,
         token_osep: input.tipo === 'obra_social' ? (input.token_osep ?? null) : null,
         firma_paciente: input.tipo === 'obra_social' ? !!input.firma_paciente : false,
         codigo_practica: input.tipo === 'obra_social' ? input.codigo_practica : null,

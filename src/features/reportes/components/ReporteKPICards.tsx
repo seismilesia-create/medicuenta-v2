@@ -15,28 +15,28 @@ export function ReporteKPICards({ kpis }: Props) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       <MetricCard
         title="Facturado"
-        value={formatARS(kpis.facturado)}
+        value={kpis.facturado}
         icon={FileText}
         variant="info"
         description="Total presentado en el periodo"
       />
       <MetricCard
         title="Cobrado (aprobado)"
-        value={formatARS(kpis.cobrado)}
+        value={kpis.cobrado}
         icon={CheckCircle2}
         variant="success"
         description="Pagos confirmados"
       />
       <MetricCard
         title="Debitos"
-        value={formatARS(kpis.debitos)}
+        value={kpis.debitos}
         icon={AlertTriangle}
         variant="danger"
         description="Descuentos aplicados"
       />
       <MetricCard
         title="Plus cobrado"
-        value={formatARS(kpis.plus)}
+        value={kpis.plus}
         icon={Wallet}
         variant="warning"
         description="Ingresos adicionales privados"

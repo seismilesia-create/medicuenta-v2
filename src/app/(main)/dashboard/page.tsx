@@ -24,11 +24,12 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  const [ordenesRes, debitosRes, liquidacionesRes, cirugiasRes] = await Promise.all([
+  const [ordenesRes, debitosRes, liquidacionesRes, cirugiasRes, perfilRes] = await Promise.all([
     supabase.from('ordenes').select('estado, honorario_calculado, monto_particular, monto_plus, fecha_atencion'),
     supabase.from('debitos').select('monto, fecha, refacturable, refacturado'),
     supabase.from('liquidaciones').select('estado'),
     supabase.from('cirugias').select('estado, total_calculado'),
+    supabase.from('perfiles').select('nombre').eq('id', user.id).maybeSingle(),
   ])
 
   const ordenes = ordenesRes.data ?? []
@@ -54,6 +55,7 @@ export default async function DashboardPage() {
     }
   }
 
+  const nombre = (perfilRes.data?.nombre ?? null) as string | null
   const trendData = computeTrendData(ordenes, debitos)
   const alerts = computeAlerts(ordenes, debitos, liquidaciones, cirugias)
   const greeting = getGreeting()
@@ -72,7 +74,7 @@ export default async function DashboardPage() {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-                {greeting}, Doctor
+                {greeting}, {nombre ? `Dr. ${nombre}` : 'Doctor'}
               </h1>
               <p className="text-sm md:text-base text-muted-foreground">
                 Resumen de tu facturacion medica
@@ -87,28 +89,28 @@ export default async function DashboardPage() {
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             title="Facturado este mes"
-            value={formatMonto(stats.facturado)}
+            value={stats.facturado}
             icon={FileText}
             variant="default"
             description="Total presentado a obras sociales"
           />
           <MetricCard
             title="Cobrado"
-            value={formatMonto(stats.cobrado)}
+            value={stats.cobrado}
             icon={CheckCircle2}
             variant="success"
             description="Pagos recibidos confirmados"
           />
           <MetricCard
             title="Pendiente"
-            value={formatMonto(stats.pendiente)}
+            value={stats.pendiente}
             icon={Clock}
             variant="warning"
             description="Esperando aprobacion"
           />
           <MetricCard
             title="Debitos"
-            value={formatMonto(stats.perdido)}
+            value={stats.perdido}
             icon={AlertTriangle}
             variant="danger"
             description="Descuentos aplicados"
@@ -133,15 +135,6 @@ export default async function DashboardPage() {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function formatMonto(valor: number): string {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(valor)
-}
 
 function getGreeting(): string {
   const hour = new Date().getHours()

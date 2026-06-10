@@ -1,9 +1,13 @@
 import { cn } from '@/lib/utils'
 import { type LucideIcon, TrendingUp, TrendingDown } from 'lucide-react'
+import { AnimatedNumber, type NumberFormat } from '@/shared/components/ui/animated-number'
 
 interface MetricCardProps {
+  /** String → se muestra tal cual. Número → cuenta animada de 0 al valor. */
+  value: string | number
+  /** Formato de la cuenta animada cuando `value` es número (default: ARS). */
+  valueFormat?: NumberFormat
   title: string
-  value: string
   icon: LucideIcon
   trend?: {
     value: string
@@ -64,6 +68,7 @@ const variantStyles = {
 export function MetricCard({
   title,
   value,
+  valueFormat = 'ars',
   icon: Icon,
   trend,
   variant = 'default',
@@ -100,7 +105,13 @@ export function MetricCard({
           </div>
           <div>
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className={cn('text-3xl font-bold tracking-tight mt-1', styles.valueColor)}>{value}</p>
+            <p className={cn('text-3xl font-bold tracking-tight mt-1', styles.valueColor)}>
+              {typeof value === 'number' ? (
+                <AnimatedNumber value={value} format={valueFormat} />
+              ) : (
+                value
+              )}
+            </p>
             {description && <p className="text-xs text-muted-foreground/80 mt-1">{description}</p>}
           </div>
         </div>
