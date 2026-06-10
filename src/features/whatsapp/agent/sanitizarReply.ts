@@ -7,6 +7,15 @@ export interface CobroGenerado {
 const MP_URL_RE = /https?:\/\/[^\s)]*mercadopago[^\s)]*/gi
 
 /**
+ * Borra los links de pago del HISTORIAL que ve el modelo: un link viejo no sirve
+ * (vence / pudo ser inválido) y dejarlo a la vista invita al modelo a repetirlo
+ * en vez de llamar a cobrar_receta. Se reemplaza por una marca neutra.
+ */
+export function scrubLinksMP(texto: string): string {
+  return texto.replace(MP_URL_RE, '[link de pago anterior — ya no válido]')
+}
+
+/**
  * Barrera determinística para la plata: el paciente SOLO puede recibir links de
  * pago que haya devuelto la tool cobrar_receta en este turno. Si el modelo
  * inventó un link (o lo deformó), se reemplaza la respuesta:

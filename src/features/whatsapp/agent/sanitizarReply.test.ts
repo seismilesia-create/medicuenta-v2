@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sanitizarReplyCobro } from './sanitizarReply'
+import { sanitizarReplyCobro, scrubLinksMP } from './sanitizarReply'
 
 const LINK_REAL = 'https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=3461742443-abc123'
 const COBRO = { link: LINK_REAL, monto: 5000 }
@@ -32,5 +32,16 @@ describe('sanitizarReplyCobro', () => {
     const out = sanitizarReplyCobro('Listo, te generé el pago.', [COBRO])
     expect(out).toContain(LINK_REAL)
     expect(out).toContain('5.000')
+  })
+})
+
+describe('scrubLinksMP', () => {
+  it('reemplaza links de MP del historial por una marca neutra', () => {
+    const out = scrubLinksMP('Pagá acá: https://mercadopago.com.ar/checkout/v1/redirect?pref=xyz — gracias')
+    expect(out).not.toContain('https://')
+    expect(out).toContain('ya no válido')
+  })
+  it('no toca texto sin links', () => {
+    expect(scrubLinksMP('Hola, ¿cómo estás?')).toBe('Hola, ¿cómo estás?')
   })
 })

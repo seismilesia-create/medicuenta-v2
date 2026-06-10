@@ -18,7 +18,7 @@ import { extraerRecetaDePdf, validarIdentidadExtraida } from '@/lib/ai/ocr-recet
 import { normalizarDni, parseMontoArs } from '@/lib/recetas/normalizar'
 import { buildSystemPromptPaciente, type ConfigAgente } from '@/features/whatsapp/agent/systemPrompt'
 import { runAgentTurn } from '@/features/whatsapp/agent/runAgentTurn'
-import { sanitizarReplyCobro } from '@/features/whatsapp/agent/sanitizarReply'
+import { sanitizarReplyCobro, scrubLinksMP } from '@/features/whatsapp/agent/sanitizarReply'
 import { buildPacienteTools } from '@/features/whatsapp/agent/tools'
 
 type Db = ReturnType<typeof createServiceClient>
@@ -205,7 +205,11 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
     config: cfgRow as ConfigAgente | null,
     contactName: incoming.contactName,
   })
-  const historial = await loadHistorial(db, canal.medicoId, conversacionId, 12)
+  // Links viejos fuera del contexto del modelo: vencidos, y son fuente de imitación.
+  const historial = (await loadHistorial(db, canal.medicoId, conversacionId, 12)).map((m) => ({
+    ...m,
+    content: scrubLinksMP(m.content),
+  }))
   const tools = buildPacienteTools({
     db,
     medicoId: canal.medicoId,
