@@ -18,6 +18,7 @@ import { extraerRecetaDePdf, validarIdentidadExtraida } from '@/lib/ai/ocr-recet
 import { normalizarDni, parseMontoArs } from '@/lib/recetas/normalizar'
 import { buildSystemPromptPaciente, type ConfigAgente } from '@/features/whatsapp/agent/systemPrompt'
 import { runAgentTurn } from '@/features/whatsapp/agent/runAgentTurn'
+import { sanitizarReplyCobro } from '@/features/whatsapp/agent/sanitizarReply'
 import { buildPacienteTools } from '@/features/whatsapp/agent/tools'
 
 type Db = ReturnType<typeof createServiceClient>
@@ -214,7 +215,9 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
 
   let reply: string
   try {
-    reply = await runAgentTurn({ systemPrompt, historial, tools })
+    const turno = await runAgentTurn({ systemPrompt, historial, tools })
+    // Barrera de plata: solo pueden salir links que devolvió cobrar_receta.
+    reply = sanitizarReplyCobro(turno.text, turno.cobros)
   } catch (e) {
     console.error('[wa] agent error:', e)
     return

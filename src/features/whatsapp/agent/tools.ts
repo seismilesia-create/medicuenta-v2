@@ -45,6 +45,8 @@ export function buildPacienteTools(ctx: PacienteToolsCtx) {
             medicamento: resumenMedicamento(r),
             monto: Number(r.monto),
           })),
+          instruccion:
+            'IMPORTANTE: para cobrar DEBÉS llamar a la tool cobrar_receta con el receta_id. NO escribas ningún link por tu cuenta: el único link válido es el que devuelve esa tool.',
         }
       },
     }),
