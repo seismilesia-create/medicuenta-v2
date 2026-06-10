@@ -30,7 +30,7 @@ const AYUDA_MEDICO = [
   '• Reenvíeme el PDF de una receta para cargarla al cobro',
   "• 'precio 5000' — fija cuánto cobra cada receta",
   "• 'recetas' — estado de sus recetas",
-  "• 'turnos' — su agenda de los próximos 7 días",
+  "• 'turnos' (o 'agenda') — su agenda de los próximos 7 días",
 ].join('\n')
 
 /**

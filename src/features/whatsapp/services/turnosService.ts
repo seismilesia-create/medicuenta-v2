@@ -45,20 +45,22 @@ async function getHorarios(
   db: SupabaseClient,
   medicoId: string,
 ): Promise<{ weekday: number; open_time: string; close_time: string }[]> {
-  const { data } = await db
+  const { data, error } = await db
     .from('wa_horarios')
     .select('weekday, open_time, close_time')
     .eq('medico_id', medicoId)
     .order('weekday')
+  if (error) console.error('[turnos] horarios read error:', error.message)
   return (data as { weekday: number; open_time: string; close_time: string }[] | null) ?? []
 }
 
 async function getExcepciones(db: SupabaseClient, medicoId: string): Promise<ScheduleExceptionLite[]> {
-  const { data } = await db
+  const { data, error } = await db
     .from('wa_excepciones')
     .select('start_date, end_date, kind, ranges')
     .eq('medico_id', medicoId)
     .order('start_date')
+  if (error) console.error('[turnos] excepciones read error:', error.message)
   return (data as ScheduleExceptionLite[] | null) ?? []
 }
 
@@ -77,13 +79,14 @@ export async function getDisponibilidad(
   const hastaIso = new Date(nowMs + dias * 86_400_000).toISOString()
   // Ocupados: cualquier turno NO cancelado que toque la ventana — incluye los que
   // empezaron antes de "ahora" y siguen en curso (el origen los perdía).
-  const { data: busy } = await db
+  const { data: busy, error: busyError } = await db
     .from('wa_turnos')
     .select('starts_at, ends_at')
     .eq('medico_id', medicoId)
     .neq('estado', 'cancelado')
     .gt('ends_at', desdeIso)
     .lte('starts_at', hastaIso)
+  if (busyError) console.error('[turnos] busy read error:', busyError.message)
   const ocupados = (busy as { starts_at: string; ends_at: string }[] | null) ?? []
 
   const result: DayAvailability[] = []
@@ -122,7 +125,7 @@ export async function crearTurno(
   db: SupabaseClient,
   medicoId: string,
   input: CrearTurnoInput,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true; yaExistia?: string } | { ok: false; error: string }> {
   const startMs = new Date(input.startsAt).getTime()
   if (!Number.isFinite(startMs)) {
     // Un throw acá abortaría el turno entero del agente → dead-air para el paciente.
@@ -164,14 +167,18 @@ export async function crearTurno(
       // reservar un SEGUNDO turno en otro horario.
       const { data: propio } = await db
         .from('wa_turnos')
-        .select('id')
+        .select('id, starts_at')
         .eq('medico_id', medicoId)
         .eq('paciente_telefono', input.pacienteTelefono)
         .neq('estado', 'cancelado')
         .lt('starts_at', endsAt)
         .gt('ends_at', input.startsAt)
         .limit(1)
-      if (propio && propio.length > 0) return { ok: true }
+      if (propio && propio.length > 0) {
+        // Confirmar con el horario REAL del turno existente: en la carrera doble del
+        // mismo paciente, el que perdió no debe escuchar el horario perdedor.
+        return { ok: true, yaExistia: (propio[0] as { starts_at: string }).starts_at }
+      }
       return { ok: false, error: 'Ese horario ya fue tomado. Probá con otro.' }
     }
     console.error('[turnos] insert error:', error.message)

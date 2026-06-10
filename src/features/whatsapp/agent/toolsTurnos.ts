@@ -23,6 +23,8 @@ export interface TurnosToolsCtx {
 /** Caps de la respuesta de disponibilidad (mismos del origen): no abrumar el contexto. */
 const DIAS_EN_RESPUESTA = 5
 const SLOTS_POR_DIA = 24
+/** Tope de turnos activos por número: sin esto, un solo WhatsApp podría reservarse TODA la agenda. */
+const MAX_TURNOS_ACTIVOS_POR_PACIENTE = 3
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -81,6 +83,14 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
         if (!nombre_paciente.trim()) {
           return { ok: false, error: 'Falta el nombre completo del paciente: pedíselo antes de reservar.' }
         }
+        const telefonoNorm = normalizeRecipient(ctx.telefonoPaciente)
+        const activos = await listarTurnosDePaciente(ctx.db, ctx.medicoId, telefonoNorm)
+        if (activos.length >= MAX_TURNOS_ACTIVOS_POR_PACIENTE) {
+          return {
+            ok: false,
+            error: `El paciente ya tiene ${activos.length} turnos reservados desde este número. Para sacar otro tiene que cancelar uno antes (cancelar_turno).`,
+          }
+        }
         const servicios = await getServiciosActivos(ctx.db, ctx.medicoId)
         const res = resolverServicio(servicios, servicio)
         if (res.tipo !== 'ok') {
@@ -104,15 +114,18 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
         const r = await crearTurno(ctx.db, ctx.medicoId, {
           servicio: res.servicio,
           startsAt,
-          pacienteTelefono: normalizeRecipient(ctx.telefonoPaciente),
+          pacienteTelefono: telefonoNorm,
           // Tope: un "nombre" kilométrico rompería el resumen del médico (4096 chars de WhatsApp).
           pacienteNombre: nombre_paciente.trim().slice(0, 120),
           contactoId: ctx.contactoId,
         })
         if (!r.ok) return { ok: false, error: r.error }
+        const inicioReal = r.yaExistia ?? startsAt
         return {
           ok: true,
-          mensaje: `Turno confirmado: ${res.servicio.nombre} el ${fmtFechaLarga(startsAt)} a las ${fmtHora(startsAt)} hs.`,
+          mensaje: r.yaExistia
+            ? `El paciente YA tenía reservado este turno: ${res.servicio.nombre} el ${fmtFechaLarga(inicioReal)} a las ${fmtHora(inicioReal)} hs. No se duplicó nada.`
+            : `Turno confirmado: ${res.servicio.nombre} el ${fmtFechaLarga(inicioReal)} a las ${fmtHora(inicioReal)} hs.`,
         }
       },
     }),
