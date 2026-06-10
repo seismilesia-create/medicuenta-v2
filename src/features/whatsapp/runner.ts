@@ -12,6 +12,8 @@ import {
 } from '@/features/whatsapp/services/conversaciones'
 import { getPrecioReceta, setPrecioReceta } from '@/features/whatsapp/services/configAgente'
 import { crearRecetaDesdeOcr, resumenRecetas } from '@/features/whatsapp/services/recetasService'
+import { resumenTurnos } from '@/features/whatsapp/services/turnosService'
+import { buildTurnosTools } from '@/features/whatsapp/agent/toolsTurnos'
 import { entregarPendientes } from '@/features/whatsapp/services/entrega'
 import { subirPdfReceta } from '@/features/whatsapp/services/storageRecetas'
 import { extraerRecetaDePdf, validarIdentidadExtraida } from '@/lib/ai/ocr-receta'
@@ -28,6 +30,7 @@ const AYUDA_MEDICO = [
   '• Reenvíeme el PDF de una receta para cargarla al cobro',
   "• 'precio 5000' — fija cuánto cobra cada receta",
   "• 'recetas' — estado de sus recetas",
+  "• 'turnos' — su agenda de los próximos 7 días",
 ].join('\n')
 
 /**
@@ -89,6 +92,10 @@ async function handleMedico(db: Db, canal: CanalResuelto, incoming: IncomingMess
   }
   if (/^(recetas|estado)$/i.test(texto)) {
     await responder(canal, incoming.from, await resumenRecetas(db, canal.medicoId))
+    return
+  }
+  if (/^(turnos|agenda)$/i.test(texto)) {
+    await responder(canal, incoming.from, await resumenTurnos(db, canal.medicoId))
     return
   }
   await responder(canal, incoming.from, AYUDA_MEDICO)
@@ -210,12 +217,20 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
     ...m,
     content: scrubLinksMP(m.content),
   }))
-  const tools = buildPacienteTools({
-    db,
-    medicoId: canal.medicoId,
-    telefonoPaciente: incoming.from,
-    contactoId,
-  })
+  const tools = {
+    ...buildPacienteTools({
+      db,
+      medicoId: canal.medicoId,
+      telefonoPaciente: incoming.from,
+      contactoId,
+    }),
+    ...buildTurnosTools({
+      db,
+      medicoId: canal.medicoId,
+      telefonoPaciente: incoming.from,
+      contactoId,
+    }),
+  }
 
   let reply: string
   try {

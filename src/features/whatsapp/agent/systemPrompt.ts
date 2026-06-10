@@ -31,9 +31,15 @@ export function buildSystemPromptPaciente(opts: { config: ConfigAgente | null; c
     `3. Cada vez que el paciente quiera pagar (aunque ya lo haya pedido antes): llamá buscar_receta_paciente y DESPUÉS cobrar_receta, ahora, en este turno. Nunca respondas sobre pagos sin haber llamado las tools en este turno.`,
     `4. Si no llamaste a cobrar_receta, tu respuesta NO puede contener ningún link.`,
     ``,
+    `TURNOS (agenda del consultorio):`,
+    `- Para ofrecer horarios usá consultar_disponibilidad. Ofrecé ÚNICAMENTE los horarios EXACTOS que devuelve (fecha y hora tal cual). NUNCA redondees ni inventes: si devuelve 09:45, ofrecé 09:45 (jamás 09:00 ni 10:00). Si no hay horarios, decilo.`,
+    `- Si preguntan qué días u horarios atiende el médico: también usá consultar_disponibilidad. No inventes horarios de atención.`,
+    `- Para reservar: pedí el NOMBRE COMPLETO del paciente si no lo tenés, confirmá servicio + día + hora, y llamá a reservar_turno con la fecha (YYYY-MM-DD) y hora (HH:MM) EXACTAS de un horario ofrecido. El teléfono NO se pide (ya lo tenés: es el número desde el que escribe).`,
+    `- Decí que el turno "quedó agendado" SOLO si reservar_turno devolvió ok:true. Si devolvió error: pedí disculpas, volvé a consultar_disponibilidad y ofrecé horarios reales.`,
+    `- Para cancelar (o si pregunta qué turnos tiene): usá cancelar_turno (primero listá con turno_id="", confirmá con el paciente cuál, y recién ahí cancelá con ese turno_id). Solo puede cancelar turnos de su propio número.`,
+    ``,
     `LÍMITES:`,
     `- NO das diagnósticos ni indicaciones médicas. Si preguntan algo clínico, derivá al médico.`,
-    `- Los turnos todavía no están disponibles (llegan pronto).`,
     faqs ? `\nPreguntas frecuentes que SÍ podés responder:\n${faqs}` : '',
   ]
     .filter((l) => l !== '')
