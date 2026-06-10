@@ -15,6 +15,8 @@ import type { ServicioLite } from '@/lib/turnos/resolverServicio'
 const DIAS_A_OFRECER = 14
 /** Ventana del resumen de agenda del médico (comando 'turnos'). */
 const DIAS_RESUMEN_MEDICO = 7
+/** Tope de líneas del resumen (el texto de WhatsApp corta en 4096 chars). */
+const MAX_LINEAS_RESUMEN = 50
 
 export interface TurnoRow {
   id: string
@@ -103,6 +105,7 @@ export async function getDisponibilidad(
 }
 
 export interface CrearTurnoInput {
+  /** SIEMPRE resuelto de getServiciosActivos(medicoId) del MISMO médico — el FK no valida tenant. */
   servicio: ServicioLite
   startsAt: string // ISO UTC, ya validado contra esSlotOfrecido por el caller
   pacienteTelefono: string // ya normalizado con normalizeRecipient
@@ -120,15 +123,28 @@ export async function crearTurno(
   medicoId: string,
   input: CrearTurnoInput,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const fecha = arDateString(new Date(input.startsAt).getTime(), 0)
-  const excepciones = await getExcepciones(db, medicoId)
-  if (pickException(fecha, excepciones)?.kind === 'closed') {
+  const startMs = new Date(input.startsAt).getTime()
+  if (!Number.isFinite(startMs)) {
+    // Un throw acá abortaría el turno entero del agente → dead-air para el paciente.
+    return { ok: false, error: 'Horario inválido. Volvé a consultar la disponibilidad.' }
+  }
+  const fecha = arDateString(startMs, 0)
+
+  // Chequeo de día cerrado ERROR-AWARE: un error de lectura NO puede degradar a
+  // "sin excepciones" — reservaría en vacaciones y la DB no conoce los días cerrados
+  // (el EXCLUDE solo ataja solapes). Es el único read del archivo donde vacío ≠ seguro.
+  const { data: excData, error: excError } = await db
+    .from('wa_excepciones')
+    .select('start_date, end_date, kind, ranges')
+    .eq('medico_id', medicoId)
+  if (excError) {
+    return { ok: false, error: 'No pude verificar la agenda del consultorio. Probá de nuevo en unos minutos.' }
+  }
+  if (pickException(fecha, (excData as ScheduleExceptionLite[] | null) ?? [])?.kind === 'closed') {
     return { ok: false, error: 'Ese día el consultorio está cerrado.' }
   }
 
-  const endsAt = new Date(
-    new Date(input.startsAt).getTime() + input.servicio.duracion_min * 60_000,
-  ).toISOString()
+  const endsAt = new Date(startMs + input.servicio.duracion_min * 60_000).toISOString()
 
   const { error } = await db.from('wa_turnos').insert({
     medico_id: medicoId,
@@ -142,7 +158,22 @@ export async function crearTurno(
   })
   if (error) {
     // 23P01 = exclusion_violation: otro turno ganó ese rango en la carrera.
-    if (error.code === '23P01') return { ok: false, error: 'Ese horario ya fue tomado. Probá con otro.' }
+    if (error.code === '23P01') {
+      // ¿El que ya ocupa el slot es ESTE MISMO paciente? (doble confirmación o
+      // reintento) → éxito idempotente; decirle "probá con otro" lo mandaría a
+      // reservar un SEGUNDO turno en otro horario.
+      const { data: propio } = await db
+        .from('wa_turnos')
+        .select('id')
+        .eq('medico_id', medicoId)
+        .eq('paciente_telefono', input.pacienteTelefono)
+        .neq('estado', 'cancelado')
+        .lt('starts_at', endsAt)
+        .gt('ends_at', input.startsAt)
+        .limit(1)
+      if (propio && propio.length > 0) return { ok: true }
+      return { ok: false, error: 'Ese horario ya fue tomado. Probá con otro.' }
+    }
     console.error('[turnos] insert error:', error.message)
     return { ok: false, error: 'No se pudo crear el turno.' }
   }
@@ -173,7 +204,7 @@ export async function cancelarTurnoDePaciente(
   telefonoNormalizado: string,
   turnoId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { data } = await db
+  const { data, error } = await db
     .from('wa_turnos')
     .update({ estado: 'cancelado', updated_at: new Date().toISOString() })
     .eq('medico_id', medicoId)
@@ -181,6 +212,10 @@ export async function cancelarTurnoDePaciente(
     .eq('paciente_telefono', telefonoNormalizado)
     .in('estado', ['reservado', 'confirmado'])
     .select('id')
+  if (error) {
+    console.error('[turnos] cancelar error:', error.message)
+    return { ok: false, error: 'No pude cancelarlo ahora. Probá de nuevo en unos minutos.' }
+  }
   if (!data || data.length === 0) {
     return { ok: false, error: 'No encontré ese turno a nombre de este número (o ya estaba cancelado).' }
   }
@@ -202,6 +237,7 @@ export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promi
     .gt('starts_at', new Date().toISOString())
     .lte('starts_at', new Date(Date.now() + DIAS_RESUMEN_MEDICO * 86_400_000).toISOString())
     .order('starts_at')
+    .limit(MAX_LINEAS_RESUMEN)
   const rows =
     (data as unknown as
       | {
@@ -221,5 +257,7 @@ export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promi
         `• ${fmtFechaCorta(t.starts_at)} ${fmtHora(t.starts_at)} — ${t.paciente_nombre || t.paciente_telefono} (${nombreServicio(t.servicio)})`,
     )
     .join('\n')
-  return `📅 Turnos de los próximos ${DIAS_RESUMEN_MEDICO} días (${rows.length}):\n${lineas}`
+  const corto = rows.length === MAX_LINEAS_RESUMEN ? `\n… (mostrando los primeros ${MAX_LINEAS_RESUMEN})` : ''
+  const cuenta = rows.length === MAX_LINEAS_RESUMEN ? `${rows.length}+` : `${rows.length}`
+  return `📅 Turnos de los próximos ${DIAS_RESUMEN_MEDICO} días (${cuenta}):\n${lineas}${corto}`
 }
