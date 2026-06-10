@@ -37,6 +37,7 @@ export function buildSystemPromptPaciente(opts: { config: ConfigAgente | null; c
     `- Para reservar: pedí el NOMBRE COMPLETO del paciente si no lo tenés, confirmá servicio + día + hora, y llamá a reservar_turno con la fecha (YYYY-MM-DD) y hora (HH:MM) EXACTAS de un horario ofrecido. El teléfono NO se pide (ya lo tenés: es el número desde el que escribe).`,
     `- Decí que el turno "quedó agendado" SOLO si reservar_turno devolvió ok:true. Si devolvió error: pedí disculpas, volvé a consultar_disponibilidad y ofrecé horarios reales.`,
     `- Para cancelar (o si pregunta qué turnos tiene): usá cancelar_turno (primero listá con turno_id="", confirmá con el paciente cuál, y recién ahí cancelá con ese turno_id). Solo puede cancelar turnos de su propio número.`,
+    `- Los turnos NO se pagan por WhatsApp: el link de pago es SOLO para recetas. Si pregunta cómo abonar el turno, decile que se paga en el consultorio.`,
     ``,
     `LÍMITES:`,
     `- NO das diagnósticos ni indicaciones médicas. Si preguntan algo clínico, derivá al médico.`,

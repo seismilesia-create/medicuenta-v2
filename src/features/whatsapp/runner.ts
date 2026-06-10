@@ -217,20 +217,13 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
     ...m,
     content: scrubLinksMP(m.content),
   }))
-  const tools = {
-    ...buildPacienteTools({
-      db,
-      medicoId: canal.medicoId,
-      telefonoPaciente: incoming.from,
-      contactoId,
-    }),
-    ...buildTurnosTools({
-      db,
-      medicoId: canal.medicoId,
-      telefonoPaciente: incoming.from,
-      contactoId,
-    }),
+  const toolsCtx = {
+    db,
+    medicoId: canal.medicoId,
+    telefonoPaciente: incoming.from,
+    contactoId,
   }
+  const tools = { ...buildPacienteTools(toolsCtx), ...buildTurnosTools(toolsCtx) }
 
   let reply: string
   try {

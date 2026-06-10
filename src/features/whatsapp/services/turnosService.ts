@@ -229,7 +229,7 @@ function nombreServicio(s: { nombre: string } | { nombre: string }[] | null): st
 
 /** Agenda compacta para el comando 'turnos' del médico (visibilidad mínima, como 'recetas'). */
 export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promise<string> {
-  const { data } = await db
+  const { data, error } = await db
     .from('wa_turnos')
     .select('starts_at, paciente_nombre, paciente_telefono, estado, servicio:wa_servicios(nombre)')
     .eq('medico_id', medicoId)
@@ -238,6 +238,10 @@ export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promi
     .lte('starts_at', new Date(Date.now() + DIAS_RESUMEN_MEDICO * 86_400_000).toISOString())
     .order('starts_at')
     .limit(MAX_LINEAS_RESUMEN)
+  if (error) {
+    console.error('[turnos] resumen error:', error.message)
+    return 'No pude leer la agenda ahora. Probá de nuevo en unos minutos.'
+  }
   const rows =
     (data as unknown as
       | {
