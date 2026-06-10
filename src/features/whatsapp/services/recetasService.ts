@@ -174,12 +174,30 @@ export async function marcarDevuelta(db: SupabaseClient, medicoId: string, recet
     .eq('estado', 'pagada')
 }
 
-export async function marcarEntregada(db: SupabaseClient, medicoId: string, recetaId: string): Promise<void> {
-  await db
+/**
+ * Reclamo atómico de la entrega: pagada → entregada SOLO si nadie la reclamó antes.
+ * Evita el PDF duplicado cuando MP manda avisos simultáneos del mismo pago: la DB
+ * arbitra y un único proceso gana (devuelve true); el resto recibe false y no envía.
+ */
+export async function reclamarEntrega(db: SupabaseClient, medicoId: string, recetaId: string): Promise<boolean> {
+  const { data } = await db
     .from('recetas')
     .update({ estado: 'entregada', updated_at: new Date().toISOString() })
     .eq('medico_id', medicoId)
     .eq('id', recetaId)
+    .eq('estado', 'pagada')
+    .select('id')
+  return ((data as { id: string }[] | null)?.length ?? 0) > 0
+}
+
+/** Compensación si el envío falla después de reclamar: vuelve a 'pagada' para reintentar. */
+export async function revertirEntrega(db: SupabaseClient, medicoId: string, recetaId: string): Promise<void> {
+  await db
+    .from('recetas')
+    .update({ estado: 'pagada', updated_at: new Date().toISOString() })
+    .eq('medico_id', medicoId)
+    .eq('id', recetaId)
+    .eq('estado', 'entregada')
 }
 
 /** Resumen para el comando 'recetas' del médico (§6.8 visibilidad mínima). */

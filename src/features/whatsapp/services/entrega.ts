@@ -10,15 +10,26 @@ import {
   listarPendientesConPreferencia,
   marcarPagada,
   marcarDevuelta,
-  marcarEntregada,
+  reclamarEntrega,
+  revertirEntrega,
   type RecetaRow,
 } from './recetasService'
 
-/** Entrega el PDF de una receta pagada por WhatsApp (document). true si se entregó. */
+/**
+ * Entrega el PDF de una receta pagada por WhatsApp (document). true si se entregó.
+ * Reclama la entrega ANTES de enviar (atómico): si dos procesos llegan a la vez
+ * (avisos duplicados de MP, o webhook + mensaje del paciente), solo uno envía.
+ * Si el envío falla después del reclamo, se revierte a 'pagada' para reintentar.
+ */
 export async function entregarReceta(db: SupabaseClient, canal: CanalResuelto, receta: RecetaRow): Promise<boolean> {
   if (!receta.paciente_telefono) return false
+  if (!(await reclamarEntrega(db, receta.medico_id, receta.id))) return false
+
   const pdf = await descargarPdfReceta(db, receta.pdf_path)
-  if (!pdf) return false
+  if (!pdf) {
+    await revertirEntrega(db, receta.medico_id, receta.id)
+    return false
+  }
   const filename = `receta-${receta.nro_receta || receta.id.slice(0, 8)}.pdf`
   const mediaId = await uploadWhatsAppMedia({
     phoneNumberId: canal.phoneNumberId,
@@ -27,7 +38,10 @@ export async function entregarReceta(db: SupabaseClient, canal: CanalResuelto, r
     mimeType: 'application/pdf',
     filename,
   })
-  if (!mediaId) return false
+  if (!mediaId) {
+    await revertirEntrega(db, receta.medico_id, receta.id)
+    return false
+  }
   const ok = await sendWhatsAppDocument({
     phoneNumberId: canal.phoneNumberId,
     accessToken: canal.accessToken,
@@ -36,9 +50,12 @@ export async function entregarReceta(db: SupabaseClient, canal: CanalResuelto, r
     filename,
     caption: '✅ Pago confirmado. Acá está tu receta.',
   })
-  if (!ok) return false // p.ej. ventana de 24h cerrada → queda 'pagada', se reintenta al próximo mensaje
-  await marcarEntregada(db, receta.medico_id, receta.id)
-  return true
+  if (!ok) {
+    // p.ej. ventana de 24h cerrada → vuelve a 'pagada', se reintenta al próximo mensaje
+    await revertirEntrega(db, receta.medico_id, receta.id)
+    return false
+  }
+  return true // quedó 'entregada' por el reclamo
 }
 
 /**
