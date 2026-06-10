@@ -13,18 +13,32 @@ export type ResultadoServicio =
   | { tipo: 'elegir'; opciones: ServicioLite[] }
   | { tipo: 'ninguno' }
 
+/** ' consulta de control ' — minúsculas, separadores colapsados, con bordes de palabra. */
+function tokens(s: string): string {
+  return ` ${s
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()} `
+}
+
 export function resolverServicio(servicios: ServicioLite[], query: string): ResultadoServicio {
-  const activos = servicios.filter((s) => s.activo)
+  // nombre vacío sería un matcheador universal en la dirección q.includes(nombre)
+  const activos = servicios.filter((s) => s.activo && s.nombre.trim())
   if (activos.length === 0) return { tipo: 'ninguno' }
 
   const q = query.trim().toLowerCase()
   if (q) {
     const exacto = activos.find((s) => s.nombre.toLowerCase() === q)
     if (exacto) return { tipo: 'ok', servicio: exacto }
-    const parcial = activos.find(
-      (s) => s.nombre.toLowerCase().includes(q) || q.includes(s.nombre.toLowerCase()),
+    // Parcial: el nombre contiene lo tipeado, o lo tipeado contiene el nombre como
+    // palabra(s) completa(s) — sin bordes, "Eco" matchearía adentro de "reconocen".
+    const parciales = activos.filter(
+      (s) => s.nombre.toLowerCase().includes(q) || tokens(q).includes(tokens(s.nombre)),
     )
-    if (parcial) return { tipo: 'ok', servicio: parcial }
+    // Ambiguo (p.ej. "Consulta" y "Consulta de control") → que el paciente elija;
+    // resolver por orden de fila reservaría el servicio equivocado en silencio.
+    if (parciales.length === 1) return { tipo: 'ok', servicio: parciales[0] }
+    if (parciales.length > 1) return { tipo: 'elegir', opciones: parciales }
   }
   // Sin query (o sin match): si ofrece una sola cosa, es esa; si no, que elija.
   if (activos.length === 1) return { tipo: 'ok', servicio: activos[0] }

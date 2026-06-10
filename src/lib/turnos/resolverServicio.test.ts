@@ -41,4 +41,28 @@ describe('resolverServicio', () => {
     const r = resolverServicio([consulta, control], 'masajes')
     expect(r.tipo).toBe('elegir')
   })
+
+  it('match parcial ambiguo → elegir solo entre los que matchean', () => {
+    const consultaControl: ServicioLite = { id: 'd4', nombre: 'Consulta de control', duracion_min: 15, precio: null, activo: true }
+    const r = resolverServicio([consulta, consultaControl, control], 'quiero una consulta de control por favor')
+    expect(r.tipo).toBe('elegir')
+    if (r.tipo === 'elegir') expect(r.opciones.map((s) => s.id)).toEqual(['a1', 'd4'])
+  })
+
+  it('match exacto le gana al parcial aunque venga después en la lista', () => {
+    const eco: ServicioLite = { id: 'e5', nombre: 'Eco', duracion_min: 20, precio: null, activo: true }
+    const ecoDoppler: ServicioLite = { id: 'f6', nombre: 'Eco Doppler', duracion_min: 30, precio: null, activo: true }
+    expect(resolverServicio([ecoDoppler, eco], 'eco')).toEqual({ tipo: 'ok', servicio: eco })
+  })
+
+  it('nombres cortos no matchean adentro de palabras ajenas', () => {
+    const eco: ServicioLite = { id: 'e5', nombre: 'Eco', duracion_min: 20, precio: null, activo: true }
+    const r = resolverServicio([consulta, eco], 'quiero saber si reconocen mi obra social')
+    expect(r.tipo).toBe('elegir')
+  })
+
+  it('un servicio con nombre vacío no matchea todo', () => {
+    const fantasma: ServicioLite = { id: 'g7', nombre: '   ', duracion_min: 30, precio: null, activo: true }
+    expect(resolverServicio([fantasma, consulta], 'consulta')).toEqual({ tipo: 'ok', servicio: consulta })
+  })
 })
