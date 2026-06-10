@@ -1,0 +1,148 @@
+import { describe, it, expect } from 'vitest'
+import {
+  computeSlotsForDate,
+  arDateString,
+  weekdayOf,
+  pickException,
+  resolveDayHours,
+  esSlotOfrecido,
+  type ScheduleExceptionLite,
+  type DayAvailability,
+} from './slots'
+
+// 2026-06-15 es lunes. 09:00 AR (-03:00) = 12:00 UTC.
+
+describe('computeSlotsForDate', () => {
+  const hours = [{ open_time: '09:00', close_time: '12:00' }]
+
+  it('genera slots cada `durationMin` dentro del bloque, en UTC con label AR', () => {
+    const slots = computeSlotsForDate({ date: '2026-06-15', durationMin: 60, hours, busy: [] })
+    expect(slots.map((s) => s.label)).toEqual(['09:00', '10:00', '11:00'])
+    expect(slots[0].startsAt).toBe('2026-06-15T12:00:00.000Z')
+    expect(slots[0].endsAt).toBe('2026-06-15T13:00:00.000Z')
+  })
+
+  it('el último slot tiene que ENTRAR completo antes del cierre', () => {
+    const slots = computeSlotsForDate({ date: '2026-06-15', durationMin: 45, hours, busy: [] })
+    expect(slots.map((s) => s.label)).toEqual(['09:00', '09:45', '10:30', '11:15'])
+  })
+
+  it('acepta open/close con segundos (formato TIME de Postgres)', () => {
+    const conSegundos = [{ open_time: '09:00:00', close_time: '11:00:00' }]
+    const slots = computeSlotsForDate({ date: '2026-06-15', durationMin: 60, hours: conSegundos, busy: [] })
+    expect(slots.map((s) => s.label)).toEqual(['09:00', '10:00'])
+  })
+
+  it('excluye slots que solapan turnos ocupados', () => {
+    const busy = [{ starts_at: '2026-06-15T13:00:00.000Z', ends_at: '2026-06-15T14:00:00.000Z' }] // 10–11 AR
+    const slots = computeSlotsForDate({ date: '2026-06-15', durationMin: 60, hours, busy })
+    expect(slots.map((s) => s.label)).toEqual(['09:00', '11:00'])
+  })
+
+  it('descarta slots en el pasado si se pasa nowMs', () => {
+    const nowMs = new Date('2026-06-15T13:30:00.000Z').getTime() // 10:30 AR
+    const slots = computeSlotsForDate({ date: '2026-06-15', durationMin: 60, hours, busy: [], nowMs })
+    expect(slots.map((s) => s.label)).toEqual(['11:00'])
+  })
+
+  it('soporta dos bloques (mañana y tarde, siesta en el medio)', () => {
+    const dosBloques = [
+      { open_time: '09:00', close_time: '11:00' },
+      { open_time: '17:00', close_time: '19:00' },
+    ]
+    const slots = computeSlotsForDate({ date: '2026-06-15', durationMin: 60, hours: dosBloques, busy: [] })
+    expect(slots.map((s) => s.label)).toEqual(['09:00', '10:00', '17:00', '18:00'])
+  })
+})
+
+describe('arDateString / weekdayOf', () => {
+  it('arDateString devuelve YYYY-MM-DD en hora AR con offset de días', () => {
+    const base = new Date('2026-06-15T12:00:00.000Z').getTime()
+    expect(arDateString(base, 0)).toBe('2026-06-15')
+    expect(arDateString(base, 2)).toBe('2026-06-17')
+  })
+
+  it('weekdayOf: lunes=1, domingo=0', () => {
+    expect(weekdayOf('2026-06-15')).toBe(1)
+    expect(weekdayOf('2026-06-14')).toBe(0)
+  })
+})
+
+describe('pickException', () => {
+  const cerrado: ScheduleExceptionLite = { start_date: '2026-07-09', end_date: '2026-07-09', kind: 'closed', ranges: [] }
+  const especial: ScheduleExceptionLite = {
+    start_date: '2026-07-01',
+    end_date: '2026-07-31',
+    kind: 'custom',
+    ranges: [{ open: '10:00', close: '13:00' }],
+  }
+
+  it('precedencia: closed gana sobre custom cuando ambas cubren la fecha', () => {
+    expect(pickException('2026-07-09', [especial, cerrado])?.kind).toBe('closed')
+  })
+
+  it('fecha sin excepción que la cubra → null', () => {
+    expect(pickException('2026-08-01', [especial, cerrado])).toBeNull()
+  })
+})
+
+describe('resolveDayHours', () => {
+  const weekly = [
+    { weekday: 1, open_time: '09:00', close_time: '13:00' },
+    { weekday: 1, open_time: '17:00', close_time: '20:00' },
+    { weekday: 3, open_time: '09:00', close_time: '13:00' },
+  ]
+
+  it('día cerrado por excepción', () => {
+    const r = resolveDayHours({
+      date: '2026-06-15',
+      weekday: 1,
+      weekly,
+      exceptions: [{ start_date: '2026-06-15', end_date: '2026-06-15', kind: 'closed', ranges: [] }],
+    })
+    expect(r.closed).toBe(true)
+    expect(r.hours).toEqual([])
+  })
+
+  it('horario especial (custom) pisa al semanal', () => {
+    const r = resolveDayHours({
+      date: '2026-06-15',
+      weekday: 1,
+      weekly,
+      exceptions: [
+        { start_date: '2026-06-15', end_date: '2026-06-15', kind: 'custom', ranges: [{ open: '10:00', close: '12:00' }] },
+      ],
+    })
+    expect(r.closed).toBe(false)
+    expect(r.hours).toEqual([{ open_time: '10:00', close_time: '12:00' }])
+  })
+
+  it('sin excepción → los bloques del weekday', () => {
+    const r = resolveDayHours({ date: '2026-06-15', weekday: 1, weekly, exceptions: [] })
+    expect(r.hours).toHaveLength(2)
+  })
+
+  it('weekday sin horario cargado → sin bloques (no atiende ese día)', () => {
+    const r = resolveDayHours({ date: '2026-06-16', weekday: 2, weekly, exceptions: [] })
+    expect(r.closed).toBe(false)
+    expect(r.hours).toEqual([])
+  })
+})
+
+describe('esSlotOfrecido', () => {
+  const dias: DayAvailability[] = [
+    {
+      date: '2026-06-15',
+      weekday: 1,
+      slots: [{ startsAt: '2026-06-15T12:00:00.000Z', endsAt: '2026-06-15T12:30:00.000Z', label: '09:00' }],
+    },
+  ]
+
+  it('true para un slot exactamente ofrecido', () => {
+    expect(esSlotOfrecido(dias, '2026-06-15T12:00:00.000Z')).toBe(true)
+  })
+
+  it('false para un horario no ofrecido (anti-horario-inventado)', () => {
+    expect(esSlotOfrecido(dias, '2026-06-15T12:15:00.000Z')).toBe(false)
+  })
+})
