@@ -94,8 +94,10 @@ export function arDateString(baseMs: number, offsetDays = 0): string {
 
 /** Día de la semana (0=domingo) en hora AR para un 'YYYY-MM-DD'. */
 export function weekdayOf(date: string): number {
-  // Mediodía local para evitar bordes de día por offset
-  return new Date(`${date}T12:00:00${AR_OFFSET}`).getDay()
+  // Mediodía AR = 15:00Z del mismo día calendario UTC → getUTCDay no depende de la
+  // zona horaria de la máquina (getDay sí: rompía con TZ ≥ UTC+9). Desvío deliberado
+  // del port 1:1 — bug latente del origen, descubierto por esta suite.
+  return new Date(`${date}T12:00:00${AR_OFFSET}`).getUTCDay()
 }
 
 /** Excepción de calendario en forma mínima para el motor de slots. */
@@ -161,5 +163,9 @@ export interface DayAvailability {
  * Barrera anti-horario-inventado: la IA solo puede reservar lo que la tool ofreció.
  */
 export function esSlotOfrecido(dias: DayAvailability[], startsAt: string): boolean {
-  return dias.some((d) => d.slots.some((s) => s.startsAt === startsAt))
+  // Compara INSTANTES (no strings): '…T12:00:00Z' y '…T12:00:00.000Z' son el mismo
+  // momento. La barrera no se debilita: solo pasan instantes exactamente ofrecidos.
+  const t = new Date(startsAt).getTime()
+  if (!Number.isFinite(t)) return false
+  return dias.some((d) => d.slots.some((s) => new Date(s.startsAt).getTime() === t))
 }

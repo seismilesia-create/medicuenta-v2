@@ -39,6 +39,17 @@ describe('computeSlotsForDate', () => {
     expect(slots.map((s) => s.label)).toEqual(['09:00', '11:00'])
   })
 
+  it('excluye slots que el turno ocupado atraviesa parcialmente', () => {
+    const busy = [{ starts_at: '2026-06-15T13:30:00.000Z', ends_at: '2026-06-15T14:30:00.000Z' }] // 10:30–11:30 AR
+    const slots = computeSlotsForDate({ date: '2026-06-15', durationMin: 60, hours, busy })
+    expect(slots.map((s) => s.label)).toEqual(['09:00'])
+  })
+
+  it('stepMin menor que la duración genera slots superpuestos cada stepMin', () => {
+    const slots = computeSlotsForDate({ date: '2026-06-15', durationMin: 60, hours, stepMin: 30, busy: [] })
+    expect(slots.map((s) => s.label)).toEqual(['09:00', '09:30', '10:00', '10:30', '11:00'])
+  })
+
   it('descarta slots en el pasado si se pasa nowMs', () => {
     const nowMs = new Date('2026-06-15T13:30:00.000Z').getTime() // 10:30 AR
     const slots = computeSlotsForDate({ date: '2026-06-15', durationMin: 60, hours, busy: [], nowMs })
@@ -127,6 +138,17 @@ describe('resolveDayHours', () => {
     expect(r.closed).toBe(false)
     expect(r.hours).toEqual([])
   })
+
+  it("excepción 'open' → usa el horario semanal igual", () => {
+    const r = resolveDayHours({
+      date: '2026-06-15',
+      weekday: 1,
+      weekly,
+      exceptions: [{ start_date: '2026-06-15', end_date: '2026-06-15', kind: 'open', ranges: [] }],
+    })
+    expect(r.closed).toBe(false)
+    expect(r.hours).toHaveLength(2)
+  })
 })
 
 describe('esSlotOfrecido', () => {
@@ -144,5 +166,13 @@ describe('esSlotOfrecido', () => {
 
   it('false para un horario no ofrecido (anti-horario-inventado)', () => {
     expect(esSlotOfrecido(dias, '2026-06-15T12:15:00.000Z')).toBe(false)
+  })
+
+  it('acepta el mismo instante en otra representación ISO válida', () => {
+    expect(esSlotOfrecido(dias, '2026-06-15T12:00:00Z')).toBe(true)
+  })
+
+  it('rechaza strings que no son fechas', () => {
+    expect(esSlotOfrecido(dias, 'mañana a la tarde')).toBe(false)
   })
 })
