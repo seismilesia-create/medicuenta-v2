@@ -5,7 +5,7 @@
 -- ============================================================================
 
 -- Necesaria para el constraint anti-overbooking (EXCLUDE con = sobre uuid)
-CREATE EXTENSION IF NOT EXISTS btree_gist;
+CREATE EXTENSION IF NOT EXISTS btree_gist WITH SCHEMA extensions;
 
 -- ── wa_servicios: catálogo de servicios del médico (consulta, control, etc.) ─
 CREATE TABLE wa_servicios (
