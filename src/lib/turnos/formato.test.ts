@@ -20,6 +20,12 @@ describe('armarStartsAtISO', () => {
     expect(armarStartsAtISO('2026-06-15', '09:00:00')).toBeNull()
     expect(armarStartsAtISO('', '')).toBeNull()
   })
+
+  it('rechaza fechas que no existen (V8 las rola al día siguiente en silencio)', () => {
+    expect(armarStartsAtISO('2026-02-29', '09:00')).toBeNull() // 2026 no es bisiesto
+    expect(armarStartsAtISO('2026-06-31', '09:00')).toBeNull()
+    expect(armarStartsAtISO('2026-06-15', '24:00')).toBeNull() // medianoche del día siguiente
+  })
 })
 
 describe('fmtFechaLarga / fmtHora', () => {
@@ -33,5 +39,9 @@ describe('fmtFechaLarga / fmtHora', () => {
 
   it('fmtHora devuelve HH:MM de 24h en hora argentina', () => {
     expect(fmtHora('2026-06-15T12:00:00.000Z')).toBe('09:00')
+  })
+
+  it('fmtHora a medianoche devuelve 00:00 (h23, nunca 24:00)', () => {
+    expect(fmtHora('2026-06-15T03:00:00.000Z')).toBe('00:00')
   })
 })

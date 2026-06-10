@@ -16,6 +16,11 @@ export function armarStartsAtISO(fecha: string, hora: string): string | null {
   if (!FECHA_RE.test(f) || !HORA_RE.test(h)) return null
   const d = new Date(`${f}T${h}:00${AR_OFFSET}`)
   if (Number.isNaN(d.getTime())) return null
+  // Anti-rollover: V8 convierte fechas inexistentes (29/2 no bisiesto, 31/6, '24:00')
+  // en el día siguiente en silencio — y ese instante PUEDE ser un slot ofrecido de
+  // otro día, así que el gate por instante no lo atraparía. Round-trip y rechazo.
+  const vuelta = new Intl.DateTimeFormat('en-CA', { timeZone: AR_TZ }).format(d)
+  if (vuelta !== f) return null
   return d.toISOString()
 }
 
@@ -29,7 +34,7 @@ export function fmtFechaLarga(iso: string): string {
   }).format(new Date(iso))
 }
 
-/** 'lunes 15/06' para listados compactos. */
+/** 'lunes 15-06' para listados compactos (separador '-' es el es-AR de ICU actual). */
 export function fmtFechaCorta(iso: string): string {
   return new Intl.DateTimeFormat('es-AR', {
     weekday: 'long',
