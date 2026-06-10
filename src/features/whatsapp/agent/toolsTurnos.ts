@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { normalizeRecipient } from '@/lib/whatsapp/client'
 import { resolverServicio } from '@/lib/turnos/resolverServicio'
 import { armarStartsAtISO, fmtFechaLarga, fmtHora } from '@/lib/turnos/formato'
-import { esSlotOfrecido } from '@/lib/turnos/slots'
+import { esSlotOfrecido, AR_OFFSET } from '@/lib/turnos/slots'
 import {
   getServiciosActivos,
   getDisponibilidad,
@@ -23,6 +23,8 @@ export interface TurnosToolsCtx {
 /** Caps de la respuesta de disponibilidad (mismos del origen): no abrumar el contexto. */
 const DIAS_EN_RESPUESTA = 5
 const SLOTS_POR_DIA = 24
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** Tools de turnos del agente del paciente. medico_id INYECTADO (el webhook no tiene sesión). */
 export function buildTurnosTools(ctx: TurnosToolsCtx) {
@@ -43,7 +45,7 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
         }
         if (res.tipo === 'elegir') {
           return {
-            elegir_entre: res.opciones.map((s) => ({ servicio: s.nombre, duracion_min: s.duracion_min })),
+            elegir_entre: res.opciones.map((s) => ({ servicio: s.nombre, duracion_min: s.duracion_min, precio: s.precio })),
             instruccion: 'Preguntale al paciente cuál de estos servicios quiere antes de ofrecer horarios.',
           }
         }
@@ -54,13 +56,14 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
         return {
           servicio: res.servicio.nombre,
           duracion_min: res.servicio.duracion_min,
+          precio: res.servicio.precio,
           disponibilidad: dias.slice(0, DIAS_EN_RESPUESTA).map((d) => ({
             fecha: d.date, // YYYY-MM-DD — pasala TAL CUAL a reservar_turno
-            dia: fmtFechaLarga(`${d.date}T12:00:00-03:00`),
+            dia: fmtFechaLarga(`${d.date}T12:00:00${AR_OFFSET}`),
             horarios: d.slots.slice(0, SLOTS_POR_DIA).map((s) => s.label),
           })),
           instruccion:
-            'Ofrecé SOLO estos horarios, con fecha y hora EXACTAS. Para reservar llamá a reservar_turno con la fecha (YYYY-MM-DD) y la hora (HH:MM) elegidas.',
+            'Ofrecé SOLO estos horarios, con fecha y hora EXACTAS. Para reservar llamá a reservar_turno con la fecha (YYYY-MM-DD) y la hora (HH:MM) elegidas. Si preguntan el precio y figura null, NO inventes montos: que lo consulte con el médico.',
         }
       },
     }),
@@ -102,7 +105,8 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
           servicio: res.servicio,
           startsAt,
           pacienteTelefono: normalizeRecipient(ctx.telefonoPaciente),
-          pacienteNombre: nombre_paciente.trim(),
+          // Tope: un "nombre" kilométrico rompería el resumen del médico (4096 chars de WhatsApp).
+          pacienteNombre: nombre_paciente.trim().slice(0, 120),
           contactoId: ctx.contactoId,
         })
         if (!r.ok) return { ok: false, error: r.error }
@@ -115,17 +119,18 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
 
     cancelar_turno: tool({
       description:
-        'Lista o cancela turnos DEL PACIENTE que escribe (solo los suyos). Llamala con turno_id="" para listar; después, confirmá con el paciente y llamala con el turno_id elegido para cancelar.',
+        'Lista o cancela turnos DEL PACIENTE que escribe (solo los suyos). Llamala con turno_id="" para listar — también si pregunta qué turnos tiene o cuándo es su turno. Para cancelar: confirmá con el paciente y llamala de nuevo con el turno_id elegido.',
       inputSchema: z.object({
         turno_id: z.string().describe('El turno_id devuelto por esta misma tool al listar. "" para listar.'),
       }),
       execute: async ({ turno_id }) => {
         const telefono = normalizeRecipient(ctx.telefonoPaciente)
-        const turnos = await listarTurnosDePaciente(ctx.db, ctx.medicoId, telefono)
-        if (turnos.length === 0) {
-          return { turnos: [], mensaje: 'No hay turnos próximos a nombre de este número de WhatsApp.' }
-        }
-        if (!turno_id.trim()) {
+        const id = turno_id.trim()
+        if (!id) {
+          const turnos = await listarTurnosDePaciente(ctx.db, ctx.medicoId, telefono)
+          if (turnos.length === 0) {
+            return { turnos: [], mensaje: 'No hay turnos próximos a nombre de este número de WhatsApp.' }
+          }
           return {
             turnos: turnos.map((t) => ({
               turno_id: t.id,
@@ -138,7 +143,11 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
                 : 'Preguntale cuál quiere cancelar y llamá de nuevo con el turno_id elegido.',
           }
         }
-        const r = await cancelarTurnoDePaciente(ctx.db, ctx.medicoId, telefono, turno_id.trim())
+        // Un id inventado por el modelo reventaría como 22P02 en la columna uuid.
+        if (!UUID_RE.test(id)) {
+          return { ok: false, error: 'Ese turno_id no existe. Llamá de nuevo con turno_id="" para listar los turnos reales.' }
+        }
+        const r = await cancelarTurnoDePaciente(ctx.db, ctx.medicoId, telefono, id)
         if (!r.ok) return { ok: false, error: r.error }
         return { ok: true, mensaje: 'Turno cancelado. El horario quedó liberado.' }
       },
