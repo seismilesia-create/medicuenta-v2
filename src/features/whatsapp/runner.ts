@@ -22,6 +22,7 @@ import { buildSystemPromptPaciente, type ConfigAgente } from '@/features/whatsap
 import { runAgentTurn } from '@/features/whatsapp/agent/runAgentTurn'
 import { sanitizarReplyCobro, scrubLinksMP } from '@/features/whatsapp/agent/sanitizarReply'
 import { buildPacienteTools } from '@/features/whatsapp/agent/tools'
+import { registrarEvento } from '@/features/whatsapp/services/bitacora'
 
 type Db = ReturnType<typeof createServiceClient>
 
@@ -126,6 +127,13 @@ async function cargarRecetaDesdePdf(db: Db, canal: CanalResuelto, incoming: Inco
     ocr = await extraerRecetaDePdf(media.buffer)
   } catch (e) {
     console.error('[wa] OCR receta error:', e)
+    await registrarEvento(db, {
+      medicoId: canal.medicoId,
+      origen: 'agente',
+      nivel: 'error',
+      evento: 'ocr_receta_error',
+      detalle: { error: String(e) },
+    })
     await responder(canal, incoming.from, '✖ No pude leer ese PDF. Reenviá el original que baja de la app de OSEP.')
     return
   }
@@ -232,6 +240,14 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
     reply = sanitizarReplyCobro(turno.text, turno.cobros)
   } catch (e) {
     console.error('[wa] agent error:', e)
+    await registrarEvento(db, {
+      medicoId: canal.medicoId,
+      origen: 'agente',
+      nivel: 'error',
+      evento: 'agente_error',
+      detalle: { error: String(e) },
+      conversacionId,
+    })
     return
   }
   if (!reply) return
