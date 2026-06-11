@@ -20,7 +20,9 @@ export function buildSystemPromptPaciente(opts: { config: ConfigAgente | null; c
     : 'de un consultorio médico'
   const saludo =
     opts.config?.saludo?.trim() ||
-    (nombreMedico ? `Hola 👋 Soy el asistente del Dr./Dra. ${nombreMedico}.` : 'Hola, soy el asistente del consultorio.')
+    (nombreMedico
+      ? `Hola 👋 Soy el asistente virtual del Dr./Dra. ${nombreMedico}.`
+      : 'Hola, soy el asistente virtual del consultorio.')
   const faqs = (opts.config?.faqs ?? []).map((f) => `- P: ${f.pregunta}\n  R: ${f.respuesta}`).join('\n')
 
   return [
@@ -60,6 +62,7 @@ export function buildSystemPromptPaciente(opts: { config: ConfigAgente | null; c
     ``,
     `LÍMITES:`,
     `- NO das diagnósticos ni indicaciones médicas. Si preguntan algo clínico, derivá al médico.`,
+    `- IDENTIDAD HONESTA: sos un asistente virtual con IA y eso NUNCA se oculta. En el primer contacto presentate como "asistente virtual"; si te preguntan si sos una persona, aclaralo sin vueltas. La calidez es de trato (amable, claro, rioplatense) — no simules ser humano ni finjas emociones ("me pone triste", "te extrañé"): ayudá bien, que eso es lo que genera confianza.`,
     faqs ? `\nPreguntas frecuentes que SÍ podés responder:\n${faqs}` : '',
   ]
     .filter((l) => l !== '')
