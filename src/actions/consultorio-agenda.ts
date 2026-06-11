@@ -82,13 +82,15 @@ export async function cancelarTurnoPanel(turnoId: string) {
 export async function marcarAsistencia(turnoId: string, noVino: boolean) {
   const { supabase, user } = await medicoAutenticado()
   if (!user) return { error: 'No autenticado' }
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('wa_turnos')
     .update({ estado: noVino ? 'ausente' : 'reservado', updated_at: new Date().toISOString() })
     .eq('medico_id', user.id)
     .eq('id', turnoId)
     .in('estado', noVino ? ['reservado', 'confirmado'] : ['ausente'])
+    .select('id')
   if (error) return { error: error.message }
+  if (!data || data.length === 0) return { error: 'Ese turno ya no se puede marcar (refrescá la agenda)' }
   return { ok: true as const }
 }
 
@@ -111,6 +113,7 @@ export async function crearSobreturno(input: z.infer<typeof sobreturnoSchema>) {
   const d = parsed.data
   const dniNorm = d.dni.replace(/\D/g, '')
   if (d.dni && !/^\d{7,8}$/.test(dniNorm)) return { error: 'DNI inválido (7 u 8 dígitos), o dejalo vacío' }
+  const telNorm = d.telefono ? normalizeRecipient(d.telefono) : null
 
   const { error } = await supabase.from('wa_sobreturnos').insert({
     medico_id: user.id,
@@ -119,7 +122,7 @@ export async function crearSobreturno(input: z.infer<typeof sobreturnoSchema>) {
     paciente_apellido: d.apellido,
     paciente_dni: dniNorm || null,
     paciente_obra_social: d.obraSocial || null,
-    paciente_telefono: d.telefono || null,
+    paciente_telefono: telNorm,
     cobro: d.cobro,
     notas: d.notas || null,
     creado_por: user.id,
@@ -134,7 +137,7 @@ export async function crearSobreturno(input: z.infer<typeof sobreturnoSchema>) {
         apellido: d.apellido,
         dni: dniNorm,
         obraSocial: d.obraSocial || null,
-        telefono: d.telefono || null,
+        telefono: telNorm,
       })
     } catch (e) {
       await registrarEvento(supabase, {

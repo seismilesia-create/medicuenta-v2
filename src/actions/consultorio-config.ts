@@ -20,7 +20,9 @@ const horariosSchema = z.array(
   }),
 )
 
-/** Reemplaza el horario semanal completo (patrón del seed: delete + insert).
+/** Reemplaza el horario semanal completo.
+ *  Estrategia: insert primero → delete por id de los viejos. Si el insert falla,
+ *  el horario anterior queda intacto (sin ventana destructiva).
  *  Los turnos YA dados fuera del nuevo horario NO se tocan (spec §8.1). */
 export async function guardarHorarios(bloques: z.infer<typeof horariosSchema>) {
   const { supabase, user } = await medicoAutenticado()
@@ -30,13 +32,31 @@ export async function guardarHorarios(bloques: z.infer<typeof horariosSchema>) {
   for (const b of parsed.data) {
     if (b.close_time <= b.open_time) return { error: `Bloque inválido: ${b.open_time}–${b.close_time}` }
   }
-  const { error: delError } = await supabase.from('wa_horarios').delete().eq('medico_id', user.id)
-  if (delError) return { error: delError.message }
+
+  // Bloques solapados en el mismo día → la agenda mostraría huecos duplicados.
+  const porDia = new Map<number, { open_time: string; close_time: string }[]>()
+  for (const b of parsed.data) {
+    const dia = porDia.get(b.weekday) ?? []
+    for (const otro of dia) {
+      if (b.open_time < otro.close_time && otro.open_time < b.close_time) {
+        return { error: `Bloques solapados el mismo día (${b.open_time}–${b.close_time})` }
+      }
+    }
+    dia.push(b)
+    porDia.set(b.weekday, dia)
+  }
+
+  // Insertar primero y borrar después por id: si el insert falla, el horario viejo queda intacto.
+  const { data: viejos, error: selError } = await supabase.from('wa_horarios').select('id').eq('medico_id', user.id)
+  if (selError) return { error: selError.message }
   if (parsed.data.length > 0) {
-    const { error } = await supabase
-      .from('wa_horarios')
-      .insert(parsed.data.map((b) => ({ medico_id: user.id, ...b })))
+    const { error } = await supabase.from('wa_horarios').insert(parsed.data.map((b) => ({ medico_id: user.id, ...b })))
     if (error) return { error: error.message }
+  }
+  const idsViejos = ((viejos as { id: string }[] | null) ?? []).map((v) => v.id)
+  if (idsViejos.length > 0) {
+    const { error: delError } = await supabase.from('wa_horarios').delete().eq('medico_id', user.id).in('id', idsViejos)
+    if (delError) return { error: delError.message }
   }
   return { ok: true as const }
 }

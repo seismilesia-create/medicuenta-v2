@@ -4,6 +4,13 @@ import { getServiciosActivos, getDisponibilidad } from '@/features/whatsapp/serv
 import { armarDia, type ItemDia, type TurnoDia, type SlotLibre } from '@/lib/consultorio/armarDia'
 import { semaforoConversacion, msRestantesVentana, type Semaforo } from '@/lib/consultorio/semaforo'
 
+/** supabase-js devuelve errores en vez de lanzarlos: acá los convertimos en throw
+ *  para que las pantallas muestren su banner de error en vez de un vacío convincente. */
+function ok<T extends { data: unknown; error: { message: string } | null }>(res: T): T {
+  if (res.error) throw new Error(res.error.message)
+  return res
+}
+
 // ── Agenda ────────────────────────────────────────────────────────────────────
 
 export interface DiaSemana {
@@ -25,14 +32,16 @@ export async function getSemana(db: SupabaseClient, medicoId: string): Promise<D
       .eq('medico_id', medicoId)
       .neq('estado', 'cancelado')
       .gte('starts_at', desdeIso)
-      .lt('starts_at', hastaIso),
+      .lt('starts_at', hastaIso)
+      .then(ok),
     db
       .from('wa_sobreturnos')
       .select('fecha')
       .eq('medico_id', medicoId)
       .neq('estado', 'cancelado')
       .gte('fecha', desde)
-      .lt('fecha', hasta),
+      .lt('fecha', hasta)
+      .then(ok),
   ])
   const dias: DiaSemana[] = []
   for (let i = 0; i < 7; i++) {
@@ -79,14 +88,16 @@ export async function getDia(db: SupabaseClient, medicoId: string, fecha: string
       .eq('medico_id', medicoId)
       .gte('starts_at', desdeIso)
       .lt('starts_at', hastaIso)
-      .order('starts_at'),
+      .order('starts_at')
+      .then(ok),
     db
       .from('wa_sobreturnos')
       .select('id, fecha, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, cobro, estado, notas')
       .eq('medico_id', medicoId)
       .eq('fecha', fecha)
       .neq('estado', 'cancelado')
-      .order('created_at'),
+      .order('created_at')
+      .then(ok),
     getServiciosActivos(db, medicoId),
   ])
   const turnos = (turnosRes.data as TurnoDia[] | null) ?? []
@@ -120,12 +131,12 @@ export interface ConversacionItem {
 }
 
 export async function getBandeja(db: SupabaseClient, medicoId: string): Promise<ConversacionItem[]> {
-  const { data: convs } = await db
+  const { data: convs } = ok(await db
     .from('wa_conversaciones')
     .select('id, bot_pausado, necesita_humano, last_message_at, last_paciente_at, contacto:wa_contactos(nombre, telefono)')
     .eq('medico_id', medicoId)
     .order('last_message_at', { ascending: false })
-    .limit(50)
+    .limit(50))
   const rows =
     (convs as unknown as
       | {
@@ -139,13 +150,13 @@ export async function getBandeja(db: SupabaseClient, medicoId: string): Promise<
       | null) ?? []
   if (rows.length === 0) return []
   // Preview del último mensaje de cada conversación en UNA query.
-  const { data: msgs } = await db
+  const { data: msgs } = ok(await db
     .from('wa_mensajes')
     .select('conversacion_id, contenido, created_at')
     .eq('medico_id', medicoId)
     .in('conversacion_id', rows.map((r) => r.id))
     .order('created_at', { ascending: false })
-    .limit(300)
+    .limit(300))
   const preview = new Map<string, string>()
   for (const m of (msgs as { conversacion_id: string; contenido: string }[] | null) ?? []) {
     if (!preview.has(m.conversacion_id)) preview.set(m.conversacion_id, m.contenido)
@@ -193,14 +204,16 @@ export async function getHilo(db: SupabaseClient, medicoId: string, conversacion
       .select('id, bot_pausado, necesita_humano, last_paciente_at, contacto:wa_contactos(nombre, telefono)')
       .eq('medico_id', medicoId)
       .eq('id', conversacionId)
-      .maybeSingle(),
+      .maybeSingle()
+      .then(ok),
     db
       .from('wa_mensajes')
       .select('id, direccion, origen, contenido, created_at')
       .eq('medico_id', medicoId)
       .eq('conversacion_id', conversacionId)
-      .order('created_at', { ascending: true })
-      .limit(200),
+      .order('created_at', { ascending: false })
+      .limit(200)
+      .then(ok),
   ])
   if (!convRes.data) return null
   const c = convRes.data as unknown as {
@@ -218,7 +231,8 @@ export async function getHilo(db: SupabaseClient, medicoId: string, conversacion
     botPausado: c.bot_pausado,
     necesitaHumano: c.necesita_humano,
     msVentana: msRestantesVentana(c.last_paciente_at, Date.now()),
-    mensajes: (msgsRes.data as MensajeHilo[] | null) ?? [],
+    // Los 200 MÁS RECIENTES, en orden cronológico para el hilo.
+    mensajes: ((msgsRes.data as MensajeHilo[] | null) ?? []).reverse(),
   }
 }
 
@@ -243,10 +257,16 @@ export async function getPacientes(db: SupabaseClient, medicoId: string, q: stri
     .limit(100)
   const term = q.trim()
   if (term) {
-    // Apellido, nombre o DNI (el teléfono se busca client-side: jsonb).
-    query = query.or(`apellido.ilike.%${term}%,nombre.ilike.%${term}%,dni.like.%${term.replace(/\D/g, '') || term}%`)
+    // PostgREST trata , ( ) como sintaxis del filtro .or(): los sacamos del término.
+    const safe = term.replace(/[,()"]/g, ' ').replace(/\s+/g, ' ').trim()
+    // Si después de sanitizar el término queda vacío, devolvemos la lista sin filtrar.
+    if (safe) {
+      const safeDni = safe.replace(/\D/g, '') || safe
+      // Apellido, nombre o DNI (el teléfono se busca client-side: jsonb).
+      query = query.or(`apellido.ilike.%${safe}%,nombre.ilike.%${safe}%,dni.like.%${safeDni}%`)
+    }
   }
-  const { data } = await query
+  const { data } = ok(await query)
   return ((data as (Omit<PacienteRow, 'telefonos'> & { telefonos: unknown })[] | null) ?? []).map((p) => ({
     ...p,
     telefonos: Array.isArray(p.telefonos) ? (p.telefonos as string[]) : [],
@@ -262,15 +282,21 @@ export interface FichaPaciente {
 }
 
 export async function getFicha(db: SupabaseClient, medicoId: string, pacienteId: string): Promise<FichaPaciente | null> {
-  const { data: pacienteData } = await db
+  const { data: pacienteData } = ok(await db
     .from('wa_pacientes')
     .select('id, dni, nombre, apellido, obra_social, telefonos, updated_at')
     .eq('medico_id', medicoId)
     .eq('id', pacienteId)
-    .maybeSingle()
+    .maybeSingle())
   if (!pacienteData) return null
   const p = pacienteData as Omit<PacienteRow, 'telefonos'> & { telefonos: unknown }
   const telefonos = Array.isArray(p.telefonos) ? (p.telefonos as string[]) : []
+
+  // wa_contactos guarda el formato crudo de Meta (549...); wa_pacientes el normalizado (54...).
+  // Buscamos ambas variantes para que el link a la conversación funcione.
+  const variantes = telefonos.flatMap((t) =>
+    t.startsWith('54') && !t.startsWith('549') ? [t, `549${t.slice(2)}`] : [t],
+  )
 
   const [turnosRes, sobresRes, contactoRes, recetasRes] = await Promise.all([
     db
@@ -279,23 +305,26 @@ export async function getFicha(db: SupabaseClient, medicoId: string, pacienteId:
       .eq('medico_id', medicoId)
       .eq('paciente_dni', p.dni)
       .order('starts_at', { ascending: false })
-      .limit(50),
+      .limit(50)
+      .then(ok),
     db
       .from('wa_sobreturnos')
       .select('id, fecha, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, cobro, estado, notas')
       .eq('medico_id', medicoId)
       .eq('paciente_dni', p.dni)
       .order('fecha', { ascending: false })
-      .limit(20),
-    telefonos.length
+      .limit(20)
+      .then(ok),
+    variantes.length
       ? db
           .from('wa_contactos')
           .select('id, conversaciones:wa_conversaciones(id)')
           .eq('medico_id', medicoId)
-          .in('telefono', telefonos)
+          .in('telefono', variantes)
           .limit(1)
           .maybeSingle()
-      : Promise.resolve({ data: null }),
+          .then(ok)
+      : Promise.resolve({ data: null, error: null }),
     // Recetas del DNI — el panel es médico-only hasta 3B; en 3B este bloque se gatea por rol.
     db
       .from('recetas')
@@ -303,7 +332,8 @@ export async function getFicha(db: SupabaseClient, medicoId: string, pacienteId:
       .eq('medico_id', medicoId)
       .eq('paciente_dni', p.dni)
       .order('created_at', { ascending: false })
-      .limit(20),
+      .limit(20)
+      .then(ok),
   ])
 
   const contacto = contactoRes.data as unknown as { conversaciones: { id: string }[] | { id: string } | null } | null
@@ -350,22 +380,24 @@ export interface ConfigConsultorio {
 export async function getConfig(db: SupabaseClient, medicoId: string): Promise<ConfigConsultorio> {
   const hoy = arDateString(Date.now(), 0)
   const [horariosRes, serviciosRes, excepcionesRes, osRes, agenteRes, canalRes, mpRes] = await Promise.all([
-    db.from('wa_horarios').select('id, weekday, open_time, close_time').eq('medico_id', medicoId).order('weekday'),
-    db.from('wa_servicios').select('id, duracion_min').eq('medico_id', medicoId).eq('activo', true).limit(1),
+    db.from('wa_horarios').select('id, weekday, open_time, close_time').eq('medico_id', medicoId).order('weekday').then(ok),
+    db.from('wa_servicios').select('id, duracion_min').eq('medico_id', medicoId).eq('activo', true).limit(1).then(ok),
     db
       .from('wa_excepciones')
       .select('id, start_date, end_date, kind, note')
       .eq('medico_id', medicoId)
       .gte('end_date', hoy)
-      .order('start_date'),
-    db.from('wa_os_suspendidas').select('id, nombre_os, nota').eq('medico_id', medicoId).order('nombre_os'),
+      .order('start_date')
+      .then(ok),
+    db.from('wa_os_suspendidas').select('id, nombre_os, nota').eq('medico_id', medicoId).order('nombre_os').then(ok),
     db
       .from('wa_config_agente')
       .select('nombre_medico, especialidad, tono, saludo, faqs, precio_receta_default')
       .eq('medico_id', medicoId)
-      .maybeSingle(),
-    db.from('wa_canales').select('id').eq('medico_id', medicoId).eq('estado', 'conectado').maybeSingle(),
-    db.from('mp_conexiones').select('id').eq('medico_id', medicoId).eq('estado', 'conectado').maybeSingle(),
+      .maybeSingle()
+      .then(ok),
+    db.from('wa_canales').select('id').eq('medico_id', medicoId).eq('estado', 'conectado').maybeSingle().then(ok),
+    db.from('mp_conexiones').select('id').eq('medico_id', medicoId).eq('estado', 'conectado').maybeSingle().then(ok),
   ])
   const servicio = ((serviciosRes.data as { id: string; duracion_min: number }[] | null) ?? [])[0] ?? null
   const agente = agenteRes.data as ConfigConsultorio['agente'] & { precio_receta_default: unknown } | null
