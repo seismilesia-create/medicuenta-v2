@@ -1,60 +1,56 @@
-# HANDOFF — MediCuenta V2 (agente WhatsApp) — 2026-06-11 ~08:00 ART
+# HANDOFF — MediCuenta V2 (Fase 3: panel del consultorio) — 2026-06-11 ~23:55 ART
 
 ## Estado actual
-- **Tarea**: **Fase 2 (turnos por WhatsApp) COMPLETA y probada en vivo por el dueño** — reserva conversacional en dos pasos con identidad completa del paciente, cancelación, candados anti-acaparamiento y agenda del médico por comando. Cerrada con ~12 commits de iteración en vivo sobre feedback del dueño en el mismo día.
-- **Estado**: working (sin pendientes de código de Fase 2)
-- **Branch**: `feat/whatsapp-recetas-turnos` (sincronizada con origin)
-- **Último commit ANTES de este handoff**: `20a3595` fix(agente): nunca asumir que quien escribe es el paciente ni tomar el nombre del perfil de WhatsApp (caso nieto-abuela)
+- **Tarea**: **Fase 3 en marcha.** Spec completo aprobado por el dueño (brainstorm con visual companion, 13 decisiones) · **Etapa 3A parte 1 (motor del consultorio) COMPLETA y probada E2E en vivo** dos veces · **modelo del agente cambiado a Gemini 3.5 Flash** tras fallar Haiku en vivo · **plan de parte 2 (las 4 pantallas) escrito, commiteado y pusheado — listo para ejecutar**.
+- **Estado**: working (cero pendientes de código; la parte 2 arranca de cero con su plan)
+- **Branch**: `feat/whatsapp-recetas-turnos` (sincronizada con origin; **rebasada hoy sobre `origin/dev/gaby` `175efa4`**)
+- **Último commit ANTES de este handoff**: `d03695a` docs(plan): Fase 3A parte 2
 
-## Qué se construyó esta sesión (2026-06-10 tarde → 2026-06-11)
-- **Plan de Fase 2** (`docs/superpowers/plans/2026-06-10-whatsapp-fase2-turnos.md`) ejecutado completo con subagentes + doble review por task (los reviews cazaron bugs reales ANTES de correr: TZ de máquina en weekdayOf, rollover de fechas de V8, ambigüedad de servicios, reservas mudas por presupuesto de steps, barrera que pisaba el texto del turno).
-- **Motor**: `src/lib/turnos/` (slots port 1:1 + formato + resolverServicio + validarIdentidad, todos TDD) · `turnosService.ts` (service-role, filtra medico_id a mano) · `toolsTurnos.ts` (consultar_disponibilidad en 2 modos / reservar_turno / cancelar_turno) · integración en runner + systemPrompt.
-- **DB**: 3 migraciones aplicadas hoy por el dueño en SQL Editor: `20260611_whatsapp_fase2_turnos.sql` (4 tablas + EXCLUDE gist anti-overbooking, probado en vivo con 23P01), `20260611_config_agente_identidad.sql` (nombre_medico + especialidad), `20260611_turnos_identidad_paciente.sql` (paciente_dni + paciente_obra_social + paciente_apellido, consolidada e idempotente).
-- **Iteración en vivo con el dueño** (probó TODO el flujo por WhatsApp): flujo 2 pasos (días → horarios del día), identidad del asistente por médico, motivo de consulta visible en la agenda, nombre y APELLIDO separados, DNI + obra social, candado 1 turno/día por DNI, alarma de tipeo con confirmación, identidad honesta ("asistente virtual", admite ser IA), no asumir que quien escribe es el paciente.
-- **Tests**: 109 verdes · typecheck y build limpios. (`npm run lint` sigue roto — deuda conocida.)
+## Qué se hizo esta sesión (2026-06-11, sesión épica)
+1. **Brainstorm de Fase 3** con visual companion (mockups en browser): 13 decisiones del dueño documentadas → spec `docs/superpowers/specs/2026-06-11-fase3-panel-consultorio-design.md` (D1–D13: pulir facturación sin rediseñar, secretaria con usuario propio, sobreturnos lista-sin-hora con cobro particular/sin_cargo, GCal espejo unidireccional, token OSEP en estudio, alarma necesita_humano, pacientes auto-armados por DNI, correlación turno→orden + control 15 min, OS suspendidas enchufables al círculo, etapas 3A→3B→3C, agenda "día protagonista", duración-de-consulta en vez de catálogo, semáforo rojo/verde/azul + colores por actor).
+2. **Rebase sobre lo último de Gaby** (`175efa4`) — 66 commits sin conflictos.
+3. **Plan parte 1** (`docs/superpowers/plans/2026-06-11-fase3a-parte1-motor-consultorio.md`) ejecutado completo con **subagent-driven development** (11 tasks, subagente fresco por task + doble review spec/calidad por cluster + review final de integración: "ready to close"). Los reviews cazaron y arreglaron: CHECK de formato en `wa_pacientes.dni`, regex con caracteres invisibles, observabilidad de errores tragados, contradicción del prompt con los AVISOS, tool-result mentiroso sin hilo.
+4. **Migración 3A aplicada VÍA MCP de Supabase** (el dueño eligió esa vía sobre el SQL Editor — novedad de workflow) + backfill de `wa_pacientes` corrido e idempotente.
+5. **E2E en vivo ronda 1 (Haiku 4.5): FALLÓ el modelo, no el código** — confirmaba turnos sin llamar `reservar_turno` (la abuela quedó sin turno mientras decía "agendado"), decía "ya avisé" sin llamar `avisar_consultorio`, alucinó "PAMI también suspendida", partió mal nombre/apellido con punto y coma. La bitácora y los logs probaron que el código aguantó todo.
+6. **Cambio de modelo → `google/gemini-3.5-flash`** (`src/lib/ai/openrouter.ts`; OCR queda en Haiku; `ASSISTANT_MODEL=haiku` = rollback) + 3 reglas anti-mentira en el systemPrompt. **E2E ronda 2: TODO verde** (alarma real + ⚠️ en comando `turnos` + turno de Nora Quinteros existente + PAMI sin inventos). Smoke test del asistente interno (`/asistente`) con Gemini: OK (tools `navegar` y `consultar_nomenclador` andando).
+7. **Plan parte 2** (`docs/superpowers/plans/2026-06-11-fase3a-parte2-panel-consultorio.md`, 13 tasks, 2561 líneas) con los patrones REALES de la casa mapeados (server actions + Zod, páginas wrapper-server + client components, polling 15s, errores inline) y las deudas de parte 1 incorporadas como Tasks 1–2.
+- **Suite: 109 → 133 tests verdes** · typecheck y build limpios · 19 commits pusheados.
 
 ## Decisiones tomadas (con el "por qué")
-- **Recordatorios HSM + cron: DIFERIDOS a producción** (decisión del dueño) — el bot-escribe-primero necesita plantilla aprobada + cron productivo, y toda la infra paga va al final.
-- **cancelar_turno agregada** (no estaba en spec §7) — decisión del dueño; candado por teléfono del que reservó.
-- **Flujo conversacional en 2 pasos** — el "choclazo" de 5 días × 14 horarios mareaba; estructuralmente la tool ya no puede devolverlo (fecha_preferida: "" → días; fecha → horarios de ese día; sin lugar → alternativas más cercanas).
-- **Nombre y apellido SEPARADOS** — regla de modelado del dueño (guardada en memoria global): aplica a todo schema con personas. En `recetas` queda pendiente pre-producción (el PDF junta los campos pero el RCD los carga separados — anotado en spec).
-- **Candados anti-acaparamiento**: 3 turnos activos por número + **1 turno por día por DNI** (caso real de un colega: un paciente le llenó la agenda). El EXCLUDE de DB sigue siendo la última línea contra carreras.
-- **Identidad honesta del bot** — se presenta "asistente virtual", admite ser IA si le preguntan, calidez sin simular humano. Respaldado con evidencia (Nature 2023, J.MarComm 2025) + AI Act art. 50 (vigente 08/2026). Tono configurable por médico (campo `tono`).
-- **El nombre del perfil de WhatsApp jamás es dato del paciente** — quien escribe puede no ser el paciente (nieto→abuela); los datos se piden siempre.
-- **systemPrompt incluye fecha/hora actual AR** — sin eso el modelo no puede convertir "mañana"/"el lunes" a fecha.
+- **Modelo del agente = Gemini 3.5 Flash** — criterio del dueño: *"IA sobrada antes que justa — no quemarse con los médicos"*. Guardado en memoria global del proyecto (`project_medicuenta_modelo_agente.md`). NO proponer downgrades por costo. OCR sigue en Haiku (validado E2E Fase 1).
+- **Las 13 decisiones de producto viven en el spec** — no re-debatir; leer §2 del spec.
+- **Migraciones por MCP de Supabase** — el dueño lo prefirió hoy sobre el SQL Editor manual; el archivo versionado en el repo sigue siendo la fuente.
+- **Parte 2 = plan propio** escrito DESPUÉS de cerrar parte 1, mapeando componentes reales (método "mapear contexto antes de cada fase").
+- **El dashboard superadmin + orquestador de Héctor** quedó capturado textual en el spec §12 — es el PRÓXIMO brainstorm después de Fase 3, no antes.
 
 ## Lo que NO funcionó (no repetir en próxima sesión)
-- **Mostrar todos los horarios de todos los días** → confunde al paciente. Quedó bloqueado estructuralmente en la tool.
-- **Preguntar "¿qué servicio?" con un solo servicio activo** → fricción inútil; la tool resuelve sola.
-- **Asumir el nombre del perfil de WhatsApp como nombre del paciente** → perfiles con apodos + el que escribe puede no ser el paciente.
-- **pbcopy para pasarle contenido al dueño** → su app de dictado pisa el portapapeles; SIEMPRE pegar el contenido en el chat (memoria global guardada).
-- **Túneles trycloudflare tras suspensión de la Mac** → proceso queda zombie con URL muerta; matar y relanzar (URL nueva → webhook de Meta + PUBLIC_BASE_URL + reiniciar dev).
-- **El token temporal de Meta vence en horas** — volvió a pasar; renovarlo en el panel y re-correr `seed-wa-canal.mjs` (lo re-cifra en wa_canales).
-- **La shell de Claude pierde el cwd entre comandos** → usar siempre `cd /Users/hector/proyectos/Medicuenta-V2.0 &&` o rutas absolutas.
+- **Claude Haiku 4.5 como agente conversacional**: miente sobre tool-calls bajo presión multi-tool. NO volver salvo A/B explícito.
+- **Túnel trycloudflare zombie** (loop "control stream encountered a failure"): matar y relanzar. **SIEMPRE verificar el túnel end-to-end con curl ANTES de dar la URL a Meta** (esta sesión se le dio a Meta una URL de túnel muerto y la verificación falló).
+- **Prompts de fix con caracteres Unicode invisibles** (combining chars en regex): el subagente "no ve" la diferencia y reporta aplicado sin cambiar nada. Construir reemplazos programáticamente con `chr()` codes.
+- (Vigentes de sesiones previas: pbcopy pisado por el dictado → pegar SIEMPRE en el chat · la shell pierde el cwd → `cd` absoluto en cada comando · token temporal de Meta vence en horas.)
 
 ## Próximo paso concreto
-El dueño definió el rumbo al cerrar: **dashboard general de agentes / Fase 3** (panel web del consultorio + su dashboard propio con un agente orquestador que observa a los demás y propone mejoras supervisadas). Acción ejecutable: **brainstorm de Fase 3 partiendo de spec §8.1** (visión de interfaces, decisiones abiertas: Google Calendar sí/no, acceso delegado de secretaria) + memoria `vision-medicuenta-empresa.md` (dashboard orquestador, punto 7). La **infra productiva** (Supabase/Vercel/Meta/MP pagos) va AL FINAL de todo, decisión explícita del dueño.
+**Ejecutar el plan de parte 2**: `docs/superpowers/plans/2026-06-11-fase3a-parte2-panel-consultorio.md` — 13 tasks (motor de sesión T1–T7, navegación T8, pantallas /agenda /conversaciones /pacientes /consultorio/config T9–T12, verificación T13). Método recomendado y ya probado: **superpowers:subagent-driven-development** (subagente fresco por task, doble review por cluster, modelos: haiku para tasks mecánicas con código completo, sonnet para integración, reviewers en el modelo top). Task 1 arranca en `turnosService.ts`.
 
 ## Comandos para verificar estado al retomar
 ```bash
 cd ~/proyectos/Medicuenta-V2.0
 git status        # esperado: limpio
-git log -3        # esperado: 20a3595 (+ commit de este checkpoint encima)
-npm test          # esperado: 109 tests verdes
+git log -3        # esperado: d03695a (+ commit de este checkpoint encima)
+npm test          # esperado: 133 tests verdes (138 recién tras Task 3 de parte 2)
 npm run typecheck # esperado: sin errores
 ```
 
 ## Archivos clave para releer en la próxima sesión
-- `docs/superpowers/specs/2026-06-09-whatsapp-recetas-turnos-design.md` — §8.1 = visión de interfaces del dueño (3 superficies) + ideas anotadas (OS suspendidas, RENAPER, nombre/apellido en recetas).
-- `~/.claude/projects/-Users-hector-proyectos/memory/vision-medicuenta-empresa.md` — la visión completa de empresa (multi-profesión, API/MCP a OS, B2B círculos, asistente financiero, agentes automejorantes).
-- `src/features/whatsapp/agent/{toolsTurnos.ts,systemPrompt.ts}` — el estado final del agente (2 modos de disponibilidad, validaciones de identidad).
-- `src/features/whatsapp/services/turnosService.ts` — camino service-role completo.
-- `docs/superpowers/plans/2026-06-10-whatsapp-fase2-turnos.md` — qué quedó fuera de alcance documentado.
+- `docs/superpowers/plans/2026-06-11-fase3a-parte2-panel-consultorio.md` — **EL documento a ejecutar** (decisiones de implementación + 13 tasks con código completo).
+- `docs/superpowers/specs/2026-06-11-fase3-panel-consultorio-design.md` — el contrato de Fase 3 (13 decisiones, modelo de datos, etapas).
+- `docs/superpowers/plans/2026-06-11-fase3a-parte1-motor-consultorio.md` — solo la sección "Notas del review para PARTE 2" (ya incorporadas al plan p2, sirve de contraste).
+- `src/lib/ai/openrouter.ts` — la config del modelo nuevo con su decision record.
 
 ## Notas contextuales
-- **Infra efímera APAGADA al cierre** (dev server y túnel muertos). El webhook de Meta quedó apuntando a la URL muerta `crest-show-kidney-processor.trycloudflare.com` → al retomar pruebas: levantar dev + túnel nuevo, actualizar webhook en Meta + `PUBLIC_BASE_URL` en `.env.local`, reiniciar dev, y casi seguro renovar el token temporal de Meta (panel → `seed-wa-canal.mjs`).
-- **Datos de prueba en la DB**: turnos reales del E2E de hoy (del número 543834222049), horarios lun-vie 9-13/17-20, servicio "Consulta" 30min, identidad "Héctor Martínez / cirujano general" en wa_config_agente.
-- **Chip pendiente**: backport del fix `weekdayOf` (getUTCDay) al repo origen `Agente_Whatsapp` (bug de TZ latente allá).
-- **Migraciones**: TODAS las wa_* aplicadas en Supabase (`eylcrxhpccwobipcjzal`). Recordar que las tablas base de MediCuenta siguen sin versionar (dump pendiente si se migra de proyecto Supabase).
-- **Gaby** sigue en `dev/gaby` (facturación) — nuestra rama es aditiva; rebasar antes de Fase 3 si avanzó. El dueño quiere revisar/editar esa rama a fondo para la parte mobile (lo dijo el 11/6, anotado en spec §8.1).
-- La suite quedó en 109 tests; el plan de Fase 2 con sus 9 tasks completas quedó documentado en el repo.
+- **Infra efímera APAGADA al cierre** (dev + túnel muertos). El webhook de Meta quedó apuntando a la URL muerta `surrey-notified-scholarships-interfaces.trycloudflare.com`. Al retomar pruebas con WhatsApp: levantar dev + túnel nuevo → **curl de verificación por el túnel** → actualizar webhook en Meta (verify token en `.env.local`) + `PUBLIC_BASE_URL` en `.env.local` → reiniciar dev → token de Meta probablemente vencido (renovar en panel → pegar en chat → actualizar `WHATSAPP_TEST_ACCESS_TOKEN` en `.env.local` → `node --env-file=.env.local scripts/seed-wa-canal.mjs 924014ac-fb0a-4d9c-9028-49535e5e2e60 543834403010`). **Para las tasks 1–12 de parte 2 NO hace falta túnel** (solo para el paso de intervención end-to-end del guion de T13).
+- **Datos de prueba en la DB** (proyecto `eylcrxhpccwobipcjzal`): turnos activos = Quinteros Nora (PAMI, vie 12/06 09:00) · Figueroa Fernando (OSEP, vie 11:30, de Fase 2) · Martinez Hector Fernando (OSEP, lun 16/06 18:00) · `wa_pacientes` con 2 filas (DNI 23309087 y 3452167) · `wa_bitacora` con eventos reales · OS suspendidas: lista VACÍA (la OSEP de prueba se borró) · alarmas apagadas.
+- **Migración 3A aplicada y verificada** (4 tablas + ALTERs). Las tablas base de MediCuenta siguen sin versionar (deuda conocida).
+- **dev/gaby**: incluida hasta `175efa4`. Si pasan días antes de ejecutar parte 2, re-chequear `git fetch origin dev/gaby && git merge-base --is-ancestor origin/dev/gaby HEAD`.
+- **Mockups del brainstorm** en `.superpowers/brainstorm/` (gitignored) — los layouts elegidos quedaron descriptos en el spec; no hace falta el companion para ejecutar.
+- `npm run lint` sigue roto (deuda conocida, no es gate). La suite quedó en 133; el plan p2 espera 138 tras su Task 3.
