@@ -32,6 +32,7 @@ describe('msRestantesVentana', () => {
 describe('semaforoConversacion', () => {
   it('necesita_humano gana siempre → alerta', () => {
     expect(semaforoConversacion({ necesita_humano: true, last_paciente_at: HACE_25H }, NOW)).toBe('alerta')
+    expect(semaforoConversacion({ necesita_humano: true, last_paciente_at: HACE_1H }, NOW)).toBe('alerta')
   })
   it('ventana abierta → viva', () => {
     expect(semaforoConversacion({ necesita_humano: false, last_paciente_at: HACE_1H }, NOW)).toBe('viva')

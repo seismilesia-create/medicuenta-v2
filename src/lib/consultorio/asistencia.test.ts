@@ -26,4 +26,12 @@ describe('estadoEfectivoTurno', () => {
   it('starts_at inválido → proximo (no inventa asistencia con datos rotos)', () => {
     expect(estadoEfectivoTurno({ estado: 'reservado', starts_at: 'no-es-fecha' }, NOW)).toBe('proximo')
   })
+
+  it('completado explícito → atendido aunque la fecha sea futura (función total sobre el dominio)', () => {
+    expect(estadoEfectivoTurno({ estado: 'completado', starts_at: '2026-06-16T12:00:00.000Z' }, NOW)).toBe('atendido')
+  })
+
+  it('borde: un turno que empieza EXACTAMENTE ahora cuenta como atendido', () => {
+    expect(estadoEfectivoTurno({ estado: 'reservado', starts_at: '2026-06-15T15:00:00.000Z' }, NOW)).toBe('atendido')
+  })
 })

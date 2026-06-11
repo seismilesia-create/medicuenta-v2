@@ -12,8 +12,10 @@ export function ventanaAbierta(lastPacienteAt: string | null, nowMs: number): bo
 }
 
 export function msRestantesVentana(lastPacienteAt: string | null, nowMs: number): number {
-  if (!ventanaAbierta(lastPacienteAt, nowMs)) return 0
-  return new Date(lastPacienteAt as string).getTime() + VENTANA_24H_MS - nowMs
+  if (!lastPacienteAt) return 0
+  const t = new Date(lastPacienteAt).getTime()
+  if (!Number.isFinite(t)) return 0
+  return Math.max(0, t + VENTANA_24H_MS - nowMs)
 }
 
 export function semaforoConversacion(

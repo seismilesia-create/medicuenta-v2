@@ -13,6 +13,7 @@ export function estadoEfectivoTurno(
 ): EstadoEfectivoTurno {
   if (t.estado === 'cancelado') return 'cancelado'
   if (t.estado === 'ausente') return 'no_vino'
+  if (t.estado === 'completado') return 'atendido'
   const inicio = new Date(t.starts_at).getTime()
   if (!Number.isFinite(inicio) || inicio > nowMs) return 'proximo'
   return 'atendido'
