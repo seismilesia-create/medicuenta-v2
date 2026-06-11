@@ -13,6 +13,11 @@ Generar cash-flow para fondear la futura empresa de soluciones tecnológicas con
 - Al ser el proyecto de mayor pasión técnica del usuario (IA + desarrollo), favorecer patrones modernos de agentes/IA aunque sean un poco más complejos.
 - Pensar en la UX desde el lado del médico (no técnico) — claridad, menos clicks, automatización visible.
 
+**Visión de crecimiento (Héctor, 2026-06-11) — no adelantar desarrollo, pero NO cerrarle puertas:**
+- Adopción: pocos médicos → toda Catamarca → Argentina → **otros profesionales** prestadores de obras sociales ("médico" es el primer vertical, no el único — el tenant conceptual es "profesional").
+- Con masa crítica: negociar conexión **vía API/MCP a las bases de las obras sociales** (hoy imposible; objetivo de mediano plazo).
+- Segundo producto B2B: app para **círculos médicos / colegios de profesionales** (hoy hacen las presentaciones a las OS con sistemas heredados — dato de primera mano). La data limpia y estructurada de MediCuenta es el activo de ese producto: modelar siempre pensando en eso.
+
 **Contexto completo del usuario y visión:**
 `~/.claude/projects/-Users-hector/memory/vision_y_estrategia.md`
 
