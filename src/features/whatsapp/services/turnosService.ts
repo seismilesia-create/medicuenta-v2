@@ -285,6 +285,19 @@ function nombreServicio(s: { nombre: string } | { nombre: string }[] | null): st
   return Array.isArray(s) ? (s[0]?.nombre ?? 'turno') : s.nombre
 }
 
+/** Lista de OS suspendidas del médico (fuente provisoria manual — spec D9). */
+export async function getOsSuspendidas(db: SupabaseClient, medicoId: string): Promise<string[]> {
+  const { data, error } = await db
+    .from('wa_os_suspendidas')
+    .select('nombre_os')
+    .eq('medico_id', medicoId)
+  if (error) {
+    console.error('[turnos] os_suspendidas read error:', error.message)
+    return [] // fallo de lectura ≠ bloquear reservas: sin aviso es el degradado seguro
+  }
+  return ((data as { nombre_os: string }[] | null) ?? []).map((r) => r.nombre_os)
+}
+
 /** Agenda compacta para el comando 'turnos' del médico (visibilidad mínima, como 'recetas'). */
 export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promise<string> {
   const { data, error } = await db

@@ -6,6 +6,8 @@ import { resolverServicio } from '@/lib/turnos/resolverServicio'
 import { armarStartsAtISO, fmtFechaLarga, fmtHora } from '@/lib/turnos/formato'
 import { esSlotOfrecido, AR_OFFSET, arDateString } from '@/lib/turnos/slots'
 import { nombreSospechoso, dniNormalizadoValido } from '@/lib/turnos/validarIdentidad'
+import { esOsSuspendida } from '@/lib/consultorio/osSuspendidas'
+import { registrarEvento } from '@/features/whatsapp/services/bitacora'
 import {
   getServiciosActivos,
   getDisponibilidad,
@@ -13,6 +15,7 @@ import {
   listarTurnosDePaciente,
   listarTurnosActivosPorDni,
   cancelarTurnoDePaciente,
+  getOsSuspendidas,
 } from '@/features/whatsapp/services/turnosService'
 
 export interface TurnosToolsCtx {
@@ -131,8 +134,11 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
         nombre_confirmado: z
           .string()
           .describe('"si" SOLO si la tool te avisó que el nombre o apellido parecía mal escrito y el paciente lo confirmó o corrigió. "" en cualquier otro caso.'),
+        os_confirmada: z
+          .string()
+          .describe('"si" SOLO si la tool te avisó que la obra social está SUSPENDIDA y el paciente confirmó que igual quiere reservar (como particular). "" en cualquier otro caso.'),
       }),
-      execute: async ({ servicio, fecha, hora, nombre_paciente, apellido_paciente, dni_paciente, obra_social, motivo_consulta, nombre_confirmado }) => {
+      execute: async ({ servicio, fecha, hora, nombre_paciente, apellido_paciente, dni_paciente, obra_social, motivo_consulta, nombre_confirmado, os_confirmada }) => {
         if (!nombre_paciente.trim() || !apellido_paciente.trim()) {
           return { ok: false, error: 'Faltan el nombre y/o el apellido del paciente (van por separado): pedíselos antes de reservar.' }
         }
@@ -142,6 +148,21 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
         }
         if (!obra_social.trim()) {
           return { ok: false, error: 'Falta saber si el paciente tiene obra social o es particular: preguntáselo antes de reservar.' }
+        }
+        // OS suspendida por el círculo (spec D9): avisar, no bloquear — el paciente decide.
+        const suspendidas = await getOsSuspendidas(ctx.db, ctx.medicoId)
+        if (esOsSuspendida(suspendidas, obra_social) && os_confirmada.trim().toLowerCase() !== 'si') {
+          await registrarEvento(ctx.db, {
+            medicoId: ctx.medicoId,
+            origen: 'agente',
+            nivel: 'info',
+            evento: 'aviso_os_suspendida',
+            detalle: { obra_social: obra_social.trim().slice(0, 60) },
+          })
+          return {
+            ok: false,
+            error: `AVISO: por el momento la atención por "${obra_social.trim()}" está suspendida — la consulta sería PARTICULAR (se abona en el consultorio). Explicáselo al paciente y preguntale si quiere reservar igual. SOLO si acepta, llamá de nuevo con os_confirmada:"si".`,
+          }
         }
         // Alarma de tipeo: un nombre mal escrito ensucia la base para siempre.
         // No bloquea — el paciente puede confirmar que se escribe así.
