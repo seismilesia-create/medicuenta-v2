@@ -17,6 +17,7 @@ Generar cash-flow para fondear la futura empresa de soluciones tecnológicas con
 - Adopción: pocos médicos → toda Catamarca → Argentina → **otros profesionales** prestadores de obras sociales ("médico" es el primer vertical, no el único — el tenant conceptual es "profesional").
 - Con masa crítica: negociar conexión **vía API/MCP a las bases de las obras sociales** (hoy imposible; objetivo de mediano plazo).
 - Segundo producto B2B: app para **círculos médicos / colegios de profesionales** (hoy hacen las presentaciones a las OS con sistemas heredados — dato de primera mano). La data limpia y estructurada de MediCuenta es el activo de ese producto: modelar siempre pensando en eso.
+- Más allá: **asistente financiero** (detectar dinero quieto y MOSTRAR opciones — informar, nunca asesorar: regulado por CNV) y **versión agéntica** (el agente del profesional interconectado con otros agentes, probablemente vía MCP — la arquitectura actual de asistente-con-tools es la semilla de eso).
 
 **Contexto completo del usuario y visión:**
 `~/.claude/projects/-Users-hector/memory/vision_y_estrategia.md`
