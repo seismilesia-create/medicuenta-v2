@@ -84,11 +84,30 @@ export async function addMensaje(
     contenido: args.contenido,
     wamid: args.wamid ?? null,
   })
+  const ahora = new Date().toISOString()
+  const update: Record<string, string> = { last_message_at: ahora }
+  if (args.direccion === 'entrante') update.last_paciente_at = ahora // ventana 24h (semáforo)
   await db
     .from('wa_conversaciones')
-    .update({ last_message_at: new Date().toISOString() })
+    .update(update)
     .eq('medico_id', args.medicoId)
     .eq('id', args.conversacionId)
+}
+
+export async function contarNecesitanAtencion(db: SupabaseClient, medicoId: string): Promise<number> {
+  const { count } = await db
+    .from('wa_conversaciones')
+    .select('id', { count: 'exact', head: true })
+    .eq('medico_id', medicoId)
+    .eq('necesita_humano', true)
+  return count ?? 0
+}
+
+/** Suma al texto de un comando del médico el aviso de conversaciones esperando humano (spec §6). */
+export async function conAvisoAtencion(db: SupabaseClient, medicoId: string, texto: string): Promise<string> {
+  const n = await contarNecesitanAtencion(db, medicoId)
+  if (n === 0) return texto
+  return `${texto}\n\n⚠️ Además: ${n === 1 ? '1 conversación necesita' : `${n} conversaciones necesitan`} atención humana.`
 }
 
 export async function loadHistorial(

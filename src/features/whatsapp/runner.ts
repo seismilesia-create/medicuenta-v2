@@ -9,6 +9,7 @@ import {
   isBotPausado,
   addMensaje,
   loadHistorial,
+  conAvisoAtencion,
 } from '@/features/whatsapp/services/conversaciones'
 import { getPrecioReceta, setPrecioReceta } from '@/features/whatsapp/services/configAgente'
 import { crearRecetaDesdeOcr, resumenRecetas } from '@/features/whatsapp/services/recetasService'
@@ -92,11 +93,11 @@ async function handleMedico(db: Db, canal: CanalResuelto, incoming: IncomingMess
     return
   }
   if (/^(recetas|estado)$/i.test(texto)) {
-    await responder(canal, incoming.from, await resumenRecetas(db, canal.medicoId))
+    await responder(canal, incoming.from, await conAvisoAtencion(db, canal.medicoId, await resumenRecetas(db, canal.medicoId)))
     return
   }
   if (/^(turnos|agenda)$/i.test(texto)) {
-    await responder(canal, incoming.from, await resumenTurnos(db, canal.medicoId))
+    await responder(canal, incoming.from, await conAvisoAtencion(db, canal.medicoId, await resumenTurnos(db, canal.medicoId)))
     return
   }
   await responder(canal, incoming.from, AYUDA_MEDICO)
