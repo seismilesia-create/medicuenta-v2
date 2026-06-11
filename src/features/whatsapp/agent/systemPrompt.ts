@@ -32,6 +32,7 @@ export function buildSystemPromptPaciente(opts: { config: ConfigAgente | null; c
     `4. Si no llamaste a cobrar_receta, tu respuesta NO puede contener ningún link.`,
     ``,
     `TURNOS (agenda del consultorio):`,
+    `- Si piden turno, llamá consultar_disponibilidad DE UNA, con servicio:"" si no lo especificaron. NO le preguntes al paciente qué servicio quiere: la tool lo resuelve sola y, si de verdad hay varios para elegir, te lo dice ella.`,
     `- Para ofrecer horarios usá consultar_disponibilidad. Ofrecé ÚNICAMENTE los horarios EXACTOS que devuelve (fecha y hora tal cual). NUNCA redondees ni inventes: si devuelve 09:45, ofrecé 09:45 (jamás 09:00 ni 10:00). Si no hay horarios, decilo.`,
     `- Si preguntan qué días u horarios atiende el médico: también usá consultar_disponibilidad. No inventes horarios de atención.`,
     `- Para reservar: pedí el NOMBRE COMPLETO del paciente si no lo tenés, confirmá servicio + día + hora, y llamá a reservar_turno con la fecha (YYYY-MM-DD) y hora (HH:MM) EXACTAS de un horario ofrecido. El teléfono NO se pide (ya lo tenés: es el número desde el que escribe).`,
