@@ -95,11 +95,13 @@ export async function addMensaje(
 }
 
 export async function contarNecesitanAtencion(db: SupabaseClient, medicoId: string): Promise<number> {
-  const { count } = await db
+  const { count, error } = await db
     .from('wa_conversaciones')
     .select('id', { count: 'exact', head: true })
     .eq('medico_id', medicoId)
     .eq('necesita_humano', true)
+  // Degradar a "sin aviso" está bien (el resumen sale igual), pero jamás en silencio (spec §10).
+  if (error) console.error('[conversaciones] count necesita_humano error:', error.message)
   return count ?? 0
 }
 

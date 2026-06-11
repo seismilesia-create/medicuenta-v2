@@ -23,12 +23,15 @@ export async function upsertPacienteDesdeIdentidad(
 ): Promise<void> {
   if (!p.dni) return
 
-  const { data: existente } = await db
+  const { data: existente, error: errLectura } = await db
     .from('wa_pacientes')
     .select('id, nombre, apellido, obra_social, telefonos')
     .eq('medico_id', medicoId)
     .eq('dni', p.dni)
     .maybeSingle()
+  // Un fallo de lectura NO puede degradar a "no existe": insertaría un duplicado
+  // y la bitácora registraría una causa falsa. El caller (hook) loguea la real.
+  if (errLectura) throw errLectura
 
   if (!existente) {
     const { error } = await db.from('wa_pacientes').insert({

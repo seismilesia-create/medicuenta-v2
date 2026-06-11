@@ -1183,6 +1183,11 @@ on conflict (medico_id, nombre_os) do nothing;
 
 ---
 
+## Notas del review para el plan de PARTE 2 (cuando el panel reuse `crearTurno`)
+
+- El hook de pacientes en `turnosService.ts` registra bitácora con `origen: 'agente'` hardcodeado, y el insert del turno confía en el DEFAULT `'bot'` de la columna `origen`. El camino del panel necesita parametrizar `origen`/`creado_por`.
+- La recuperación 23P01 "mismo paciente" filtra `.eq('paciente_telefono', ...)`: con teléfono null (turno manual), `eq.null` de PostgREST no matchea nada → degrada al mensaje genérico "ese horario ya fue tomado". Guardar esa query con teléfono no-null al construir parte 2.
+
 ## Fuera de alcance de este plan (decidido — no re-debatir)
 
 - **Las 4 pantallas del panel** (/agenda, /conversaciones, /pacientes, /consultorio/config) + servicios de datos con sesión + API de respuesta humana: **plan parte 2**, que se escribe al cerrar esta parte mapeando los componentes reales de Gaby.

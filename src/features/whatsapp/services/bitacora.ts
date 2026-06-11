@@ -7,7 +7,7 @@ export interface EventoBitacora {
   origen: BitacoraOrigen
   nivel: 'info' | 'error'
   evento: string
-  detalle?: unknown
+  detalle?: Record<string, unknown>
   conversacionId?: string | null
 }
 
@@ -22,7 +22,7 @@ export async function registrarEvento(db: SupabaseClient, ev: EventoBitacora): P
       origen: ev.origen,
       nivel: ev.nivel,
       evento: ev.evento,
-      detalle: (ev.detalle as object) ?? {},
+      detalle: ev.detalle ?? {},
       conversacion_id: ev.conversacionId ?? null,
     })
     if (error) console.error('[bitacora] insert error:', error.message)
