@@ -10,6 +10,8 @@ import {
 } from '@/lib/turnos/slots'
 import { fmtFechaCorta, fmtHora } from '@/lib/turnos/formato'
 import type { ServicioLite } from '@/lib/turnos/resolverServicio'
+import { upsertPacienteDesdeIdentidad } from '@/features/whatsapp/services/pacientesService'
+import { registrarEvento } from '@/features/whatsapp/services/bitacora'
 
 /** Cuántos días hacia adelante se busca disponibilidad (el origen usaba 60: ruido). */
 const DIAS_A_OFRECER = 14
@@ -21,7 +23,7 @@ const MAX_LINEAS_RESUMEN = 30
 export interface TurnoRow {
   id: string
   servicio_id: string | null
-  paciente_telefono: string
+  paciente_telefono: string | null
   paciente_nombre: string | null
   starts_at: string
   ends_at: string
@@ -111,7 +113,8 @@ export interface CrearTurnoInput {
   /** SIEMPRE resuelto de getServiciosActivos(medicoId) del MISMO médico — el FK no valida tenant. */
   servicio: ServicioLite
   startsAt: string // ISO UTC, ya validado contra esSlotOfrecido por el caller
-  pacienteTelefono: string // ya normalizado con normalizeRecipient
+  /** Normalizado con normalizeRecipient, o null (turno manual sin WhatsApp). */
+  pacienteTelefono: string | null
   /** Nombre y apellido SEPARADOS (regla de modelado del dueño). */
   pacienteNombre: string
   pacienteApellido: string
@@ -161,7 +164,7 @@ export async function crearTurno(
     medico_id: medicoId,
     contacto_id: input.contactoId,
     servicio_id: input.servicio.id,
-    paciente_telefono: input.pacienteTelefono,
+    paciente_telefono: input.pacienteTelefono || null,
     paciente_nombre: input.pacienteNombre || null,
     paciente_apellido: input.pacienteApellido || null,
     paciente_dni: input.pacienteDni || null,
@@ -195,6 +198,25 @@ export async function crearTurno(
     }
     console.error('[turnos] insert error:', error.message)
     return { ok: false, error: 'No se pudo crear el turno.' }
+  }
+
+  // La base de pacientes se arma sola (spec §7). Jamás rompe la reserva.
+  try {
+    await upsertPacienteDesdeIdentidad(db, medicoId, {
+      nombre: input.pacienteNombre,
+      apellido: input.pacienteApellido,
+      dni: input.pacienteDni,
+      obraSocial: input.pacienteObraSocial,
+      telefono: input.pacienteTelefono,
+    })
+  } catch (e) {
+    await registrarEvento(db, {
+      medicoId,
+      origen: 'agente',
+      nivel: 'error',
+      evento: 'upsert_paciente_fallido',
+      detalle: { error: String(e), dni: input.pacienteDni },
+    })
   }
   return { ok: true }
 }
@@ -284,7 +306,7 @@ export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promi
           starts_at: string
           paciente_nombre: string | null
           paciente_apellido: string | null
-          paciente_telefono: string
+          paciente_telefono: string | null
           paciente_dni: string | null
           paciente_obra_social: string | null
           estado: string
@@ -305,7 +327,7 @@ export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promi
     .map((t) => {
       // "Apellido, Nombre" — orden de agenda médica.
       const quien =
-        [t.paciente_apellido, t.paciente_nombre].filter(Boolean).join(', ') || t.paciente_telefono
+        [t.paciente_apellido, t.paciente_nombre].filter(Boolean).join(', ') || t.paciente_telefono || '(sin datos)'
       const datos = [t.paciente_obra_social, t.paciente_dni ? `DNI ${t.paciente_dni}` : '']
         .filter(Boolean)
         .join(', ')
