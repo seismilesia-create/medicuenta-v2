@@ -15,8 +15,8 @@ import type { ServicioLite } from '@/lib/turnos/resolverServicio'
 const DIAS_A_OFRECER = 14
 /** Ventana del resumen de agenda del médico (comando 'turnos'). */
 const DIAS_RESUMEN_MEDICO = 7
-/** Tope de líneas del resumen (el texto de WhatsApp corta en 4096 chars). */
-const MAX_LINEAS_RESUMEN = 50
+/** Tope de líneas del resumen (el texto de WhatsApp corta en 4096 chars; con motivo, 30 entra holgado). */
+const MAX_LINEAS_RESUMEN = 30
 
 export interface TurnoRow {
   id: string
@@ -113,6 +113,8 @@ export interface CrearTurnoInput {
   startsAt: string // ISO UTC, ya validado contra esSlotOfrecido por el caller
   pacienteTelefono: string // ya normalizado con normalizeRecipient
   pacienteNombre: string
+  /** Motivo de consulta dicho por el paciente — informativo para el médico (va a `notas`). */
+  motivo: string
   contactoId: string | null
 }
 
@@ -158,6 +160,7 @@ export async function crearTurno(
     starts_at: input.startsAt,
     ends_at: endsAt,
     estado: 'reservado',
+    notas: input.motivo || null,
   })
   if (error) {
     // 23P01 = exclusion_violation: otro turno ganó ese rango en la carrera.
@@ -238,7 +241,7 @@ function nombreServicio(s: { nombre: string } | { nombre: string }[] | null): st
 export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promise<string> {
   const { data, error } = await db
     .from('wa_turnos')
-    .select('starts_at, paciente_nombre, paciente_telefono, estado, servicio:wa_servicios(nombre)')
+    .select('starts_at, paciente_nombre, paciente_telefono, estado, notas, servicio:wa_servicios(nombre)')
     .eq('medico_id', medicoId)
     .in('estado', ['reservado', 'confirmado'])
     .gt('starts_at', new Date().toISOString())
@@ -256,16 +259,23 @@ export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promi
           paciente_nombre: string | null
           paciente_telefono: string
           estado: string
+          notas: string | null
           servicio: { nombre: string } | { nombre: string }[] | null
         }[]
       | null) ?? []
 
   if (rows.length === 0) return `No hay turnos agendados para los próximos ${DIAS_RESUMEN_MEDICO} días.`
 
+  // Motivo truncado: 30 líneas × ~115 chars quedan bajo el tope de 4096 de WhatsApp.
+  const motivoCorto = (n: string | null) => {
+    const m = (n ?? '').trim()
+    if (!m) return ''
+    return ` — ${m.length > 40 ? `${m.slice(0, 40)}…` : m}`
+  }
   const lineas = rows
     .map(
       (t) =>
-        `• ${fmtFechaCorta(t.starts_at)} ${fmtHora(t.starts_at)} — ${t.paciente_nombre || t.paciente_telefono} (${nombreServicio(t.servicio)})`,
+        `• ${fmtFechaCorta(t.starts_at)} ${fmtHora(t.starts_at)} — ${t.paciente_nombre || t.paciente_telefono} (${nombreServicio(t.servicio)})${motivoCorto(t.notas)}`,
     )
     .join('\n')
   const corto = rows.length === MAX_LINEAS_RESUMEN ? `\n… (mostrando los primeros ${MAX_LINEAS_RESUMEN})` : ''

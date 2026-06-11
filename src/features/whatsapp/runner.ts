@@ -204,7 +204,7 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
   // 3) Agente con tools de cobro.
   const { data: cfgRow } = await db
     .from('wa_config_agente')
-    .select('saludo, tono, faqs')
+    .select('saludo, tono, faqs, nombre_medico, especialidad')
     .eq('medico_id', canal.medicoId)
     .maybeSingle()
 

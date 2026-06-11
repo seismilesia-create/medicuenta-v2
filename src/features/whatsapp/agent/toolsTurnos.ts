@@ -78,8 +78,11 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
         fecha: z.string().describe('Fecha YYYY-MM-DD EXACTA devuelta por consultar_disponibilidad'),
         hora: z.string().describe('Hora HH:MM (24h) EXACTA de uno de los horarios ofrecidos'),
         nombre_paciente: z.string().describe('Nombre completo del paciente. "" si todavía no lo dio (pedíselo antes).'),
+        motivo_consulta: z
+          .string()
+          .describe('Motivo breve de la consulta, tal como lo dijo el paciente. "" si no quiso decirlo.'),
       }),
-      execute: async ({ servicio, fecha, hora, nombre_paciente }) => {
+      execute: async ({ servicio, fecha, hora, nombre_paciente, motivo_consulta }) => {
         if (!nombre_paciente.trim()) {
           return { ok: false, error: 'Falta el nombre completo del paciente: pedíselo antes de reservar.' }
         }
@@ -117,6 +120,7 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
           pacienteTelefono: telefonoNorm,
           // Tope: un "nombre" kilométrico rompería el resumen del médico (4096 chars de WhatsApp).
           pacienteNombre: nombre_paciente.trim().slice(0, 120),
+          motivo: motivo_consulta.trim().slice(0, 200),
           contactoId: ctx.contactoId,
         })
         if (!r.ok) return { ok: false, error: r.error }
