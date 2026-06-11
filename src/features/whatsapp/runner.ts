@@ -232,11 +232,12 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
     medicoId: canal.medicoId,
     telefonoPaciente: incoming.from,
     contactoId,
+    conversacionId,
   }
   const tools = {
     ...buildPacienteTools(toolsCtx),
     ...buildTurnosTools(toolsCtx),
-    ...buildConsultorioTools({ db, medicoId: canal.medicoId, conversacionId }),
+    ...buildConsultorioTools(toolsCtx),
   }
 
   let reply: string

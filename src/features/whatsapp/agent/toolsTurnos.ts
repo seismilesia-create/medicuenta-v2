@@ -23,6 +23,8 @@ export interface TurnosToolsCtx {
   medicoId: string
   telefonoPaciente: string
   contactoId: string | null
+  /** Para linkear los eventos de bitácora al hilo (comida del orquestador). */
+  conversacionId: string | null
 }
 
 /** Caps de la respuesta de disponibilidad: no abrumar el contexto ni al paciente. */
@@ -158,6 +160,7 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
             nivel: 'info',
             evento: 'aviso_os_suspendida',
             detalle: { obra_social: obra_social.trim().slice(0, 60) },
+            conversacionId: ctx.conversacionId,
           })
           return {
             ok: false,

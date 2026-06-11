@@ -20,6 +20,15 @@ export function buildConsultorioTools(ctx: ConsultorioToolsCtx) {
       }),
       execute: async ({ motivo }) => {
         if (!ctx.conversacionId) {
+          // Sin hilo no hay flag que encender, pero el aviso queda en la bitácora:
+          // jamás decirle al paciente "ya avisé" sin haber registrado nada.
+          await registrarEvento(ctx.db, {
+            medicoId: ctx.medicoId,
+            origen: 'agente',
+            nivel: 'info',
+            evento: 'necesita_humano',
+            detalle: { motivo: motivo.trim().slice(0, 200), sin_conversacion: true },
+          })
           return { ok: true, mensaje: 'Aviso registrado. Decile que el consultorio fue notificado y le van a responder por acá.' }
         }
         const { error } = await ctx.db
