@@ -20,8 +20,8 @@ export interface TurnosToolsCtx {
   contactoId: string | null
 }
 
-/** Caps de la respuesta de disponibilidad (mismos del origen): no abrumar el contexto. */
-const DIAS_EN_RESPUESTA = 5
+/** Caps de la respuesta de disponibilidad: no abrumar el contexto ni al paciente. */
+const DIAS_EN_RESPUESTA = 7
 const SLOTS_POR_DIA = 24
 /** Tope de turnos activos por número: sin esto, un solo WhatsApp podría reservarse TODA la agenda. */
 const MAX_TURNOS_ACTIVOS_POR_PACIENTE = 3
@@ -33,13 +33,16 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
   return {
     consultar_disponibilidad: tool({
       description:
-        'Devuelve los próximos horarios disponibles para un turno. Usala SIEMPRE antes de ofrecer horarios, y también si preguntan qué días u horarios atiende el médico.',
+        'Disponibilidad de turnos en dos pasos: con fecha_preferida:"" devuelve los DÍAS con lugar (para preguntarle al paciente cuál le queda bien, SIN horarios); con una fecha YYYY-MM-DD devuelve los horarios de ESE día (o las alternativas más cercanas si ese día no tiene).',
       inputSchema: z.object({
         servicio: z
           .string()
           .describe('Nombre del servicio que pide el paciente. "" si no especificó o si hay uno solo.'),
+        fecha_preferida: z
+          .string()
+          .describe('Día que pidió el paciente, en YYYY-MM-DD (convertí "mañana"/"el lunes" usando la fecha de HOY del contexto). "" si todavía no eligió día.'),
       }),
-      execute: async ({ servicio }) => {
+      execute: async ({ servicio, fecha_preferida }) => {
         const servicios = await getServiciosActivos(ctx.db, ctx.medicoId)
         const res = resolverServicio(servicios, servicio)
         if (res.tipo === 'ninguno') {
@@ -55,17 +58,54 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
         if (dias.length === 0) {
           return { servicio: res.servicio.nombre, mensaje: 'No hay horarios disponibles en los próximos días.' }
         }
+
+        const fechaPref = fecha_preferida.trim()
+        if (!fechaPref) {
+          // Paso 1 de la conversación: SOLO los días con lugar — el choclazo de
+          // horarios de todos los días marea al paciente (feedback del dueño).
+          return {
+            servicio: res.servicio.nombre,
+            duracion_min: res.servicio.duracion_min,
+            precio: res.servicio.precio,
+            dias_con_lugar: dias.slice(0, DIAS_EN_RESPUESTA).map((d) => ({
+              fecha: d.date,
+              dia: fmtFechaLarga(`${d.date}T12:00:00${AR_OFFSET}`),
+            })),
+            instruccion:
+              'Preguntale al paciente cuál de estos días le queda bien — NO listes horarios todavía. Cuando elija, llamame de nuevo con esa fecha_preferida. Si pregunta el precio y figura null, NO inventes montos: que lo consulte con el médico.',
+          }
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaPref)) {
+          return {
+            error: 'fecha_preferida inválida: usá YYYY-MM-DD (convertí "mañana"/"el lunes" con la fecha de HOY) o "" para listar los días con lugar.',
+          }
+        }
+        const delDia = dias.find((d) => d.date === fechaPref)
+        if (delDia) {
+          return {
+            servicio: res.servicio.nombre,
+            duracion_min: res.servicio.duracion_min,
+            precio: res.servicio.precio,
+            fecha: delDia.date, // YYYY-MM-DD — pasala TAL CUAL a reservar_turno
+            dia: fmtFechaLarga(`${delDia.date}T12:00:00${AR_OFFSET}`),
+            horarios: delDia.slots.slice(0, SLOTS_POR_DIA).map((s) => s.label),
+            instruccion:
+              'Ofrecé SOLO estos horarios de ese día, EXACTOS. Para reservar llamá a reservar_turno con esta fecha y la hora elegida.',
+          }
+        }
+        // El día pedido no tiene lugar → ofrecer lo más cercano a esa fecha.
+        const pedidoMs = new Date(`${fechaPref}T12:00:00${AR_OFFSET}`).getTime()
+        const distancia = (d: { date: string }) =>
+          Math.abs(new Date(`${d.date}T12:00:00${AR_OFFSET}`).getTime() - pedidoMs)
+        const cercanas = [...dias].sort((a, b) => distancia(a) - distancia(b)).slice(0, 2)
         return {
-          servicio: res.servicio.nombre,
-          duracion_min: res.servicio.duracion_min,
-          precio: res.servicio.precio,
-          disponibilidad: dias.slice(0, DIAS_EN_RESPUESTA).map((d) => ({
-            fecha: d.date, // YYYY-MM-DD — pasala TAL CUAL a reservar_turno
+          sin_lugar_en: fechaPref,
+          alternativas_cercanas: cercanas.map((d) => ({
+            fecha: d.date,
             dia: fmtFechaLarga(`${d.date}T12:00:00${AR_OFFSET}`),
             horarios: d.slots.slice(0, SLOTS_POR_DIA).map((s) => s.label),
           })),
-          instruccion:
-            'Ofrecé SOLO estos horarios, con fecha y hora EXACTAS. Para reservar llamá a reservar_turno con la fecha (YYYY-MM-DD) y la hora (HH:MM) elegidas. Si preguntan el precio y figura null, NO inventes montos: que lo consulte con el médico.',
+          instruccion: 'Ese día no hay lugar: avisale al paciente y ofrecele estas alternativas más cercanas (horarios EXACTOS).',
         }
       },
     }),

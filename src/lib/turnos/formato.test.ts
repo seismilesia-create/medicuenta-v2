@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { armarStartsAtISO, fmtFechaLarga, fmtHora } from './formato'
+import { armarStartsAtISO, fmtFechaLarga, fmtHora, fmtFechaHoraLarga } from './formato'
 
 describe('armarStartsAtISO', () => {
   it('combina fecha + hora en hora argentina → ISO UTC', () => {
@@ -43,5 +43,14 @@ describe('fmtFechaLarga / fmtHora', () => {
 
   it('fmtHora a medianoche devuelve 00:00 (h23, nunca 24:00)', () => {
     expect(fmtHora('2026-06-15T03:00:00.000Z')).toBe('00:00')
+  })
+
+  it('fmtFechaHoraLarga arma el "hoy es" completo con hora AR', () => {
+    const s = fmtFechaHoraLarga(new Date('2026-06-11T10:20:00.000Z').getTime())
+    expect(s).toContain('jueves')
+    expect(s).toContain('11')
+    expect(s).toContain('junio')
+    expect(s).toContain('2026')
+    expect(s).toContain('07:20')
   })
 })

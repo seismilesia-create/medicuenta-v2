@@ -53,3 +53,16 @@ export function fmtHora(iso: string): string {
     timeZone: AR_TZ,
   }).format(new Date(iso))
 }
+
+/** 'jueves, 11 de junio de 2026, 07:20 hs' — el "hoy es" del system prompt (la IA lo
+ *  necesita para convertir "mañana"/"el lunes" a una fecha concreta). */
+export function fmtFechaHoraLarga(ms: number): string {
+  const fecha = new Intl.DateTimeFormat('es-AR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: AR_TZ,
+  }).format(new Date(ms))
+  return `${fecha}, ${fmtHora(new Date(ms).toISOString())} hs`
+}
