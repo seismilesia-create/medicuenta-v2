@@ -274,6 +274,7 @@ Decisiones abiertas para el brainstorm de Fase 3: (a) ¿Google Calendar como esp
 Ideas anotadas del dueño (2026-06-11, post-prueba en vivo de turnos):
 - **Obras sociales suspendidas por el círculo médico**: el bot ya captura la obra social al reservar; falta una lista de OS suspendidas mantenida por el médico (panel Fase 3) para avisar/bloquear al reservar.
 - **Validar identidad contra base pública por DNI** (tipo RENAPER/padrón): con el DNI ya se sabría el nombre real (evita typos en la base). Evaluar si existe acceso público/API viable.
+- **Separar nombre/apellido también en `recetas`** (regla de modelado del dueño, ya aplicada en `wa_turnos`): el PDF de OSEP imprime el nombre del paciente como un solo campo, pero en la app de receta electrónica se CARGAN separados → el formato impreso es consistente y el OCR puede extraer `paciente_apellido` + `paciente_nombre` por separado. Pendiente para cuando se re-toque el flujo de recetas (pre-producción): schema OCR + migración de `recetas` + ajuste del matching. No urgente: el matching actual (DNI exacto + nombre tolerante) funciona probado E2E.
 
 ---
 
