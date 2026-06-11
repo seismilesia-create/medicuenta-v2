@@ -47,7 +47,7 @@ export async function runAgentTurn(opts: {
       // avisar_consultorio sin texto del modelo → confirmación propia (anti-mudez):
       if (tr.toolName === 'avisar_consultorio') {
         const out = tr.output as { ok?: boolean; mensaje?: string } | undefined
-        if (out?.ok) fallbackConEfecto = 'Listo, ya avisé al consultorio: te van a responder por este mismo chat. 🙏'
+        if (out?.ok && !fallbackConEfecto) fallbackConEfecto = 'Listo, ya avisé al consultorio: te van a responder por este mismo chat. 🙏'
       }
     }
   }
