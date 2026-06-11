@@ -23,6 +23,7 @@ import { buildSystemPromptPaciente, type ConfigAgente } from '@/features/whatsap
 import { runAgentTurn } from '@/features/whatsapp/agent/runAgentTurn'
 import { sanitizarReplyCobro, scrubLinksMP } from '@/features/whatsapp/agent/sanitizarReply'
 import { buildPacienteTools } from '@/features/whatsapp/agent/tools'
+import { buildConsultorioTools } from '@/features/whatsapp/agent/toolsConsultorio'
 import { registrarEvento } from '@/features/whatsapp/services/bitacora'
 
 type Db = ReturnType<typeof createServiceClient>
@@ -232,7 +233,11 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
     telefonoPaciente: incoming.from,
     contactoId,
   }
-  const tools = { ...buildPacienteTools(toolsCtx), ...buildTurnosTools(toolsCtx) }
+  const tools = {
+    ...buildPacienteTools(toolsCtx),
+    ...buildTurnosTools(toolsCtx),
+    ...buildConsultorioTools({ db, medicoId: canal.medicoId, conversacionId }),
+  }
 
   let reply: string
   try {
