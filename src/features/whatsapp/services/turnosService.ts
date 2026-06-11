@@ -113,6 +113,10 @@ export interface CrearTurnoInput {
   startsAt: string // ISO UTC, ya validado contra esSlotOfrecido por el caller
   pacienteTelefono: string // ya normalizado con normalizeRecipient
   pacienteNombre: string
+  /** DNI ya normalizado (solo dígitos, validado por el caller). */
+  pacienteDni: string
+  /** Obra social del paciente, o "particular". */
+  pacienteObraSocial: string
   /** Motivo de consulta dicho por el paciente — informativo para el médico (va a `notas`). */
   motivo: string
   contactoId: string | null
@@ -157,6 +161,8 @@ export async function crearTurno(
     servicio_id: input.servicio.id,
     paciente_telefono: input.pacienteTelefono,
     paciente_nombre: input.pacienteNombre || null,
+    paciente_dni: input.pacienteDni || null,
+    paciente_obra_social: input.pacienteObraSocial || null,
     starts_at: input.startsAt,
     ends_at: endsAt,
     estado: 'reservado',
@@ -207,6 +213,23 @@ export async function listarTurnosDePaciente(
   return (data as TurnoRow[] | null) ?? []
 }
 
+/** Turnos próximos (no cancelados) por DNI: candado anti-acaparamiento entre números distintos. */
+export async function listarTurnosActivosPorDni(
+  db: SupabaseClient,
+  medicoId: string,
+  dniNormalizado: string,
+): Promise<TurnoRow[]> {
+  const { data } = await db
+    .from('wa_turnos')
+    .select('id, servicio_id, paciente_telefono, paciente_nombre, starts_at, ends_at, estado')
+    .eq('medico_id', medicoId)
+    .eq('paciente_dni', dniNormalizado)
+    .in('estado', ['reservado', 'confirmado'])
+    .gt('starts_at', new Date().toISOString())
+    .order('starts_at')
+  return (data as TurnoRow[] | null) ?? []
+}
+
 /** Cancela un turno DEL PACIENTE: el candado es su propio teléfono (no cancela ajenos). */
 export async function cancelarTurnoDePaciente(
   db: SupabaseClient,
@@ -241,7 +264,7 @@ function nombreServicio(s: { nombre: string } | { nombre: string }[] | null): st
 export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promise<string> {
   const { data, error } = await db
     .from('wa_turnos')
-    .select('starts_at, paciente_nombre, paciente_telefono, estado, notas, servicio:wa_servicios(nombre)')
+    .select('starts_at, paciente_nombre, paciente_telefono, paciente_dni, paciente_obra_social, estado, notas, servicio:wa_servicios(nombre)')
     .eq('medico_id', medicoId)
     .in('estado', ['reservado', 'confirmado'])
     .gt('starts_at', new Date().toISOString())
@@ -258,6 +281,8 @@ export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promi
           starts_at: string
           paciente_nombre: string | null
           paciente_telefono: string
+          paciente_dni: string | null
+          paciente_obra_social: string | null
           estado: string
           notas: string | null
           servicio: { nombre: string } | { nombre: string }[] | null
@@ -266,17 +291,19 @@ export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promi
 
   if (rows.length === 0) return `No hay turnos agendados para los próximos ${DIAS_RESUMEN_MEDICO} días.`
 
-  // Motivo truncado: 30 líneas × ~115 chars quedan bajo el tope de 4096 de WhatsApp.
+  // Truncados: 30 líneas × ~130 chars quedan bajo el tope de 4096 de WhatsApp.
   const motivoCorto = (n: string | null) => {
     const m = (n ?? '').trim()
     if (!m) return ''
-    return ` — ${m.length > 40 ? `${m.slice(0, 40)}…` : m}`
+    return ` — ${m.length > 30 ? `${m.slice(0, 30)}…` : m}`
   }
   const lineas = rows
-    .map(
-      (t) =>
-        `• ${fmtFechaCorta(t.starts_at)} ${fmtHora(t.starts_at)} — ${t.paciente_nombre || t.paciente_telefono} (${nombreServicio(t.servicio)})${motivoCorto(t.notas)}`,
-    )
+    .map((t) => {
+      const datos = [t.paciente_obra_social, t.paciente_dni ? `DNI ${t.paciente_dni}` : '']
+        .filter(Boolean)
+        .join(', ')
+      return `• ${fmtFechaCorta(t.starts_at)} ${fmtHora(t.starts_at)} — ${t.paciente_nombre || t.paciente_telefono}${datos ? ` (${datos})` : ''} · ${nombreServicio(t.servicio)}${motivoCorto(t.notas)}`
+    })
     .join('\n')
   const corto = rows.length === MAX_LINEAS_RESUMEN ? `\n… (mostrando los primeros ${MAX_LINEAS_RESUMEN})` : ''
   const cuenta = rows.length === MAX_LINEAS_RESUMEN ? `${rows.length}+` : `${rows.length}`

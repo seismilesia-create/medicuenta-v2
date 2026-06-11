@@ -271,6 +271,10 @@ Tres superficies, cada una con su usuario:
 
 Decisiones abiertas para el brainstorm de Fase 3: (a) ¿Google Calendar como espejo o la agenda vive solo en el panel?; (b) **acceso delegado de la secretaria** — hoy el RLS es `auth.uid() = medico_id`; una secretaria necesita su propio usuario con permisos delegados sobre el consultorio del médico (diseño sensible: datos médicos).
 
+Ideas anotadas del dueño (2026-06-11, post-prueba en vivo de turnos):
+- **Obras sociales suspendidas por el círculo médico**: el bot ya captura la obra social al reservar; falta una lista de OS suspendidas mantenida por el médico (panel Fase 3) para avisar/bloquear al reservar.
+- **Validar identidad contra base pública por DNI** (tipo RENAPER/padrón): con el DNI ya se sabría el nombre real (evita typos en la base). Evaluar si existe acceso público/API viable.
+
 ---
 
 ## 9. Convención técnica: molde de migración (a copiar literal)

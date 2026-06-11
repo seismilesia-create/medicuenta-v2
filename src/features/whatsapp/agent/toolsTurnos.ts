@@ -4,12 +4,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { normalizeRecipient } from '@/lib/whatsapp/client'
 import { resolverServicio } from '@/lib/turnos/resolverServicio'
 import { armarStartsAtISO, fmtFechaLarga, fmtHora } from '@/lib/turnos/formato'
-import { esSlotOfrecido, AR_OFFSET } from '@/lib/turnos/slots'
+import { esSlotOfrecido, AR_OFFSET, arDateString } from '@/lib/turnos/slots'
+import { nombreSospechoso, dniNormalizadoValido } from '@/lib/turnos/validarIdentidad'
 import {
   getServiciosActivos,
   getDisponibilidad,
   crearTurno,
   listarTurnosDePaciente,
+  listarTurnosActivosPorDni,
   cancelarTurnoDePaciente,
 } from '@/features/whatsapp/services/turnosService'
 
@@ -112,19 +114,42 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
 
     reservar_turno: tool({
       description:
-        'Reserva un turno en uno de los horarios devueltos por consultar_disponibilidad. Antes de llamarla confirmá con el paciente el servicio, el día y la hora, y tené su nombre completo.',
+        'Reserva un turno en uno de los horarios devueltos por consultar_disponibilidad. Antes de llamarla, juntá: nombre completo, DNI, obra social (o "particular") y motivo de consulta, y confirmá servicio + día + hora.',
       inputSchema: z.object({
         servicio: z.string().describe('Nombre del servicio. "" si hay uno solo.'),
         fecha: z.string().describe('Fecha YYYY-MM-DD EXACTA devuelta por consultar_disponibilidad'),
         hora: z.string().describe('Hora HH:MM (24h) EXACTA de uno de los horarios ofrecidos'),
         nombre_paciente: z.string().describe('Nombre completo del paciente. "" si todavía no lo dio (pedíselo antes).'),
+        dni_paciente: z.string().describe('DNI del paciente (7 u 8 dígitos, con o sin puntos). "" si todavía no lo dio.'),
+        obra_social: z
+          .string()
+          .describe('Obra social del paciente tal como la dijo (ej. "OSEP"), o "particular" si no tiene. "" si todavía no preguntaste.'),
         motivo_consulta: z
           .string()
           .describe('Motivo breve de la consulta, tal como lo dijo el paciente. "" si no quiso decirlo.'),
+        nombre_confirmado: z
+          .string()
+          .describe('"si" SOLO si la tool te avisó que el nombre parecía mal escrito y el paciente lo confirmó o corrigió. "" en cualquier otro caso.'),
       }),
-      execute: async ({ servicio, fecha, hora, nombre_paciente, motivo_consulta }) => {
+      execute: async ({ servicio, fecha, hora, nombre_paciente, dni_paciente, obra_social, motivo_consulta, nombre_confirmado }) => {
         if (!nombre_paciente.trim()) {
           return { ok: false, error: 'Falta el nombre completo del paciente: pedíselo antes de reservar.' }
+        }
+        const dniNorm = dniNormalizadoValido(dni_paciente)
+        if (!dniNorm) {
+          return { ok: false, error: 'Falta el DNI del paciente (o no es válido): pedile los 7 u 8 dígitos, sin puntos está bien.' }
+        }
+        if (!obra_social.trim()) {
+          return { ok: false, error: 'Falta saber si el paciente tiene obra social o es particular: preguntáselo antes de reservar.' }
+        }
+        // Alarma de tipeo: un nombre mal escrito ensucia la base para siempre.
+        // No bloquea — el paciente puede confirmar que se escribe así.
+        const sospecha = nombreSospechoso(nombre_paciente)
+        if (sospecha && nombre_confirmado.trim().toLowerCase() !== 'si') {
+          return {
+            ok: false,
+            error: `El nombre "${nombre_paciente.trim()}" parece mal escrito: ${sospecha}. Releéselo al paciente y pedile que lo confirme o lo corrija. Si lo confirma tal cual, llamá de nuevo con nombre_confirmado:"si".`,
+          }
         }
         const telefonoNorm = normalizeRecipient(ctx.telefonoPaciente)
         const activos = await listarTurnosDePaciente(ctx.db, ctx.medicoId, telefonoNorm)
@@ -146,6 +171,25 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
             error: 'Fecha u hora inválida. Usá la fecha YYYY-MM-DD y la hora HH:MM EXACTAS que devolvió consultar_disponibilidad.',
           }
         }
+        // Candado anti-acaparamiento por IDENTIDAD: el mismo DNI no puede tener dos
+        // turnos el mismo día (aunque escriba desde otro número), ni acumular más
+        // del tope. Caso real de un colega del dueño: un paciente le llenó la agenda
+        // de un día entero sacando turnos repetidos.
+        const porDni = await listarTurnosActivosPorDni(ctx.db, ctx.medicoId, dniNorm)
+        const diaPedido = arDateString(new Date(startsAt).getTime(), 0)
+        const mismoDia = porDni.find((t) => arDateString(new Date(t.starts_at).getTime(), 0) === diaPedido)
+        if (mismoDia) {
+          return {
+            ok: false,
+            error: `Ese paciente (DNI ${dniNorm}) YA tiene un turno ese mismo día a las ${fmtHora(mismoDia.starts_at)} hs. Un turno por día por paciente: si quiere cambiar el horario, primero tiene que cancelar el que tiene (cancelar_turno).`,
+          }
+        }
+        if (porDni.length >= MAX_TURNOS_ACTIVOS_POR_PACIENTE) {
+          return {
+            ok: false,
+            error: `Ese paciente (DNI ${dniNorm}) ya tiene ${porDni.length} turnos activos. Para sacar otro tiene que cancelar alguno antes.`,
+          }
+        }
         // Anti-horario-inventado: tiene que ser un slot realmente ofrecido AHORA.
         const dias = await getDisponibilidad(ctx.db, ctx.medicoId, res.servicio)
         if (!esSlotOfrecido(dias, startsAt)) {
@@ -158,8 +202,10 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
           servicio: res.servicio,
           startsAt,
           pacienteTelefono: telefonoNorm,
-          // Tope: un "nombre" kilométrico rompería el resumen del médico (4096 chars de WhatsApp).
+          // Topes: campos kilométricos romperían el resumen del médico (4096 chars de WhatsApp).
           pacienteNombre: nombre_paciente.trim().slice(0, 120),
+          pacienteDni: dniNorm,
+          pacienteObraSocial: obra_social.trim().slice(0, 60),
           motivo: motivo_consulta.trim().slice(0, 200),
           contactoId: ctx.contactoId,
         })
