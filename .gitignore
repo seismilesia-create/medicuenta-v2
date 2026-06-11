@@ -69,3 +69,6 @@ tsconfig.tsbuildinfo
 
 # Design reference (V0 export — temporal, no pushear)
 /design-reference/
+
+# Visual companion del brainstorming (mockups temporales)
+.superpowers/
