@@ -112,7 +112,9 @@ export interface CrearTurnoInput {
   servicio: ServicioLite
   startsAt: string // ISO UTC, ya validado contra esSlotOfrecido por el caller
   pacienteTelefono: string // ya normalizado con normalizeRecipient
+  /** Nombre y apellido SEPARADOS (regla de modelado del dueño). */
   pacienteNombre: string
+  pacienteApellido: string
   /** DNI ya normalizado (solo dígitos, validado por el caller). */
   pacienteDni: string
   /** Obra social del paciente, o "particular". */
@@ -161,6 +163,7 @@ export async function crearTurno(
     servicio_id: input.servicio.id,
     paciente_telefono: input.pacienteTelefono,
     paciente_nombre: input.pacienteNombre || null,
+    paciente_apellido: input.pacienteApellido || null,
     paciente_dni: input.pacienteDni || null,
     paciente_obra_social: input.pacienteObraSocial || null,
     starts_at: input.startsAt,
@@ -264,7 +267,7 @@ function nombreServicio(s: { nombre: string } | { nombre: string }[] | null): st
 export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promise<string> {
   const { data, error } = await db
     .from('wa_turnos')
-    .select('starts_at, paciente_nombre, paciente_telefono, paciente_dni, paciente_obra_social, estado, notas, servicio:wa_servicios(nombre)')
+    .select('starts_at, paciente_nombre, paciente_apellido, paciente_telefono, paciente_dni, paciente_obra_social, estado, notas, servicio:wa_servicios(nombre)')
     .eq('medico_id', medicoId)
     .in('estado', ['reservado', 'confirmado'])
     .gt('starts_at', new Date().toISOString())
@@ -280,6 +283,7 @@ export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promi
       | {
           starts_at: string
           paciente_nombre: string | null
+          paciente_apellido: string | null
           paciente_telefono: string
           paciente_dni: string | null
           paciente_obra_social: string | null
@@ -299,10 +303,13 @@ export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promi
   }
   const lineas = rows
     .map((t) => {
+      // "Apellido, Nombre" — orden de agenda médica.
+      const quien =
+        [t.paciente_apellido, t.paciente_nombre].filter(Boolean).join(', ') || t.paciente_telefono
       const datos = [t.paciente_obra_social, t.paciente_dni ? `DNI ${t.paciente_dni}` : '']
         .filter(Boolean)
         .join(', ')
-      return `• ${fmtFechaCorta(t.starts_at)} ${fmtHora(t.starts_at)} — ${t.paciente_nombre || t.paciente_telefono}${datos ? ` (${datos})` : ''} · ${nombreServicio(t.servicio)}${motivoCorto(t.notas)}`
+      return `• ${fmtFechaCorta(t.starts_at)} ${fmtHora(t.starts_at)} — ${quien}${datos ? ` (${datos})` : ''} · ${nombreServicio(t.servicio)}${motivoCorto(t.notas)}`
     })
     .join('\n')
   const corto = rows.length === MAX_LINEAS_RESUMEN ? `\n… (mostrando los primeros ${MAX_LINEAS_RESUMEN})` : ''

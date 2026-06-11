@@ -1,35 +1,33 @@
 import { describe, it, expect } from 'vitest'
 import { nombreSospechoso, dniNormalizadoValido } from './validarIdentidad'
 
-describe('nombreSospechoso', () => {
-  it('acepta nombres bien escritos', () => {
-    expect(nombreSospechoso('Juan Pérez')).toBeNull()
-    expect(nombreSospechoso('María de los Ángeles Gómez')).toBeNull()
-    expect(nombreSospechoso("Rocío D'Alessandro")).toBeNull()
-    expect(nombreSospechoso('Ana López-Rega')).toBeNull()
-  })
-
-  it('rechaza nombre solo (falta el apellido)', () => {
-    expect(nombreSospechoso('Juancito')).toContain('apellido')
+describe('nombreSospechoso (valida UN campo: nombre O apellido)', () => {
+  it('acepta nombres y apellidos bien escritos, simples y compuestos', () => {
+    expect(nombreSospechoso('Juan')).toBeNull()
+    expect(nombreSospechoso('María José')).toBeNull()
+    expect(nombreSospechoso('Pérez')).toBeNull()
+    expect(nombreSospechoso('Gómez Paz')).toBeNull()
+    expect(nombreSospechoso("D'Alessandro")).toBeNull()
+    expect(nombreSospechoso('López-Rega')).toBeNull()
   })
 
   it('rechaza iniciales sueltas', () => {
-    expect(nombreSospechoso('J. Pérez')).toContain('iniciales')
+    expect(nombreSospechoso('J.')).toContain('iniciales')
     expect(nombreSospechoso('Juan P')).toContain('iniciales')
   })
 
   it('rechaza números o símbolos (tipeo de celular)', () => {
-    expect(nombreSospechoso('Juan P3rez')).toContain('números o símbolos')
-    expect(nombreSospechoso('Juan Pérez!!')).toContain('números o símbolos')
+    expect(nombreSospechoso('P3rez')).toContain('números o símbolos')
+    expect(nombreSospechoso('Juan!!')).toContain('números o símbolos')
   })
 
   it('rechaza palabras sin vocales (dedazo)', () => {
-    expect(nombreSospechoso('Jsdfk Prez')).toContain('sin vocales')
+    expect(nombreSospechoso('Jsdfk')).toContain('sin vocales')
   })
 
   it('rechaza demasiado corto', () => {
-    expect(nombreSospechoso('Al B')).not.toBeNull()
     expect(nombreSospechoso('')).not.toBeNull()
+    expect(nombreSospechoso('J')).not.toBeNull()
   })
 })
 

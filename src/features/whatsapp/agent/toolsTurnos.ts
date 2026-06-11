@@ -119,7 +119,8 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
         servicio: z.string().describe('Nombre del servicio. "" si hay uno solo.'),
         fecha: z.string().describe('Fecha YYYY-MM-DD EXACTA devuelta por consultar_disponibilidad'),
         hora: z.string().describe('Hora HH:MM (24h) EXACTA de uno de los horarios ofrecidos'),
-        nombre_paciente: z.string().describe('Nombre completo del paciente. "" si todavía no lo dio (pedíselo antes).'),
+        nombre_paciente: z.string().describe('Nombre/s de pila del paciente (ej. "Juan" o "María José"). "" si todavía no lo dio.'),
+        apellido_paciente: z.string().describe('Apellido/s del paciente (ej. "Pérez" o "Gómez Paz"). "" si todavía no lo dio. Si no estás seguro de cuál es el apellido, preguntale.'),
         dni_paciente: z.string().describe('DNI del paciente (7 u 8 dígitos, con o sin puntos). "" si todavía no lo dio.'),
         obra_social: z
           .string()
@@ -129,11 +130,11 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
           .describe('Motivo breve de la consulta, tal como lo dijo el paciente. "" si no quiso decirlo.'),
         nombre_confirmado: z
           .string()
-          .describe('"si" SOLO si la tool te avisó que el nombre parecía mal escrito y el paciente lo confirmó o corrigió. "" en cualquier otro caso.'),
+          .describe('"si" SOLO si la tool te avisó que el nombre o apellido parecía mal escrito y el paciente lo confirmó o corrigió. "" en cualquier otro caso.'),
       }),
-      execute: async ({ servicio, fecha, hora, nombre_paciente, dni_paciente, obra_social, motivo_consulta, nombre_confirmado }) => {
-        if (!nombre_paciente.trim()) {
-          return { ok: false, error: 'Falta el nombre completo del paciente: pedíselo antes de reservar.' }
+      execute: async ({ servicio, fecha, hora, nombre_paciente, apellido_paciente, dni_paciente, obra_social, motivo_consulta, nombre_confirmado }) => {
+        if (!nombre_paciente.trim() || !apellido_paciente.trim()) {
+          return { ok: false, error: 'Faltan el nombre y/o el apellido del paciente (van por separado): pedíselos antes de reservar.' }
         }
         const dniNorm = dniNormalizadoValido(dni_paciente)
         if (!dniNorm) {
@@ -144,11 +145,17 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
         }
         // Alarma de tipeo: un nombre mal escrito ensucia la base para siempre.
         // No bloquea — el paciente puede confirmar que se escribe así.
-        const sospecha = nombreSospechoso(nombre_paciente)
+        const sospechaNombre = nombreSospechoso(nombre_paciente)
+        const sospechaApellido = nombreSospechoso(apellido_paciente)
+        const sospecha = sospechaNombre
+          ? `el nombre "${nombre_paciente.trim()}" ${sospechaNombre}`
+          : sospechaApellido
+            ? `el apellido "${apellido_paciente.trim()}" ${sospechaApellido}`
+            : null
         if (sospecha && nombre_confirmado.trim().toLowerCase() !== 'si') {
           return {
             ok: false,
-            error: `El nombre "${nombre_paciente.trim()}" parece mal escrito: ${sospecha}. Releéselo al paciente y pedile que lo confirme o lo corrija. Si lo confirma tal cual, llamá de nuevo con nombre_confirmado:"si".`,
+            error: `Ojo: ${sospecha}. Releéselo al paciente y pedile que lo confirme o lo corrija. Si lo confirma tal cual, llamá de nuevo con nombre_confirmado:"si".`,
           }
         }
         const telefonoNorm = normalizeRecipient(ctx.telefonoPaciente)
@@ -203,7 +210,8 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
           startsAt,
           pacienteTelefono: telefonoNorm,
           // Topes: campos kilométricos romperían el resumen del médico (4096 chars de WhatsApp).
-          pacienteNombre: nombre_paciente.trim().slice(0, 120),
+          pacienteNombre: nombre_paciente.trim().slice(0, 60),
+          pacienteApellido: apellido_paciente.trim().slice(0, 60),
           pacienteDni: dniNorm,
           pacienteObraSocial: obra_social.trim().slice(0, 60),
           motivo: motivo_consulta.trim().slice(0, 200),
