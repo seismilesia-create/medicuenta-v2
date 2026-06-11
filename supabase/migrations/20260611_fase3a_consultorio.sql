@@ -34,7 +34,7 @@ CREATE POLICY "wa_sobreturnos_delete" ON wa_sobreturnos FOR DELETE USING (auth.u
 CREATE TABLE wa_pacientes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   medico_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  dni TEXT NOT NULL,
+  dni TEXT NOT NULL CHECK (dni ~ '^[0-9]+$'), -- la llave que unifica: solo dígitos (la app normaliza)
   nombre TEXT,
   apellido TEXT,
   obra_social TEXT,
