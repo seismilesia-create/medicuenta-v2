@@ -1188,6 +1188,14 @@ on conflict (medico_id, nombre_os) do nothing;
 - El hook de pacientes en `turnosService.ts` registra bitácora con `origen: 'agente'` hardcodeado, y el insert del turno confía en el DEFAULT `'bot'` de la columna `origen`. El camino del panel necesita parametrizar `origen`/`creado_por`.
 - La recuperación 23P01 "mismo paciente" filtra `.eq('paciente_telefono', ...)`: con teléfono null (turno manual), `eq.null` de PostgREST no matchea nada → degrada al mensaje genérico "ese horario ya fue tomado". Guardar esa query con teléfono no-null al construir parte 2.
 
+### Del review final del milestone (2026-06-11)
+
+- El fallback anti-mudez de `runAgentTurn.ts` cubre `reservar_turno`/`cancelar_turno` pero no `avisar_consultorio`: si el modelo quema el último step en la alarma sin componer texto, el paciente recibe silencio (la alarma SÍ queda encendida). Agregar fallback con texto propio para el paciente.
+- Normalizar el vocabulario de eventos de bitácora antes de que crezca (`agente_error`/`ocr_receta_error` vs `upsert_paciente_fallido`) — el orquestador (§12 del spec) lo va a consumir. Y pasar `conversacionId` al evento del hook de pacientes.
+- El config del panel debe normalizar `nombre_os` antes de insertar en `wa_os_suspendidas` (el UNIQUE es case/acentos-sensible; el match no — podrían coexistir "OSEP"/"osep").
+- Para el plan 3B: `wa_sobreturnos.creado_por` es NOT NULL con FK NO ACTION → borrar la cuenta de una secretaria con sobreturnos creados queda bloqueado por FK. Política sugerida: revocar, nunca borrar usuarios.
+- El cambio de modelo (c4504e1) también re-apuntó el asistente INTERNO de la app (`api/chat/route.ts` usa `getAgentModel()`): smoke-test pendiente de esa pantalla con Gemini 3.5 Flash; rollback instantáneo con `ASSISTANT_MODEL=haiku`.
+
 ## Fuera de alcance de este plan (decidido — no re-debatir)
 
 - **Las 4 pantallas del panel** (/agenda, /conversaciones, /pacientes, /consultorio/config) + servicios de datos con sesión + API de respuesta humana: **plan parte 2**, que se escribe al cerrar esta parte mapeando los componentes reales de Gaby.
