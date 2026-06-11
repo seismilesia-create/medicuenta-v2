@@ -261,6 +261,16 @@ Re-key de las tablas y servicios del motor de turnos a `medico_id`. `slots.ts` (
 
 Super-admin (god-mode) re-keyeado, onboarding multi-número self-service por médico (verificación de negocio en Meta + alta de número productivo), plantillas HSM para mensajes proactivos, alarma `necesita_humano` end-to-end (en el motor está muerta: 0011 crea la columna pero nadie la escribe/lee), panel de recetas/cobros, métricas. Nada de esto bloquea el MVP.
 
+### 8.1. Visión de interfaces (anotada 2026-06-11, del dueño — guía para el diseño de Fase 3)
+
+Tres superficies, cada una con su usuario:
+
+1. **WhatsApp** = el canal del PACIENTE (recetas + turnos conversacionales). Las recetas electrónicas se manejan SOLO por acá (sin UI propia). Los comandos del médico (`turnos`/`recetas`/`precio`) son el puente hasta que exista el panel.
+2. **App MediCuenta mobile-first (rama `dev/gaby`)** = la herramienta del MÉDICO en el celular: facturación a OSEP (el dueño va a revisar/editar esa rama a fondo). A futuro, su agenda en el celular — idealmente vía interconexión con **Google Calendar** (diferida en Fase 2; el motor origen ya tenía el espejo best-effort, portable).
+3. **Panel web del consultorio (computadora)** = la migración de la parte VISUAL del SaaS origen (`Agente_Whatsapp`), re-keyeada a `medico_id`: **dashboard + vista calendario de turnos** (ya armada en el origen), **grabación/bandeja de conversaciones** con intervención humana (la palanca `bot_pausado` ya existe desde Fase 0; falta el botón), y **base de pacientes** (`wa_contactos` como embrión; a futuro, conexión con historia clínica — desarrollo posterior). Usuario típico: una SECRETARIA, o el médico desde el consultorio.
+
+Decisiones abiertas para el brainstorm de Fase 3: (a) ¿Google Calendar como espejo o la agenda vive solo en el panel?; (b) **acceso delegado de la secretaria** — hoy el RLS es `auth.uid() = medico_id`; una secretaria necesita su propio usuario con permisos delegados sobre el consultorio del médico (diseño sensible: datos médicos).
+
 ---
 
 ## 9. Convención técnica: molde de migración (a copiar literal)
