@@ -240,6 +240,7 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
           pacienteObraSocial: obra_social.trim().slice(0, 60),
           motivo: motivo_consulta.trim().slice(0, 200),
           contactoId: ctx.contactoId,
+          conversacionId: ctx.conversacionId,
         })
         if (!r.ok) return { ok: false, error: r.error }
         const inicioReal = r.yaExistia ?? startsAt

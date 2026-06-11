@@ -125,6 +125,11 @@ export interface CrearTurnoInput {
   /** Motivo de consulta dicho por el paciente — informativo para el médico (va a `notas`). */
   motivo: string
   contactoId: string | null
+  /** 'bot' (default) o 'panel'. El panel además manda creadoPor (spec D2). */
+  origen?: 'bot' | 'panel'
+  creadoPor?: string | null
+  /** Hilo de WhatsApp para linkear eventos de bitácora (null en turno manual). */
+  conversacionId?: string | null
 }
 
 /**
@@ -172,27 +177,30 @@ export async function crearTurno(
     starts_at: input.startsAt,
     ends_at: endsAt,
     estado: 'reservado',
+    origen: input.origen ?? 'bot',
+    creado_por: input.creadoPor ?? null,
     notas: input.motivo || null,
   })
   if (error) {
     // 23P01 = exclusion_violation: otro turno ganó ese rango en la carrera.
     if (error.code === '23P01') {
-      // ¿El que ya ocupa el slot es ESTE MISMO paciente? (doble confirmación o
-      // reintento) → éxito idempotente; decirle "probá con otro" lo mandaría a
-      // reservar un SEGUNDO turno en otro horario.
-      const { data: propio } = await db
-        .from('wa_turnos')
-        .select('id, starts_at')
-        .eq('medico_id', medicoId)
-        .eq('paciente_telefono', input.pacienteTelefono)
-        .neq('estado', 'cancelado')
-        .lt('starts_at', endsAt)
-        .gt('ends_at', input.startsAt)
-        .limit(1)
-      if (propio && propio.length > 0) {
-        // Confirmar con el horario REAL del turno existente: en la carrera doble del
-        // mismo paciente, el que perdió no debe escuchar el horario perdedor.
-        return { ok: true, yaExistia: (propio[0] as { starts_at: string }).starts_at }
+      // ¿El que ya ocupa el slot es ESTE MISMO paciente? Solo determinable por
+      // teléfono (camino bot); un turno manual sin teléfono no tiene cómo matchear.
+      if (input.pacienteTelefono) {
+        const { data: propio } = await db
+          .from('wa_turnos')
+          .select('id, starts_at')
+          .eq('medico_id', medicoId)
+          .eq('paciente_telefono', input.pacienteTelefono)
+          .neq('estado', 'cancelado')
+          .lt('starts_at', endsAt)
+          .gt('ends_at', input.startsAt)
+          .limit(1)
+        if (propio && propio.length > 0) {
+          // Confirmar con el horario REAL del turno existente: en la carrera doble del
+          // mismo paciente, el que perdió no debe escuchar el horario perdedor.
+          return { ok: true, yaExistia: (propio[0] as { starts_at: string }).starts_at }
+        }
       }
       return { ok: false, error: 'Ese horario ya fue tomado. Probá con otro.' }
     }
@@ -212,10 +220,11 @@ export async function crearTurno(
   } catch (e) {
     await registrarEvento(db, {
       medicoId,
-      origen: 'agente',
+      origen: input.origen === 'panel' ? 'panel' : 'agente',
       nivel: 'error',
-      evento: 'upsert_paciente_fallido',
+      evento: 'upsert_paciente_error',
       detalle: { error: String(e), dni: input.pacienteDni },
+      conversacionId: input.conversacionId ?? null,
     })
   }
   return { ok: true }
