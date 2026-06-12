@@ -1,9 +1,44 @@
 'use client'
 
+import { useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { AlertTriangle } from 'lucide-react'
 import type { MedicoConFlags } from '@/lib/admin/costos'
+import { setSuscripcion } from '@/actions/superadmin'
 
 const intAR = new Intl.NumberFormat('es-AR')
+const selCls = 'rounded-md border border-border bg-[var(--color-background)] px-1.5 py-1 text-xs'
+
+/** Selectores de plan + estado de un médico (cambio inmediato, superadmin). */
+function SubControl({ m }: { m: MedicoConFlags }) {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const plan = m.plan === 'full' ? 'full' : 'basico'
+  const estado = m.sub_estado ?? 'activa'
+
+  function update(next: { plan?: string; estado?: string }) {
+    start(async () => {
+      await setSuscripcion({ medicoId: m.medico_id, plan: next.plan ?? plan, estado: next.estado ?? estado })
+      router.refresh()
+    })
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <select value={plan} disabled={pending} onChange={(e) => update({ plan: e.target.value })} className={selCls}>
+        <option value="basico">Básico</option>
+        <option value="full">Full</option>
+      </select>
+      <select value={estado} disabled={pending} onChange={(e) => update({ estado: e.target.value })} className={selCls}>
+        <option value="prueba">Prueba</option>
+        <option value="activa">Activa</option>
+        <option value="morosa">Morosa</option>
+        <option value="suspendida">Suspendida</option>
+        <option value="baja">Baja</option>
+      </select>
+    </div>
+  )
+}
 
 function nombreDe(m: MedicoConFlags): string {
   const n = [m.nombre, m.apellido].filter(Boolean).join(' ').trim()
@@ -27,6 +62,7 @@ export function MedicosTabla({ medicos }: { medicos: MedicoConFlags[] }) {
         <thead>
           <tr className="text-left text-[var(--color-muted-foreground)] border-b border-border">
             <th className="px-3 py-2 font-medium">Médico</th>
+            <th className="px-3 py-2 font-medium">Plan / Estado</th>
             <th className="px-3 py-2 font-medium hidden md:table-cell">Número</th>
             <th className="px-3 py-2 font-medium text-right">Tokens (30 d)</th>
             <th className="px-3 py-2 font-medium text-right hidden sm:table-cell">Msj. con costo</th>
@@ -52,6 +88,9 @@ export function MedicosTabla({ medicos }: { medicos: MedicoConFlags[] }) {
                   )}
                 </div>
                 <div className="text-[11px] text-[var(--color-muted-foreground)]">{m.email}</div>
+              </td>
+              <td className="px-3 py-2">
+                <SubControl m={m} />
               </td>
               <td className="px-3 py-2 hidden md:table-cell tabular-nums text-[var(--color-muted-foreground)]">
                 {m.numero ?? (m.canal_estado ? `(${m.canal_estado})` : '—')}

@@ -10,6 +10,7 @@ export const metadata = {
 export default async function ConversacionesPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   const r = await resolverConsultorio()
   if (!r) redirect('/login')
+  if (r.ctx.plan !== 'full') redirect('/dashboard') // candado §3: consultorio = Full
   if (!r.ctx.medicoActivoId) return <SinConsultorio />
   const { id } = await searchParams
   return <ConversacionesView medicoId={r.ctx.medicoActivoId} initialId={id ?? null} />

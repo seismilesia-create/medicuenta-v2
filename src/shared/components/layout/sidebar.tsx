@@ -71,9 +71,11 @@ interface SidebarProps {
   rol?: 'medico' | 'secretaria'
   medicos?: { id: string; nombre: string | null }[]
   medicoActivoId?: string | null
+  /** Plan del consultorio activo: 'basico' oculta el grupo Consultorio (candado §3). */
+  plan?: 'basico' | 'full'
 }
 
-export function Sidebar({ nombre, rol = 'medico', medicos = [], medicoActivoId = null }: SidebarProps) {
+export function Sidebar({ nombre, rol = 'medico', medicos = [], medicoActivoId = null, plan = 'full' }: SidebarProps) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const { theme, setTheme } = useTheme()
@@ -86,6 +88,9 @@ export function Sidebar({ nombre, rol = 'medico', medicos = [], medicoActivoId =
   const itemsConsultorio = esSecretaria
     ? navigation.consultorio.filter((i) => i.href !== '/consultorio/config')
     : navigation.consultorio
+  // El consultorio (asistente de WhatsApp) es Full. Un médico Básico no lo ve.
+  // La secretaria siempre lo ve (su médico es Full por construcción).
+  const verConsultorio = esSecretaria || plan === 'full'
 
   const isDark = theme === 'dark'
   const toggleTheme = () => setTheme(isDark ? 'light' : 'dark')
@@ -142,7 +147,9 @@ export function Sidebar({ nombre, rol = 'medico', medicos = [], medicoActivoId =
         {!esSecretaria && (
           <NavSection title="Principal" items={navigation.principal} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
         )}
-        <NavSection title="Consultorio" items={itemsConsultorio} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
+        {verConsultorio && (
+          <NavSection title="Consultorio" items={itemsConsultorio} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
+        )}
         {!esSecretaria && (
           <NavSection title="Avanzado" items={navigation.avanzado} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
         )}

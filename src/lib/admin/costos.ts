@@ -13,6 +13,8 @@ export interface MedicoMetricas {
   alta: string | null
   numero: string | null
   canal_estado: string | null
+  plan: string | null
+  sub_estado: string | null
   tokens_30d: number
   mensajes_pagos_30d: number
   mensajes_salientes_30d: number

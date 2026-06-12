@@ -10,6 +10,7 @@ export const metadata = {
 export default async function AgendaPage() {
   const r = await resolverConsultorio()
   if (!r) redirect('/login')
+  if (r.ctx.plan !== 'full') redirect('/dashboard') // candado §3: consultorio = Full
   if (!r.ctx.medicoActivoId) return <SinConsultorio />
   return <AgendaView medicoId={r.ctx.medicoActivoId} />
 }

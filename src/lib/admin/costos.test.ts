@@ -4,7 +4,7 @@ import { analizarCostos, type MedicoMetricas } from './costos'
 function med(over: Partial<MedicoMetricas>): MedicoMetricas {
   return {
     medico_id: 'm', nombre: 'A', apellido: 'B', email: 'a@b.com', alta: null,
-    numero: null, canal_estado: null,
+    numero: null, canal_estado: null, plan: 'full', sub_estado: 'activa',
     tokens_30d: 0, mensajes_pagos_30d: 0, mensajes_salientes_30d: 0,
     errores_7d: 0, turnos_total: 0,
     ...over,

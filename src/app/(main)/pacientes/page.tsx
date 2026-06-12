@@ -10,6 +10,7 @@ export const metadata = {
 export default async function PacientesPage() {
   const r = await resolverConsultorio()
   if (!r) redirect('/login')
+  if (r.ctx.plan !== 'full') redirect('/dashboard') // candado §3: consultorio = Full
   if (!r.ctx.medicoActivoId) return <SinConsultorio />
   // Recetas en la ficha: SOLO el médico dueño (spec §7) — jamás la secretaria.
   return <PacientesView medicoId={r.ctx.medicoActivoId} puedeVerRecetas={esDueño(r.ctx)} />
