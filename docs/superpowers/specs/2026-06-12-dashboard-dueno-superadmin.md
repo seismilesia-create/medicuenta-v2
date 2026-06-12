@@ -28,7 +28,8 @@ ojos del orquestador**. Primer ladrillo ya puesto.
 | **DD5** | **Orquestador v1: observa y avisa, NO actúa solo** | Máxima seguridad mientras se le agarra confianza. Autonomía configurable = futuro. |
 | **DD6** | **Avisos por WhatsApp + Email** | WhatsApp al número de Héctor (inmediato) + email (informes/registro). |
 | **DD7** | **Precios (rango, a afinar con costos)** | Básico **US$ 25–30**, Full **US$ 55–65**. Se cerrarán una vez calculados los costos (sobre todo IA, ver §5.1) para armar una **promo/oferta** con piso conocido. |
-| **DD8** | **Número de WhatsApp DEDICADO para la prueba** | Un único número de prueba que maneja a TODOS los médicos en período de prueba (no se les provee número propio hasta que pagan). Simplifica el onboarding del trial. |
+| **DD8** | **Número de prueba = SANDBOX/DEMO (no pacientes reales)** | Un único número compartido para todos los médicos en prueba. El médico **se prueba a sí mismo**: manda PDFs de receta de muestra desde su WhatsApp, juega de paciente (flujo de cobro de receta) y **agenda un turno de prueba**. Como escribe desde su propio teléfono, el número **desambigua por el teléfono del médico** (sender = médico registrado → su workspace demo). Resuelve el problema del número compartido. |
+| **DD9** | **Dashboard de prueba (sandbox) para el médico** | Durante la prueba, el médico ve un panel demo donde queda asentado el **turno de prueba** que agendó, y la **conversación con sus colores de estado** (en curso · pidió atención humana · finalizada). Reusa el panel de consultorio existente (agenda + conversaciones con semáforo) en modo demo. |
 
 ## 3. Consecuencia técnica central: candado de funciones por plan (feature-gating)
 
@@ -101,7 +102,8 @@ de precio para la promo (DD7):
 
 - **F4.1 — Superadmin read-only** (DESBLOQUEADO, sin pagos): rol superadmin + vista de todos los
   médicos + métricas del negocio + salud del sistema. Te da visibilidad ya.
-- **F4.2 — Planes + candado:** tabla de suscripciones + feature-gating Básico/Full + prueba gratis.
+- **F4.2 — Planes + candado + trial:** tabla de suscripciones + feature-gating Básico/Full + prueba
+  gratis de 15 días con el **sandbox demo** (número de prueba compartido + dashboard demo, DD8/DD9).
 - **F4.3 — MercadoPago Suscripciones:** cobro recurrente, webhooks, estados (prueba→activa→morosa→…).
 - **F5 — Orquestador v1:** observa bitácora + avisa por WhatsApp/email.
 
@@ -112,10 +114,8 @@ de precio para la promo (DD7):
 - ✅ ~~Métricas prioritarias~~ → costo: tokens/médico + mensajes fuera de ventana 24 h (§5.1).
 - **Precios FINALES** — hoy rango (Básico 25–30, Full 55–65). Se cierran tras calcular costos con las
   métricas de §5.1, para fijar el piso de la promo.
-- **Cómo desambigua el número de prueba compartido (DD8):** si un solo número atiende a todos los
-  médicos en prueba, ¿es para que el médico PRUEBE el asistente él mismo (juega de paciente) con una
-  config demo, o atiende pacientes reales? Un número compartido no puede saber a qué médico le habla
-  un paciente nuevo. Definir antes de construir el trial (ver Riesgos §9).
+- ✅ ~~Número de prueba compartido~~ → **sandbox/demo, el médico se prueba a sí mismo, desambigua
+  por su teléfono** (DD8/DD9).
 - **Documento operativo de onboarding** (se redacta sobre la 1ª instalación real).
 - **Contrato legal** (define qué se presta; ver si la app debe registrar consentimiento/términos).
 
@@ -127,7 +127,7 @@ de precio para la promo (DD7):
 | Superadmin cross-tenant rompe el supuesto `medico_id = auth.uid()` | service-role en server actions con guard de rol superadmin estricto + tests |
 | Fallos de pago de MP Suscripciones (reintentos, gracia, morosidad) | Estados de suscripción claros + período de gracia + el orquestador avisa |
 | Scope creep (es una fase grande, como la 3) | Etapas F4.1→F5 con plan propio y prueba en vivo cada una |
-| **Número de prueba compartido (DD8) no desambigua qué médico** | Definir su uso (demo que el médico se prueba a sí mismo vs. pacientes reales). Si es demo: config genérica + mapear por teléfono del médico. No mezclar pacientes reales de varios médicos en un número. |
+| ~~Número de prueba compartido no desambigua~~ | **RESUELTO (DD8):** es demo, el médico se prueba a sí mismo → mapea por su teléfono (sender). No hay pacientes reales mezclados. |
 | **Costo de mensajes fuera de ventana 24 h por humanos** | La métrica §5.1 lo expone; a futuro, avisar/limitar cuando la secretaria/médico generan costo respondiendo tarde a mano |
 
 ## 10. Próximo paso
