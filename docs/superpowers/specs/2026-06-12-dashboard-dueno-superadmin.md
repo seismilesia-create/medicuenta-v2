@@ -112,7 +112,10 @@ de precio para la promo (DD7):
 - **F4.2b — Trial sandbox** (PENDIENTE): prueba gratis 15 días con el número compartido + dashboard
   demo (DD8/DD9). Más grande y dependiente de infra de WhatsApp de producción.
 - **F4.3 — MercadoPago Suscripciones:** cobro recurrente, webhooks, estados (prueba→activa→morosa→…).
-- **F5 — Orquestador v1:** observa bitácora + avisa por WhatsApp/email.
+- **F5 v1a — Orquestador que observa** ✅ HECHO (commit e3d0dae): detecta problemas (errores,
+  prueba por vencer, moroso, WhatsApp desconectado) y los muestra en la sección "Orquestador" del
+  panel. Pura `alertas.ts`. **v1b PENDIENTE:** entrega proactiva por WhatsApp/email (necesita un
+  servicio de email + un emisor de WhatsApp para Héctor).
 
 ## 8. Pendientes del dueño (TBD — definir para cerrar el spec)
 
