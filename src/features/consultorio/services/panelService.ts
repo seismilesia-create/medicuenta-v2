@@ -57,7 +57,11 @@ function calcularJornada(
 export interface DiaAgenda {
   items: ItemDia[]
   sobreturnos: SobreturnoRow[]
+  /** Sin horario de atención ese día de la semana (estructural, NO derivado de la
+   *  disponibilidad: el pasado y el horizonte lejano no tienen slots pero no están "cerrados"). */
   cerrado: boolean
+  /** Excepción (vacaciones/congreso) que cubre la fecha, si existe. */
+  bloqueado: { id: string; nota: string | null } | null
   jornada: JornadaDia | null
   duracionMin: number
 }
@@ -66,7 +70,7 @@ export interface DiaAgenda {
 export async function getDia(db: SupabaseClient, medicoId: string, fecha: string): Promise<DiaAgenda> {
   const desdeIso = new Date(`${fecha}T00:00:00${AR_OFFSET}`).toISOString()
   const hastaIso = new Date(new Date(desdeIso).getTime() + 86_400_000).toISOString()
-  const [turnosRes, sobresRes, horariosRes, servicios] = await Promise.all([
+  const [turnosRes, sobresRes, horariosRes, excepcionRes, servicios] = await Promise.all([
     db
       .from('wa_turnos')
       .select(COLS_TURNO)
@@ -89,24 +93,32 @@ export async function getDia(db: SupabaseClient, medicoId: string, fecha: string
       .eq('medico_id', medicoId)
       .eq('weekday', weekdayOf(fecha))
       .then(ok),
+    db
+      .from('wa_excepciones')
+      .select('id, note')
+      .eq('medico_id', medicoId)
+      .lte('start_date', fecha)
+      .gte('end_date', fecha)
+      .limit(1)
+      .maybeSingle()
+      .then(ok),
     getServiciosActivos(db, medicoId),
   ])
   const turnos = (turnosRes.data as TurnoDia[] | null) ?? []
   const bloquesDia = (horariosRes.data as { open_time: string; close_time: string }[] | null) ?? []
+  const excepcion = excepcionRes.data as { id: string; note: string | null } | null
   // Huecos libres SOLO del día pedido (getDisponibilidad ya excluye pasados y ocupados).
   let libres: SlotLibre[] = []
-  let cerrado = false
   if (servicios.length > 0) {
     const horizonte = Math.min(Math.max(diasDesdeHoy(fecha) + 1, 1), 90)
     const dias = await getDisponibilidad(db, medicoId, servicios[0], horizonte)
-    const delDia = dias.find((d) => d.date === fecha)
-    libres = delDia ? delDia.slots : []
-    cerrado = !delDia && turnos.length === 0
+    libres = dias.find((d) => d.date === fecha)?.slots ?? []
   }
   return {
     items: armarDia(turnos, libres, Date.now()),
     sobreturnos: (sobresRes.data as SobreturnoRow[] | null) ?? [],
-    cerrado,
+    cerrado: bloquesDia.length === 0,
+    bloqueado: excepcion ? { id: excepcion.id, nota: excepcion.note } : null,
     jornada: calcularJornada(bloquesDia, turnos),
     duracionMin: servicios[0]?.duracion_min ?? 30,
   }

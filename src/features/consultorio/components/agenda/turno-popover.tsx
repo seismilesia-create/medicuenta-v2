@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { X } from 'lucide-react'
 import { cancelarTurnoPanel, marcarAsistencia } from '@/actions/consultorio-agenda'
 import { fmtHora, fmtFechaLarga } from '@/lib/turnos/formato'
@@ -22,6 +23,14 @@ interface Props {
 export function TurnoPopover({ item, onClose, onAccion }: Props) {
   const t = item.turno
   const chip = ESTADO_CHIP[item.estadoEfectivo]
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [onClose])
 
   async function accion(fn: () => Promise<{ error?: string } | { ok: true }>) {
     onClose()

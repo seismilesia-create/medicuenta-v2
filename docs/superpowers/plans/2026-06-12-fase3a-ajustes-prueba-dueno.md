@@ -140,5 +140,43 @@ Este plan cierra 3A: después de ejecutarlo viene la re-prueba del dueño y el c
 - Vista "3 días" mobile de GCal; la semana hace scroll horizontal y listo.
 - Realtime (sigue polling 15 s) · edición de FAQs (v2) · resto de deudas menores anotadas.
 
-## Notas de la ejecución
-(se completa al ejecutar)
+## Notas de la ejecución (2026-06-12, misma sesión del feedback)
+
+Ejecutado completo en sesión directa (sin subagentes implementers): 7 tasks, 8 commits, smoke
+funcional autenticado por accesibilidad-snapshot + reviewer fresco del diff al cierre.
+Gates finales: 153 tests (15 nuevos de calendario) · typecheck limpio · build OK · bot intacto
+(diff vacío en `src/features/whatsapp/`, `src/lib/turnos/`, `supabase/`).
+
+**Hallazgos del smoke + review (todos arreglados):**
+- **CRÍTICO (cazado por el smoke visual, confirmado por el reviewer):** `position:absolute`
+  ignora el `padding` del contenedor (el containing block es el padding box) — el gutter de
+  horas con `pl-14` dejaba las etiquetas pintadas FUERA de la card. Patrón correcto: gutter
+  como columna flex propia + área `relative flex-1` (como la regla de la vista semana).
+- **IMPORTANTE (reviewer):** `getDia` derivaba `cerrado` de la disponibilidad (`!delDia`),
+  que excluye pasado/post-último-slot/horizonte>90 — con la navegación libre nueva, ayer o
+  "hoy a la noche" mostraban "Día sin atención". `cerrado` ahora es estructural
+  (`wa_horarios` por weekday), igual que en `getAgendaSemana`.
+- Menores (reviewer): la vista día no indicaba bloqueo por excepción (ahora banner ámbar +
+  "Quitar bloqueo" + se oculta "Bloquear este día" para no duplicar) · popover sin Escape
+  (agregado).
+
+**Auto-blindaje nuevo (para 3B/3C):**
+1. **Gutters/columnas fijas junto a capas `absolute`: SIEMPRE columna flex aparte, nunca
+   `padding` del contenedor** — los hijos absolute se posicionan contra el padding box.
+2. **"Cerrado/sin atención" se deriva de la ESTRUCTURA (horarios semanales + excepciones),
+   nunca de la disponibilidad calculada** — la disponibilidad excluye pasado y horizonte y
+   eso no significa cerrado.
+3. **Editar archivos con el dev server + Fast Refresh corriendo rompe el smoke en vivo**: el
+   HMR compila los estados intermedios entre dos Edits (JSX desbalanceado → overlay de error
+   + spam de consola). Terminar TODOS los edits de un archivo antes de tocar el browser.
+4. **`page.screenshot` de Playwright puede colgar** ("fonts loaded" → timeout) con la página
+   activa; los snapshots de accesibilidad (`browser_snapshot`) son la vía confiable para
+   verificación funcional — los screenshots son solo decorativos.
+5. El método doble (smoke visual propio + reviewer fresco del diff) volvió a pagar: el smoke
+   cazó el crítico visual ANTES que el reviewer, y el reviewer cazó el funcional (cerrado)
+   que el smoke no podía ver navegando solo el hoy.
+
+**Deudas menores nuevas (no bloquean):** TurnoManualForm/SobreturnoForm tampoco cierran con
+Escape (consistencia pendiente con el popover) · franjas "libre" en vista semana sin texto
+(solo title/hover) · `getMesContadores` cuenta turnos de meses vecinos visibles pero la celda
+apagada puede confundir (aceptado: GCal hace igual).
