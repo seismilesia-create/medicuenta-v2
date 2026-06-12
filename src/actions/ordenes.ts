@@ -90,6 +90,8 @@ export async function createOrden(formData: OrdenFormData) {
     cirugia_adicional_codigo: data.cirugia_adicional_codigo ?? null,
     cirugia_adicional_honorario: data.cirugia_adicional_honorario ?? null,
     rol_medico: data.rol_medico ?? null,
+    // Correlación 3C: vínculo al turno real de la agenda (si se aplicó la sugerencia).
+    turno_id: data.turno_id ?? null,
     estado: 'borrador',
   }
 
@@ -179,6 +181,9 @@ export async function updateOrden(ordenId: string, formData: OrdenFormData) {
     profesional: data.profesional ?? null,
     entidad: data.entidad ?? null,
     responsable: data.responsable ?? null,
+    // Correlación 3C: solo sobrescribimos turno_id si el form lo manda; así el
+    // formulario de edición (que no lo conoce) NO borra un vínculo ya existente.
+    ...(data.turno_id !== undefined ? { turno_id: data.turno_id } : {}),
     updated_at: new Date().toISOString(),
   }
 

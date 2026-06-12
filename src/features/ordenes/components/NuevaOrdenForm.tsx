@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { createOrden } from '@/actions/ordenes'
+import { buscarSugerenciasTurno, getHorariosDelDia } from '@/actions/consultorio-correlacion'
+import { controlQuinceMinutos, type SugerenciaTurno, type ConflictoQuinceMin } from '@/lib/consultorio/correlacion'
 import { createClient } from '@/lib/supabase/client'
 import {
   OBRAS_SOCIALES,
@@ -14,6 +16,7 @@ import {
 } from '../types/ordenes'
 import { PracticaAutocomplete } from './PracticaAutocomplete'
 import { EscanearOrdenButton, type OrdenEscaneada } from './EscanearOrdenButton'
+import { SugerenciaTurnoCard } from './SugerenciaTurnoCard'
 
 const inputBase = 'w-full px-4 py-3 rounded-lg text-sm'
 const inputStyle = {
@@ -35,6 +38,7 @@ function Campo({
   colSpan,
   step,
   min,
+  onBlur,
 }: {
   name: string
   label: string
@@ -46,6 +50,7 @@ function Campo({
   colSpan?: boolean
   step?: string
   min?: string
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
 }) {
   return (
     <div className={colSpan ? 'md:col-span-2' : undefined}>
@@ -59,6 +64,7 @@ function Campo({
         placeholder={placeholder}
         step={step}
         min={min}
+        onBlur={onBlur}
         className={`${inputBase}${mono ? ' font-mono' : ''}`}
         style={{ ...inputStyle, ...(dudoso ? { outline: '2px solid var(--color-warning)' } : {}) }}
       />
@@ -140,9 +146,47 @@ export function NuevaOrdenForm() {
   const [imagenComprobante, setImagenComprobante] = useState<string | null>(null)
   const [formKey, setFormKey] = useState(0)
 
+  // Correlación turno→orden (3C)
+  const formRef = useRef<HTMLFormElement>(null)
+  const [sugerencias, setSugerencias] = useState<SugerenciaTurno[]>([])
+  const [turnoAplicado, setTurnoAplicado] = useState<SugerenciaTurno | null>(null)
+  const [aviso15, setAviso15] = useState<ConflictoQuinceMin[] | null>(null)
+
+  /** Busca turnos atendidos de un DNI para proponer fecha/horario reales. */
+  async function fetchSugerencias(dniRaw: string | undefined | null) {
+    const dni = (dniRaw ?? '').replace(/\D/g, '')
+    if (dni.length < 7) {
+      setSugerencias([])
+      return
+    }
+    const res = await buscarSugerenciasTurno(dni)
+    if ('sugerencias' in res) setSugerencias(res.sugerencias)
+  }
+
+  /** Un click: completa fecha (y hora, si el turno la tiene) en el formulario. */
+  function aplicarSugerencia(s: SugerenciaTurno) {
+    const form = formRef.current
+    if (form) {
+      const fechaInput = form.elements.namedItem('fecha_atencion') as HTMLInputElement | null
+      if (fechaInput) fechaInput.value = s.fecha
+      if (s.hora) {
+        const horaInput = form.elements.namedItem('horario_realizacion') as HTMLInputElement | null
+        if (horaInput) horaInput.value = s.hora
+      }
+    }
+    setTurnoAplicado(s)
+    setAviso15(null) // cambió la hora: el control de 15 min se recalcula al guardar
+  }
+
+  function quitarSugerencia() {
+    setTurnoAplicado(null)
+  }
+
   async function handleOcrExtracted(data: OrdenEscaneada) {
     setOcr(data)
     setTipo('obra_social')
+    setTurnoAplicado(null)
+    setAviso15(null)
     const matched = matchesOsFromScan(data.obra_social)
     if (matched) setObraSocial(matched)
     if (data.agente_facturador) setAgenteFacturador(data.agente_facturador)
@@ -155,6 +199,8 @@ export function NuevaOrdenForm() {
     setPrestacionSeleccionada(prestacion)
     // Un solo re-render con OCR + prestación ya resuelta.
     setFormKey((k) => k + 1)
+    // Con el DNI del OCR, buscamos turnos atendidos para proponer fecha/hora reales.
+    fetchSugerencias(data.nro_documento)
   }
 
   function isDudoso(campo: string): boolean {
@@ -172,6 +218,23 @@ export function NuevaOrdenForm() {
 
     const form = new FormData(e.currentTarget)
     const str = (k: string) => (form.get(k) as string) || undefined
+
+    // Control de los 15 minutos (OSEP): si la hora queda muy pegada a otra
+    // orden del mismo día, avisamos (no bloqueamos). Solo en el primer intento;
+    // un segundo "Guardar" confirma y procede.
+    const horaReal = str('horario_realizacion')
+    const fechaReal = str('fecha_atencion')
+    if (horaReal && fechaReal && aviso15 === null) {
+      const res = await getHorariosDelDia(fechaReal)
+      if ('ordenes' in res) {
+        const conflictos = controlQuinceMinutos(horaReal, res.ordenes)
+        if (conflictos.length > 0) {
+          setAviso15(conflictos)
+          setLoading(false)
+          return
+        }
+      }
+    }
 
     // Subir la foto escaneada como comprobante (bucket privado). No bloquea el guardado si falla.
     let imagenPath: string | undefined
@@ -227,6 +290,8 @@ export function NuevaOrdenForm() {
       entidad: str('entidad'),
       responsable: str('responsable'),
       imagen_comprobante: imagenPath,
+      // Correlación 3C: solo los turnos (no sobreturnos) tienen FK a la agenda.
+      turno_id: turnoAplicado?.tipo === 'turno' ? turnoAplicado.id : undefined,
     }
 
     const formData: OrdenFormData = tipo === 'obra_social'
@@ -297,7 +362,7 @@ export function NuevaOrdenForm() {
       )}
 
       {ocr && (
-      <form key={formKey} onSubmit={handleSubmit} className="space-y-6">
+      <form key={formKey} ref={formRef} onSubmit={handleSubmit} className="space-y-6">
         {error && (
           <div className="p-3 rounded-lg text-sm bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400" style={{ border: '1px solid var(--color-error)' }}>
             {error}
@@ -383,6 +448,14 @@ export function NuevaOrdenForm() {
           </div>
         </div>
 
+        {/* Correlación turno→orden (3C): propone fecha/horario reales de la agenda */}
+        <SugerenciaTurnoCard
+          sugerencias={sugerencias}
+          aplicada={turnoAplicado}
+          onAplicar={aplicarSugerencia}
+          onQuitar={quitarSugerencia}
+        />
+
         {/* ===== Campos Obra Social (en el orden físico de la orden) ===== */}
         {tipo === 'obra_social' && (
           <>
@@ -450,7 +523,7 @@ export function NuevaOrdenForm() {
                 <Campo name="cobertura" label="Cobertura" defaultValue={ocr?.cobertura ?? ''} />
                 <Campo name="parentesco" label="Parentesco" defaultValue={ocr?.parentesco ?? ''} />
                 <Campo name="tipo_documento" label="Tipo de documento" placeholder="DNI" defaultValue={ocr?.tipo_documento ?? ''} />
-                <Campo name="nro_documento" label="N° de documento (DNI)" mono placeholder="00000000" defaultValue={ocr?.nro_documento ?? ''} dudoso={isDudoso('nro_documento')} />
+                <Campo name="nro_documento" label="N° de documento (DNI)" mono placeholder="00000000" defaultValue={ocr?.nro_documento ?? ''} dudoso={isDudoso('nro_documento')} onBlur={(e) => fetchSugerencias(e.target.value)} />
                 <Campo name="domicilio" label="Domicilio" colSpan defaultValue={ocr?.domicilio ?? ''} />
               </div>
             </section>
@@ -550,10 +623,35 @@ export function NuevaOrdenForm() {
             className={`${inputBase} resize-none`} style={inputStyle} />
         </div>
 
+        {/* Control de los 15 minutos (OSEP): aviso, no bloqueo */}
+        {aviso15 && aviso15.length > 0 && (
+          <div
+            className="rounded-lg px-4 py-3 text-sm"
+            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-warning)' }}
+          >
+            <p className="font-medium flex items-center gap-2" style={{ color: 'var(--color-warning)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Atenciones muy seguidas
+            </p>
+            <p className="mt-1" style={{ color: 'var(--color-foreground)' }}>
+              Esta atención queda a{' '}
+              {aviso15.map((c, i) => (
+                <span key={i}>
+                  {i > 0 ? ', ' : ''}
+                  <strong>{c.brecha} min</strong> de la de {c.paciente} ({c.hora})
+                </span>
+              ))}
+              . OSEP exige mínimo 15 min entre atenciones — revisá la hora o guardá igual si es correcta.
+            </p>
+          </div>
+        )}
+
         {/* Botones */}
         <div className="flex gap-3 pt-2">
-          <button type="submit" disabled={loading} className="flex-1 px-4 py-3.5 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50" style={{ background: 'var(--color-primary)' }}>
-            {loading ? 'Guardando...' : 'Guardar orden'}
+          <button type="submit" disabled={loading} className="flex-1 px-4 py-3.5 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50" style={{ background: aviso15 && aviso15.length > 0 ? 'var(--color-warning)' : 'var(--color-primary)' }}>
+            {loading ? 'Guardando...' : aviso15 && aviso15.length > 0 ? 'Guardar igual' : 'Guardar orden'}
           </button>
           <a href="/ordenes" className="px-4 py-3.5 rounded-lg text-sm font-medium transition-colors text-center" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}>
             Cancelar

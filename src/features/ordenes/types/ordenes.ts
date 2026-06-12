@@ -105,6 +105,8 @@ export interface Orden {
   cirugia_adicional_codigo: string | null
   cirugia_adicional_honorario: number | null
   rol_medico: string | null
+  // Correlación 3C: turno de la agenda del que salió esta orden (nullable).
+  turno_id: string | null
   created_at: string
   updated_at: string
 }
@@ -192,6 +194,11 @@ export const ordenBaseSchema = z.object({
   cirugia_adicional_codigo: z.string().optional(),
   cirugia_adicional_honorario: z.coerce.number().min(0).optional(),
   rol_medico: z.enum(ROLES_MEDICO).optional(),
+  // Correlación 3C: id del turno vinculado (uuid). '' del form → undefined.
+  turno_id: z.preprocess(
+    (v) => (v === '' || v == null ? undefined : v),
+    z.string().uuid().optional(),
+  ),
 })
 
 export const ordenObraSocialSchema = ordenBaseSchema.extend({
