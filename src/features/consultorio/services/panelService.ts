@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { arDateString, AR_OFFSET } from '@/lib/turnos/slots'
+import { arDateString, AR_OFFSET, weekdayOf } from '@/lib/turnos/slots'
+import { addDias, diasDesdeHoy, gridMes, minutosAR, minutosDeHora } from '@/lib/consultorio/calendario'
 import { getServiciosActivos, getDisponibilidad } from '@/features/whatsapp/services/turnosService'
 import { armarDia, type ItemDia, type TurnoDia, type SlotLibre } from '@/lib/consultorio/armarDia'
 import { semaforoConversacion, msRestantesVentana, type Semaforo } from '@/lib/consultorio/semaforo'
@@ -69,22 +70,50 @@ export interface SobreturnoRow {
   notas: string | null
 }
 
+const COLS_TURNO =
+  'id, starts_at, ends_at, estado, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, paciente_telefono, notas, origen'
+
+export interface JornadaDia {
+  desdeMin: number // minutos desde medianoche AR
+  hastaMin: number
+}
+
+/** Rango del timeline: min(open)–max(close) de los bloques, extendido por turnos fuera de horario. */
+function calcularJornada(
+  bloques: { open_time: string; close_time: string }[],
+  turnos: TurnoDia[],
+): JornadaDia | null {
+  let desde = Infinity
+  let hasta = -Infinity
+  for (const b of bloques) {
+    desde = Math.min(desde, minutosDeHora(b.open_time))
+    hasta = Math.max(hasta, minutosDeHora(b.close_time))
+  }
+  for (const t of turnos) {
+    if (t.estado === 'cancelado') continue
+    desde = Math.min(desde, minutosAR(t.starts_at))
+    hasta = Math.max(hasta, minutosAR(t.ends_at))
+  }
+  if (!Number.isFinite(desde)) return null
+  return { desdeMin: desde, hastaMin: Math.max(hasta, desde + 60) }
+}
+
 export interface DiaAgenda {
   items: ItemDia[]
   sobreturnos: SobreturnoRow[]
   cerrado: boolean
+  jornada: JornadaDia | null
+  duracionMin: number
 }
 
 /** El día completo: turnos (todas las identidades) + huecos libres + sobreturnos. */
 export async function getDia(db: SupabaseClient, medicoId: string, fecha: string): Promise<DiaAgenda> {
   const desdeIso = new Date(`${fecha}T00:00:00${AR_OFFSET}`).toISOString()
   const hastaIso = new Date(new Date(desdeIso).getTime() + 86_400_000).toISOString()
-  const [turnosRes, sobresRes, servicios] = await Promise.all([
+  const [turnosRes, sobresRes, horariosRes, servicios] = await Promise.all([
     db
       .from('wa_turnos')
-      .select(
-        'id, starts_at, ends_at, estado, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, paciente_telefono, notas, origen',
-      )
+      .select(COLS_TURNO)
       .eq('medico_id', medicoId)
       .gte('starts_at', desdeIso)
       .lt('starts_at', hastaIso)
@@ -98,14 +127,22 @@ export async function getDia(db: SupabaseClient, medicoId: string, fecha: string
       .neq('estado', 'cancelado')
       .order('created_at')
       .then(ok),
+    db
+      .from('wa_horarios')
+      .select('open_time, close_time')
+      .eq('medico_id', medicoId)
+      .eq('weekday', weekdayOf(fecha))
+      .then(ok),
     getServiciosActivos(db, medicoId),
   ])
   const turnos = (turnosRes.data as TurnoDia[] | null) ?? []
+  const bloquesDia = (horariosRes.data as { open_time: string; close_time: string }[] | null) ?? []
   // Huecos libres SOLO del día pedido (getDisponibilidad ya excluye pasados y ocupados).
   let libres: SlotLibre[] = []
   let cerrado = false
   if (servicios.length > 0) {
-    const dias = await getDisponibilidad(db, medicoId, servicios[0])
+    const horizonte = Math.min(Math.max(diasDesdeHoy(fecha) + 1, 1), 90)
+    const dias = await getDisponibilidad(db, medicoId, servicios[0], horizonte)
     const delDia = dias.find((d) => d.date === fecha)
     libres = delDia ? delDia.slots : []
     cerrado = !delDia && turnos.length === 0
@@ -114,7 +151,146 @@ export async function getDia(db: SupabaseClient, medicoId: string, fecha: string
     items: armarDia(turnos, libres, Date.now()),
     sobreturnos: (sobresRes.data as SobreturnoRow[] | null) ?? [],
     cerrado,
+    jornada: calcularJornada(bloquesDia, turnos),
+    duracionMin: servicios[0]?.duracion_min ?? 30,
   }
+}
+
+export interface DiaAgendaSemana {
+  fecha: string
+  items: ItemDia[]
+  sobreturnos: number
+  bloqueado: boolean
+  cerrado: boolean // sin horario de atención ese día de la semana
+}
+
+export interface AgendaSemana {
+  dias: DiaAgendaSemana[]
+  jornada: JornadaDia | null // escala compartida del timeline de la semana
+  duracionMin: number
+}
+
+/** La semana L→D completa para la vista grilla: turnos + huecos + contadores por día. */
+export async function getAgendaSemana(db: SupabaseClient, medicoId: string, lunes: string): Promise<AgendaSemana> {
+  const domingo = addDias(lunes, 6)
+  const desdeIso = new Date(`${lunes}T00:00:00${AR_OFFSET}`).toISOString()
+  const hastaIso = new Date(`${addDias(lunes, 7)}T00:00:00${AR_OFFSET}`).toISOString()
+  const [turnosRes, sobresRes, horariosRes, excepcionesRes, servicios] = await Promise.all([
+    db
+      .from('wa_turnos')
+      .select(COLS_TURNO)
+      .eq('medico_id', medicoId)
+      .gte('starts_at', desdeIso)
+      .lt('starts_at', hastaIso)
+      .order('starts_at')
+      .then(ok),
+    db
+      .from('wa_sobreturnos')
+      .select('fecha')
+      .eq('medico_id', medicoId)
+      .gte('fecha', lunes)
+      .lte('fecha', domingo)
+      .neq('estado', 'cancelado')
+      .then(ok),
+    db.from('wa_horarios').select('weekday, open_time, close_time').eq('medico_id', medicoId).then(ok),
+    db
+      .from('wa_excepciones')
+      .select('start_date, end_date')
+      .eq('medico_id', medicoId)
+      .lte('start_date', domingo)
+      .gte('end_date', lunes)
+      .then(ok),
+    getServiciosActivos(db, medicoId),
+  ])
+  const turnos = (turnosRes.data as TurnoDia[] | null) ?? []
+  const sobres = (sobresRes.data as { fecha: string }[] | null) ?? []
+  const horarios = (horariosRes.data as { weekday: number; open_time: string; close_time: string }[] | null) ?? []
+  const excepciones = (excepcionesRes.data as { start_date: string; end_date: string }[] | null) ?? []
+
+  // Huecos ofrecibles: UNA llamada con horizonte hasta el domingo visible (cap 90 días).
+  const libresPorFecha = new Map<string, SlotLibre[]>()
+  const horizonte = diasDesdeHoy(domingo)
+  if (servicios.length > 0 && horizonte >= 0) {
+    const dias = await getDisponibilidad(db, medicoId, servicios[0], Math.min(horizonte + 1, 90))
+    for (const d of dias) if (d.date >= lunes && d.date <= domingo) libresPorFecha.set(d.date, d.slots)
+  }
+
+  const weekdaysConHorario = new Set(horarios.map((h) => h.weekday))
+  const nowMs = Date.now()
+  const dias: DiaAgendaSemana[] = []
+  for (let i = 0; i < 7; i++) {
+    const fecha = addDias(lunes, i)
+    const turnosDia = turnos.filter((t) => arDateString(new Date(t.starts_at).getTime(), 0) === fecha)
+    dias.push({
+      fecha,
+      items: armarDia(turnosDia, libresPorFecha.get(fecha) ?? [], nowMs),
+      sobreturnos: sobres.filter((s) => s.fecha === fecha).length,
+      bloqueado: excepciones.some((ex) => ex.start_date <= fecha && fecha <= ex.end_date),
+      cerrado: !weekdaysConHorario.has(weekdayOf(fecha)),
+    })
+  }
+  return {
+    dias,
+    jornada: calcularJornada(horarios, turnos),
+    duracionMin: servicios[0]?.duracion_min ?? 30,
+  }
+}
+
+export interface DiaMesContador {
+  fecha: string
+  turnos: number
+  sobreturnos: number
+  bloqueado: boolean
+}
+
+/** Contadores por día para la grilla mensual (incluye el relleno de meses vecinos). */
+export async function getMesContadores(
+  db: SupabaseClient,
+  medicoId: string,
+  anio: number,
+  mes: number,
+): Promise<DiaMesContador[]> {
+  const grid = gridMes(anio, mes)
+  const primera = grid[0][0]
+  const ultima = grid[grid.length - 1][6]
+  const desdeIso = new Date(`${primera}T00:00:00${AR_OFFSET}`).toISOString()
+  const hastaIso = new Date(`${addDias(ultima, 1)}T00:00:00${AR_OFFSET}`).toISOString()
+  const [turnosRes, sobresRes, excepcionesRes] = await Promise.all([
+    db
+      .from('wa_turnos')
+      .select('starts_at')
+      .eq('medico_id', medicoId)
+      .neq('estado', 'cancelado')
+      .gte('starts_at', desdeIso)
+      .lt('starts_at', hastaIso)
+      .then(ok),
+    db
+      .from('wa_sobreturnos')
+      .select('fecha')
+      .eq('medico_id', medicoId)
+      .gte('fecha', primera)
+      .lte('fecha', ultima)
+      .neq('estado', 'cancelado')
+      .then(ok),
+    db
+      .from('wa_excepciones')
+      .select('start_date, end_date')
+      .eq('medico_id', medicoId)
+      .lte('start_date', ultima)
+      .gte('end_date', primera)
+      .then(ok),
+  ])
+  const turnos = ((turnosRes.data as { starts_at: string }[] | null) ?? []).map((t) =>
+    arDateString(new Date(t.starts_at).getTime(), 0),
+  )
+  const sobres = (sobresRes.data as { fecha: string }[] | null) ?? []
+  const excepciones = (excepcionesRes.data as { start_date: string; end_date: string }[] | null) ?? []
+  return grid.flat().map((fecha) => ({
+    fecha,
+    turnos: turnos.filter((f) => f === fecha).length,
+    sobreturnos: sobres.filter((s) => s.fecha === fecha).length,
+    bloqueado: excepciones.some((ex) => ex.start_date <= fecha && fecha <= ex.end_date),
+  }))
 }
 
 // ── Conversaciones ────────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getServiciosActivos, getDisponibilidad, crearTurno } from '@/features/whatsapp/services/turnosService'
 import { armarStartsAtISO } from '@/lib/turnos/formato'
 import { esSlotOfrecido, arDateString } from '@/lib/turnos/slots'
+import { diasDesdeHoy } from '@/lib/consultorio/calendario'
 import { upsertPacienteDesdeIdentidad } from '@/features/whatsapp/services/pacientesService'
 import { registrarEvento } from '@/features/whatsapp/services/bitacora'
 import { normalizeRecipient } from '@/lib/whatsapp/client'
@@ -43,7 +44,10 @@ export async function turnoManual(input: z.infer<typeof turnoManualSchema>) {
   if (servicios.length === 0) return { error: 'Configurá primero los horarios y la duración en Config' }
   const startsAt = armarStartsAtISO(d.fecha, d.hora.padStart(5, '0'))
   if (!startsAt) return { error: 'Fecha u hora inválida' }
-  const dias = await getDisponibilidad(supabase, user.id, servicios[0])
+  // Horizonte hasta la fecha pedida (las vistas semana/mes permiten dar turnos más allá
+  // de los 14 días que ofrece el bot); el bot sigue llamando con su default — intacto.
+  const horizonte = Math.min(Math.max(diasDesdeHoy(d.fecha) + 1, 1), 90)
+  const dias = await getDisponibilidad(supabase, user.id, servicios[0], horizonte)
   if (!esSlotOfrecido(dias, startsAt)) return { error: 'Ese horario ya no está libre — refrescá la agenda' }
 
   const r = await crearTurno(supabase, user.id, {
