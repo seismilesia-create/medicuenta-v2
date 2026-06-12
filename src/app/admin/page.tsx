@@ -1,7 +1,9 @@
-import { Users, Cpu, MessageSquareWarning, AlertTriangle } from 'lucide-react'
+import { Users, Cpu, MessageSquareWarning, AlertTriangle, Bot } from 'lucide-react'
 import { getMedicosConMetricas } from '@/features/admin/services/superadminService'
+import { detectarAlertas } from '@/lib/admin/alertas'
 import { MetricCard } from '@/features/dashboard/components'
 import { MedicosTabla } from '@/features/admin/components/medicos-tabla'
+import { AlertasPanel } from '@/features/admin/components/alertas-panel'
 
 export const metadata = {
   title: 'Panel del dueño | MediCuenta',
@@ -11,6 +13,7 @@ const intAR = new Intl.NumberFormat('es-AR')
 
 export default async function AdminPage() {
   const { resumen, medicos } = await getMedicosConMetricas()
+  const alertas = detectarAlertas(medicos, Date.now())
 
   return (
     <div className="space-y-6">
@@ -47,6 +50,15 @@ export default async function AdminPage() {
           valueFormat="integer"
           description={resumen.totalErrores7d > 0 ? 'revisar en la bitácora' : 'todo en orden'}
         />
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Bot className="w-4 h-4 text-primary" />
+          <h2 className="font-semibold">Orquestador</h2>
+          <span className="text-xs text-[var(--color-muted-foreground)]">— lo que detectó al vigilar</span>
+        </div>
+        <AlertasPanel alertas={alertas} />
       </div>
 
       <div className="space-y-2">

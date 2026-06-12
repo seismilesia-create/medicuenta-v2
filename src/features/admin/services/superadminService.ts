@@ -22,6 +22,7 @@ export async function getMedicosConMetricas(): Promise<AnalisisCostos> {
     canal_estado: (r.canal_estado as string | null) ?? null,
     plan: (r.plan as string | null) ?? null,
     sub_estado: (r.sub_estado as string | null) ?? null,
+    trial_ends_at: (r.trial_ends_at as string | null) ?? null,
     tokens_30d: Number(r.tokens_30d ?? 0),
     mensajes_pagos_30d: Number(r.mensajes_pagos_30d ?? 0),
     mensajes_salientes_30d: Number(r.mensajes_salientes_30d ?? 0),
