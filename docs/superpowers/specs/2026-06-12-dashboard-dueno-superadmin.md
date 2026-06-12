@@ -24,9 +24,11 @@ ojos del orquestador**. Primer ladrillo ya puesto.
 | **DD1** | **Cobranza: MercadoPago Suscripciones** | Cobro recurrente automático. Nativo de Argentina; reusa la integración MP que ya existe para recetas. |
 | **DD2** | **Dos planes** | **Básico = facturación** (órdenes, liquidaciones, débitos, cirugías, nomenclador, reportes). **Full = facturación + receta electrónica con cobro del asistente + agenda de turnos por WhatsApp** (todo el ecosistema del asistente, incluida la secretaria 3B). |
 | **DD3** | **Full crece a futuro** | El plan Full sumará la **parte financiera/contable + consejos de inversión** (el "asistente financiero" de la visión: informar, NUNCA asesorar — regulado por CNV). |
-| **DD4** | **Prueba gratis: SÍ** | Período de prueba para bajar la barrera de adopción (duración TBD — ej. 14/30 días). |
+| **DD4** | **Prueba gratis: 15 días** | Baja la barrera de adopción. |
 | **DD5** | **Orquestador v1: observa y avisa, NO actúa solo** | Máxima seguridad mientras se le agarra confianza. Autonomía configurable = futuro. |
 | **DD6** | **Avisos por WhatsApp + Email** | WhatsApp al número de Héctor (inmediato) + email (informes/registro). |
+| **DD7** | **Precios (rango, a afinar con costos)** | Básico **US$ 25–30**, Full **US$ 55–65**. Se cerrarán una vez calculados los costos (sobre todo IA, ver §5.1) para armar una **promo/oferta** con piso conocido. |
+| **DD8** | **Número de WhatsApp DEDICADO para la prueba** | Un único número de prueba que maneja a TODOS los médicos en período de prueba (no se les provee número propio hasta que pagan). Simplifica el onboarding del trial. |
 
 ## 3. Consecuencia técnica central: candado de funciones por plan (feature-gating)
 
@@ -35,12 +37,13 @@ asistente/agenda/recetas. Se necesita:
 - Una **fuente de verdad del plan** del médico (tabla de suscripciones / `perfiles.plan`).
 - **Enforcement en 3 capas** (como el guard de rol de 3B): ocultar en el menú · redirigir en el
   middleware · y chequeo server-side (acciones/RLS) para que no se acceda por API.
-- Mapa de gating (propuesta, **a confirmar**):
-  - **Básico:** Dashboard, Órdenes, Liquidaciones, Débitos, Cirugías, Nomenclador, Reportes.
+- Mapa de gating (**confirmado 2026-06-12**):
+  - **Básico:** Dashboard, Órdenes, Liquidaciones, Débitos, Cirugías, Nomenclador, Reportes **+ el
+    asistente IA de facturación** (el chat que ayuda a cargar órdenes — SÍ va en Básico).
   - **Full:** lo anterior **+** Agenda, Conversaciones, Pacientes, Asistente de turnos (config),
     el asistente de WhatsApp (turnos/recetas/cobros) y la secretaria.
-  - **A decidir:** ¿el asistente IA de facturación (el chat que ayuda a cargar órdenes) es Básico
-    o Full? (Hoy es parte de la app de facturación.)
+  - **Nota de costo:** el asistente de facturación (Básico) y el de WhatsApp (Full) ambos gastan
+    tokens de IA → el costo de IA aplica a los DOS planes (ver métricas §5.1).
 
 ## 4. Modelo de datos (nuevo — greenfield)
 
@@ -59,9 +62,31 @@ asistente/agenda/recetas. Se necesita:
    de onboarding, fecha de alta. Alta/baja/suspensión.
 2. **Suscripciones:** plan, estado de pago (MP), vencimientos, prueba; dar de alta/baja.
 3. **Métricas del negocio:** # médicos por plan/estado, **MRR** (ingreso recurrente), altas/bajas
-   (churn), uso agregado (turnos/recetas/mensajes/órdenes procesados), crecimiento.
+   (churn), crecimiento.
 4. **Salud del sistema (semilla del orquestador):** errores agregados de `wa_bitacora` de TODOS los
    médicos, alertas (sync caída, token Meta vencido, pago fallido).
+
+### 5.1 Métricas de COSTO (PRIORITARIAS — definidas por el dueño 2026-06-12)
+
+Son las primeras que se construyen, porque **impactan directo en el costo de Héctor** y en el piso
+de precio para la promo (DD7):
+
+- **Tokens de IA por médico + promedio.** Cuántos tokens gasta el/los asistente(s) de cada médico
+  (el de facturación y, en Full, el de WhatsApp). Mostrar el **promedio** y **destacar los médicos
+  que se van por encima** (outliers que cuestan más de lo normal). Es el costo de IA, el principal.
+  - *Implementación:* `generateText`/`generateObject` del AI SDK devuelven `usage` (input/output
+    tokens). Hoy NO se registra. Se captura por turno (extensión natural del resumen de bitácora,
+    `wa_bitacora.detalle`, o una tabla de uso agregada por médico/mes).
+- **Mensajes de WhatsApp y, sobre todo, los QUE TIENEN COSTO (fuera de la ventana de 24 h).** Meta
+  cobra los mensajes enviados fuera de la ventana de 24 h desde el último mensaje del paciente
+  (dentro de las 24 h son gratis). Hay que contar:
+  - total de mensajes que reciben los agentes, y
+  - **cuántos salientes caen FUERA de la ventana de 24 h** (esos cuestan). Pueden originarse por:
+    (a) el asistente (raro), o (b) **la secretaria/el médico respondiendo a mano por el WhatsApp del
+    asistente** desde el panel — eso le genera costo a Héctor.
+  - *Implementación:* `wa_mensajes` tiene timestamps; se computa cada saliente vs. el último entrante
+    del contacto → "dentro/fuera de 24 h". Atribuir el saliente a su origen (agente vs humano/panel).
+- *(Más métricas las irá definiendo el dueño; estas son las prioritarias por su impacto en costo.)*
 
 ## 6. Orquestador v1 (acotado por DD5)
 
@@ -82,10 +107,15 @@ asistente/agenda/recetas. Se necesita:
 
 ## 8. Pendientes del dueño (TBD — definir para cerrar el spec)
 
-- **Precios** de cada plan.
-- **Duración** de la prueba gratis.
-- **Métricas exactas** que querés ver primero en el panel.
-- **Qué entra exacto en Básico** (sobre todo: ¿el asistente IA de facturación va en Básico o Full?).
+- ✅ ~~Duración de la prueba~~ → **15 días** (DD4).
+- ✅ ~~Qué entra en Básico~~ → facturación **+ asistente IA de facturación** (§3).
+- ✅ ~~Métricas prioritarias~~ → costo: tokens/médico + mensajes fuera de ventana 24 h (§5.1).
+- **Precios FINALES** — hoy rango (Básico 25–30, Full 55–65). Se cierran tras calcular costos con las
+  métricas de §5.1, para fijar el piso de la promo.
+- **Cómo desambigua el número de prueba compartido (DD8):** si un solo número atiende a todos los
+  médicos en prueba, ¿es para que el médico PRUEBE el asistente él mismo (juega de paciente) con una
+  config demo, o atiende pacientes reales? Un número compartido no puede saber a qué médico le habla
+  un paciente nuevo. Definir antes de construir el trial (ver Riesgos §9).
 - **Documento operativo de onboarding** (se redacta sobre la 1ª instalación real).
 - **Contrato legal** (define qué se presta; ver si la app debe registrar consentimiento/términos).
 
@@ -97,6 +127,8 @@ asistente/agenda/recetas. Se necesita:
 | Superadmin cross-tenant rompe el supuesto `medico_id = auth.uid()` | service-role en server actions con guard de rol superadmin estricto + tests |
 | Fallos de pago de MP Suscripciones (reintentos, gracia, morosidad) | Estados de suscripción claros + período de gracia + el orquestador avisa |
 | Scope creep (es una fase grande, como la 3) | Etapas F4.1→F5 con plan propio y prueba en vivo cada una |
+| **Número de prueba compartido (DD8) no desambigua qué médico** | Definir su uso (demo que el médico se prueba a sí mismo vs. pacientes reales). Si es demo: config genérica + mapear por teléfono del médico. No mezclar pacientes reales de varios médicos en un número. |
+| **Costo de mensajes fuera de ventana 24 h por humanos** | La métrica §5.1 lo expone; a futuro, avisar/limitar cuando la secretaria/médico generan costo respondiendo tarde a mano |
 
 ## 10. Próximo paso
 
