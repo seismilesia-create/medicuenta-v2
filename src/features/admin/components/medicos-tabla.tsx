@@ -24,19 +24,33 @@ function SubControl({ m }: { m: MedicoConFlags }) {
   }
 
   return (
-    <div className="flex items-center gap-1.5">
-      <select value={plan} disabled={pending} onChange={(e) => update({ plan: e.target.value })} className={selCls}>
-        <option value="basico">Básico</option>
-        <option value="full">Full</option>
-      </select>
-      <select value={estado} disabled={pending} onChange={(e) => update({ estado: e.target.value })} className={selCls}>
-        <option value="prueba">Prueba</option>
-        <option value="activa">Activa</option>
-        <option value="morosa">Morosa</option>
-        <option value="suspendida">Suspendida</option>
-        <option value="baja">Baja</option>
-      </select>
+    <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
+        <select value={plan} disabled={pending} onChange={(e) => update({ plan: e.target.value })} className={selCls}>
+          <option value="basico">Básico</option>
+          <option value="full">Full</option>
+        </select>
+        <select value={estado} disabled={pending} onChange={(e) => update({ estado: e.target.value })} className={selCls}>
+          <option value="prueba">Prueba</option>
+          <option value="activa">Activa</option>
+          <option value="morosa">Morosa</option>
+          <option value="suspendida">Suspendida</option>
+          <option value="baja">Baja</option>
+        </select>
+      </div>
+      {estado === 'prueba' && m.trial_ends_at && <TrialLabel iso={m.trial_ends_at} />}
     </div>
+  )
+}
+
+/** "vence en X días" / "vencida" a partir de trial_ends_at. */
+function TrialLabel({ iso }: { iso: string }) {
+  const dias = Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000)
+  const vencida = dias < 0
+  return (
+    <span className={`text-[11px] ${vencida ? 'text-red-500' : 'text-[var(--color-muted-foreground)]'}`}>
+      {vencida ? 'prueba vencida' : dias === 0 ? 'vence hoy' : `vence en ${dias} día${dias === 1 ? '' : 's'}`}
+    </span>
   )
 }
 

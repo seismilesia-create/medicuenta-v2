@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { resolverSuperadmin } from '@/features/admin/access/superadmin'
 import { createServiceClient } from '@/lib/supabase/server'
+import { TRIAL_DIAS } from '@/lib/admin/planes'
 
 const schema = z.object({
   medicoId: z.string().uuid(),
@@ -24,13 +25,17 @@ export async function setSuscripcion(input: { medicoId: string; plan: string; es
   if (!parsed.success) return { error: parsed.error.issues[0].message }
   const { medicoId, plan, estado } = parsed.data
 
+  // Al pasar a "prueba", arrancamos los 15 días (DD4). En otros estados no tocamos
+  // la fecha (queda como registro histórico de la prueba).
+  const fila: Record<string, unknown> = { medico_id: medicoId, plan, estado, updated_at: new Date().toISOString() }
+  if (estado === 'prueba') {
+    fila.trial_ends_at = new Date(Date.now() + TRIAL_DIAS * 86_400_000).toISOString()
+  }
+
   const service = createServiceClient()
   const { error } = await service
     .from('suscripciones')
-    .upsert(
-      { medico_id: medicoId, plan, estado, updated_at: new Date().toISOString() },
-      { onConflict: 'medico_id' },
-    )
+    .upsert(fila, { onConflict: 'medico_id' })
   if (error) return { error: error.message }
 
   revalidatePath('/admin')

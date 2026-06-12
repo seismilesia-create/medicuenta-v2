@@ -1,6 +1,7 @@
 import { Users, Cpu, MessageSquareWarning, AlertTriangle, Bot } from 'lucide-react'
 import { getMedicosConMetricas } from '@/features/admin/services/superadminService'
 import { detectarAlertas } from '@/lib/admin/alertas'
+import { resumenNegocio } from '@/lib/admin/negocio'
 import { MetricCard } from '@/features/dashboard/components'
 import { MedicosTabla } from '@/features/admin/components/medicos-tabla'
 import { AlertasPanel } from '@/features/admin/components/alertas-panel'
@@ -11,9 +12,19 @@ export const metadata = {
 
 const intAR = new Intl.NumberFormat('es-AR')
 
+const CHIPS: { key: keyof ReturnType<typeof resumenNegocio>; label: string; color?: string }[] = [
+  { key: 'full', label: 'Full' },
+  { key: 'basico', label: 'Básico' },
+  { key: 'enPrueba', label: 'En prueba', color: '#3b82f6' },
+  { key: 'activos', label: 'Activos', color: '#16a34a' },
+  { key: 'morosos', label: 'Morosos', color: '#ef4444' },
+  { key: 'suspendidos', label: 'Suspendidos', color: '#f59e0b' },
+]
+
 export default async function AdminPage() {
   const { resumen, medicos } = await getMedicosConMetricas()
   const alertas = detectarAlertas(medicos, Date.now())
+  const negocio = resumenNegocio(medicos)
 
   return (
     <div className="space-y-6">
@@ -22,6 +33,21 @@ export default async function AdminPage() {
         <p className="text-sm text-[var(--color-muted-foreground)]">
           Costo y actividad de los últimos 30 días (errores: 7 días). Datos en vivo a medida que los médicos usan los asistentes.
         </p>
+      </div>
+
+      {/* Cartera: distribución por plan y estado */}
+      <div className="flex flex-wrap gap-2">
+        {CHIPS.map((c) => (
+          <span
+            key={c.key}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-sm"
+          >
+            <span className="font-semibold tabular-nums" style={c.color ? { color: c.color } : undefined}>
+              {negocio[c.key]}
+            </span>
+            <span className="text-[var(--color-muted-foreground)]">{c.label}</span>
+          </span>
+        ))}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

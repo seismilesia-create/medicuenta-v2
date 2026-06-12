@@ -8,6 +8,9 @@
  */
 export type Plan = 'basico' | 'full'
 
+/** Duración de la prueba gratis (DD4). */
+export const TRIAL_DIAS = 15
+
 /** Prefijos de ruta exclusivos del plan Full (el ecosistema del asistente de WhatsApp). */
 export const PREFIJOS_FULL = ['/agenda', '/conversaciones', '/pacientes', '/consultorio']
 
