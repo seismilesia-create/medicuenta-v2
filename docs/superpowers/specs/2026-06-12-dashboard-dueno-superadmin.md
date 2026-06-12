@@ -105,8 +105,12 @@ de precio para la promo (DD7):
   mensajes con costo, errores 7d, turnos) con outliers destacados. Lee por service-role (función
   `superadmin_metricas_medicos` cerrada a service_role). admin@medicuenta.com flaggeado para probar.
   Pendiente de pulido: link de nav al panel + (opcional) redirect del dueño a /admin.
-- **F4.2 — Planes + candado + trial:** tabla de suscripciones + feature-gating Básico/Full + prueba
-  gratis de 15 días con el **sandbox demo** (número de prueba compartido + dashboard demo, DD8/DD9).
+- **F4.2a — Planes + candado** ✅ HECHO (commit 9774a44): tabla `suscripciones` (plan basico/full +
+  estado) + candado de funciones (Básico no accede al consultorio, ni en menú ni por URL) +
+  superadmin gestiona plan/estado a mano. `resolverConsultorio` resuelve el plan; guards en las 4
+  rutas del consultorio; pura `planes.ts`.
+- **F4.2b — Trial sandbox** (PENDIENTE): prueba gratis 15 días con el número compartido + dashboard
+  demo (DD8/DD9). Más grande y dependiente de infra de WhatsApp de producción.
 - **F4.3 — MercadoPago Suscripciones:** cobro recurrente, webhooks, estados (prueba→activa→morosa→…).
 - **F5 — Orquestador v1:** observa bitácora + avisa por WhatsApp/email.
 
