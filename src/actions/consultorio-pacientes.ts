@@ -1,7 +1,7 @@
 'use server'
 
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
+import { resolverConsultorio } from '@/features/consultorio/access/contexto'
 
 const editarSchema = z.object({
   pacienteId: z.string().uuid(),
@@ -11,13 +11,12 @@ const editarSchema = z.object({
   obraSocial: z.string().trim(),
 })
 
-/** Corrección de datos de la ficha (spec §7). Cambiar el DNI re-keyea: avisar en la UI. */
+/** Corrección de datos de la ficha (spec §7). Cambiar el DNI re-keyea: avisar en la UI.
+ *  La secretaria puede corregir datos (no recetas): opera con el medicoActivoId. */
 export async function editarPaciente(input: z.infer<typeof editarSchema>) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'No autenticado' }
+  const r = await resolverConsultorio()
+  if (!r || !r.ctx.medicoActivoId) return { error: 'No autenticado' }
+  const { supabase, ctx } = r
   const parsed = editarSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
   const d = parsed.data
@@ -30,7 +29,7 @@ export async function editarPaciente(input: z.infer<typeof editarSchema>) {
       obra_social: d.obraSocial || null,
       updated_at: new Date().toISOString(),
     })
-    .eq('medico_id', user.id)
+    .eq('medico_id', ctx.medicoActivoId)
     .eq('id', d.pacienteId)
   if (error) {
     if (error.code === '23505') return { error: 'Ya existe otro paciente con ese DNI' }

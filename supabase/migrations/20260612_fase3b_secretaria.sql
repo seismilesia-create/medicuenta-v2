@@ -60,6 +60,23 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.uid_por_email(TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.uid_por_email(TEXT) TO service_role;
 
+-- ── Consultorios que el usuario puede operar (con nombre, para el selector) ──
+-- La secretaria NO puede leer perfiles del médico (médico-only); esta función
+-- SECURITY DEFINER devuelve SOLO los médicos a los que el caller está vinculado.
+-- Dueño del consultorio = cualquier rol que NO sea secretaria (medico, admin, futuros
+-- verticales). El resolver mapea igual: todo lo que no es 'secretaria' opera su propio consultorio.
+CREATE OR REPLACE FUNCTION public.mis_consultorios()
+RETURNS TABLE(medico_id UUID, nombre TEXT, apellido TEXT)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT p.id, p.nombre, p.apellido FROM public.perfiles p
+    WHERE p.id = auth.uid() AND p.rol IS DISTINCT FROM 'secretaria'
+  UNION
+  SELECT p.id, p.nombre, p.apellido
+    FROM public.equipo_consultorio e
+    JOIN public.perfiles p ON p.id = e.medico_id
+    WHERE e.secretaria_id = auth.uid() AND e.estado = 'activa';
+$$;
+
 -- ── Trigger de signup extendido: claim de invitación por email ───────────────
 -- Si el email del nuevo usuario tiene una invitación 'pendiente' → rol 'secretaria'
 -- + activa TODAS sus invitaciones (multi-consultorio). La verificación de email de

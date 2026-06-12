@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { resolverConsultorio, esDueño } from '@/features/consultorio/access/contexto'
 import { ConfigView } from '@/features/consultorio/components/config/config-view'
 
 export const metadata = {
@@ -7,10 +7,9 @@ export const metadata = {
 }
 
 export default async function ConfigPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-  return <ConfigView medicoId={user.id} />
+  const r = await resolverConsultorio()
+  if (!r) redirect('/login')
+  // Config = médico-only (spec §8): la secretaria (o un médico operando otro consultorio) no entra.
+  if (!esDueño(r.ctx)) redirect('/agenda')
+  return <ConfigView medicoId={r.ctx.userId} />
 }

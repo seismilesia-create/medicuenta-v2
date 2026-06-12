@@ -1,16 +1,16 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { resolverConsultorio, esDueño } from '@/features/consultorio/access/contexto'
 import { PacientesView } from '@/features/consultorio/components/pacientes/pacientes-view'
+import { SinConsultorio } from '@/features/consultorio/components/sin-consultorio'
 
 export const metadata = {
   title: 'Pacientes | MediCuenta',
 }
 
 export default async function PacientesPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-  return <PacientesView medicoId={user.id} />
+  const r = await resolverConsultorio()
+  if (!r) redirect('/login')
+  if (!r.ctx.medicoActivoId) return <SinConsultorio />
+  // Recetas en la ficha: SOLO el médico dueño (spec §7) — jamás la secretaria.
+  return <PacientesView medicoId={r.ctx.medicoActivoId} puedeVerRecetas={esDueño(r.ctx)} />
 }

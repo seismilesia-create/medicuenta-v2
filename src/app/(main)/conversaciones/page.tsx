@@ -1,17 +1,16 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { resolverConsultorio } from '@/features/consultorio/access/contexto'
 import { ConversacionesView } from '@/features/consultorio/components/conversaciones/conversaciones-view'
+import { SinConsultorio } from '@/features/consultorio/components/sin-consultorio'
 
 export const metadata = {
   title: 'Conversaciones | MediCuenta',
 }
 
 export default async function ConversacionesPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const r = await resolverConsultorio()
+  if (!r) redirect('/login')
+  if (!r.ctx.medicoActivoId) return <SinConsultorio />
   const { id } = await searchParams
-  return <ConversacionesView medicoId={user.id} initialId={id ?? null} />
+  return <ConversacionesView medicoId={r.ctx.medicoActivoId} initialId={id ?? null} />
 }

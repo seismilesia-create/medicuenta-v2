@@ -1,16 +1,15 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { resolverConsultorio } from '@/features/consultorio/access/contexto'
 import { AgendaView } from '@/features/consultorio/components/agenda/agenda-view'
+import { SinConsultorio } from '@/features/consultorio/components/sin-consultorio'
 
 export const metadata = {
   title: 'Agenda | MediCuenta',
 }
 
 export default async function AgendaPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-  return <AgendaView medicoId={user.id} />
+  const r = await resolverConsultorio()
+  if (!r) redirect('/login')
+  if (!r.ctx.medicoActivoId) return <SinConsultorio />
+  return <AgendaView medicoId={r.ctx.medicoActivoId} />
 }

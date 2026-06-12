@@ -8,7 +8,7 @@ import { getPacientes, getFicha, type PacienteRow, type FichaPaciente } from '@/
 import { editarPaciente } from '@/actions/consultorio-pacientes'
 import { estadoEfectivoTurno } from '@/lib/consultorio/asistencia'
 
-export function PacientesView({ medicoId }: { medicoId: string }) {
+export function PacientesView({ medicoId, puedeVerRecetas = true }: { medicoId: string; puedeVerRecetas?: boolean }) {
   const [q, setQ] = useState('')
   const [pacientes, setPacientes] = useState<PacienteRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -214,22 +214,26 @@ export function PacientesView({ medicoId }: { medicoId: string }) {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
-                <h3 className="text-[11px] font-bold uppercase tracking-wide text-amber-600 mb-2">🔒 Recetas (solo lo ve el médico)</h3>
-                <div className="space-y-1 text-sm">
-                  {ficha.recetas.map((r) => (
-                    <p key={r.id} className="flex gap-2">
-                      <span className="tabular-nums">{new Date(r.created_at).toLocaleDateString('es-AR')}</span>
-                      <span className="flex-1 truncate">{r.medicamento}</span>
-                      <span className="text-[var(--color-muted-foreground)]">
-                        {r.estado}
-                        {r.monto != null ? ` · $${r.monto.toLocaleString('es-AR')}` : ''}
-                      </span>
-                    </p>
-                  ))}
-                  {ficha.recetas.length === 0 && <p className="text-[var(--color-muted-foreground)]">Sin recetas registradas.</p>}
+              {/* Recetas: SOLO el médico dueño (spec §7). Para la secretaria ni se dibuja
+                  (además el RLS de `recetas` ya le devuelve vacío — doble candado). */}
+              {puedeVerRecetas && (
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wide text-amber-600 mb-2">🔒 Recetas (solo lo ve el médico)</h3>
+                  <div className="space-y-1 text-sm">
+                    {ficha.recetas.map((r) => (
+                      <p key={r.id} className="flex gap-2">
+                        <span className="tabular-nums">{new Date(r.created_at).toLocaleDateString('es-AR')}</span>
+                        <span className="flex-1 truncate">{r.medicamento}</span>
+                        <span className="text-[var(--color-muted-foreground)]">
+                          {r.estado}
+                          {r.monto != null ? ` · $${r.monto.toLocaleString('es-AR')}` : ''}
+                        </span>
+                      </p>
+                    ))}
+                    {ficha.recetas.length === 0 && <p className="text-[var(--color-muted-foreground)]">Sin recetas registradas.</p>}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>

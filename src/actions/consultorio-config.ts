@@ -1,15 +1,16 @@
 'use server'
 
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
 import { normalizarOs } from '@/lib/consultorio/osSuspendidas'
+import { resolverConsultorio, esDueño } from '@/features/consultorio/access/contexto'
 
-async function medicoAutenticado() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  return { supabase, user }
+/** Config del consultorio = médico-only (spec §8). Solo el DUEÑO del consultorio
+ *  (ni la secretaria ni un médico operando otro consultorio) puede cambiarla. */
+async function ctxDueño() {
+  const r = await resolverConsultorio()
+  if (!r) return { error: 'No autenticado' as const }
+  if (!esDueño(r.ctx)) return { error: 'Solo el médico puede cambiar la configuración' as const }
+  return { supabase: r.supabase, medicoId: r.ctx.userId }
 }
 
 const horariosSchema = z.array(
@@ -25,8 +26,9 @@ const horariosSchema = z.array(
  *  el horario anterior queda intacto (sin ventana destructiva).
  *  Los turnos YA dados fuera del nuevo horario NO se tocan (spec §8.1). */
 export async function guardarHorarios(bloques: z.infer<typeof horariosSchema>) {
-  const { supabase, user } = await medicoAutenticado()
-  if (!user) return { error: 'No autenticado' }
+  const c = await ctxDueño()
+  if ('error' in c) return c
+  const { supabase, medicoId } = c
   const parsed = horariosSchema.safeParse(bloques)
   if (!parsed.success) return { error: 'Horarios inválidos' }
   for (const b of parsed.data) {
@@ -47,15 +49,15 @@ export async function guardarHorarios(bloques: z.infer<typeof horariosSchema>) {
   }
 
   // Insertar primero y borrar después por id: si el insert falla, el horario viejo queda intacto.
-  const { data: viejos, error: selError } = await supabase.from('wa_horarios').select('id').eq('medico_id', user.id)
+  const { data: viejos, error: selError } = await supabase.from('wa_horarios').select('id').eq('medico_id', medicoId)
   if (selError) return { error: selError.message }
   if (parsed.data.length > 0) {
-    const { error } = await supabase.from('wa_horarios').insert(parsed.data.map((b) => ({ medico_id: user.id, ...b })))
+    const { error } = await supabase.from('wa_horarios').insert(parsed.data.map((b) => ({ medico_id: medicoId, ...b })))
     if (error) return { error: error.message }
   }
   const idsViejos = ((viejos as { id: string }[] | null) ?? []).map((v) => v.id)
   if (idsViejos.length > 0) {
-    const { error: delError } = await supabase.from('wa_horarios').delete().eq('medico_id', user.id).in('id', idsViejos)
+    const { error: delError } = await supabase.from('wa_horarios').delete().eq('medico_id', medicoId).in('id', idsViejos)
     if (delError) return { error: delError.message }
   }
   return { ok: true as const }
@@ -63,29 +65,31 @@ export async function guardarHorarios(bloques: z.infer<typeof horariosSchema>) {
 
 /** Cambia la duración del único servicio "Consulta" (spec D12). Solo afecta turnos futuros. */
 export async function guardarDuracionConsulta(servicioId: string, duracionMin: number) {
-  const { supabase, user } = await medicoAutenticado()
-  if (!user) return { error: 'No autenticado' }
+  const c = await ctxDueño()
+  if ('error' in c) return c
+  const { supabase, medicoId } = c
   if (!Number.isInteger(duracionMin) || duracionMin < 5 || duracionMin > 120) {
     return { error: 'Duración inválida (entre 5 y 120 minutos)' }
   }
   const { error } = await supabase
     .from('wa_servicios')
     .update({ duracion_min: duracionMin, updated_at: new Date().toISOString() })
-    .eq('medico_id', user.id)
+    .eq('medico_id', medicoId)
     .eq('id', servicioId)
   if (error) return { error: error.message }
   return { ok: true as const }
 }
 
 export async function agregarOsSuspendida(nombreOs: string, nota: string) {
-  const { supabase, user } = await medicoAutenticado()
-  if (!user) return { error: 'No autenticado' }
+  const c = await ctxDueño()
+  if ('error' in c) return c
+  const { supabase, medicoId } = c
   // Normalizada al guardar (review parte 1): el UNIQUE es sensible, el match no.
   const nombre = normalizarOs(nombreOs)
   if (!nombre || nombre === 'particular') return { error: 'Nombre de obra social inválido' }
   const { error } = await supabase
     .from('wa_os_suspendidas')
-    .insert({ medico_id: user.id, nombre_os: nombre, nota: nota.trim() || null })
+    .insert({ medico_id: medicoId, nombre_os: nombre, nota: nota.trim() || null })
   if (error) {
     if (error.code === '23505') return { error: 'Esa obra social ya está en la lista' }
     return { error: error.message }
@@ -94,9 +98,10 @@ export async function agregarOsSuspendida(nombreOs: string, nota: string) {
 }
 
 export async function quitarOsSuspendida(id: string) {
-  const { supabase, user } = await medicoAutenticado()
-  if (!user) return { error: 'No autenticado' }
-  const { error } = await supabase.from('wa_os_suspendidas').delete().eq('medico_id', user.id).eq('id', id)
+  const c = await ctxDueño()
+  if ('error' in c) return c
+  const { supabase, medicoId } = c
+  const { error } = await supabase.from('wa_os_suspendidas').delete().eq('medico_id', medicoId).eq('id', id)
   if (error) return { error: error.message }
   return { ok: true as const }
 }
@@ -111,8 +116,9 @@ const agenteSchema = z.object({
 })
 
 export async function guardarAsistente(input: z.infer<typeof agenteSchema>) {
-  const { supabase, user } = await medicoAutenticado()
-  if (!user) return { error: 'No autenticado' }
+  const c = await ctxDueño()
+  if ('error' in c) return c
+  const { supabase, medicoId } = c
   const parsed = agenteSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
   const d = parsed.data
@@ -120,7 +126,7 @@ export async function guardarAsistente(input: z.infer<typeof agenteSchema>) {
     .from('wa_config_agente')
     .upsert(
       {
-        medico_id: user.id,
+        medico_id: medicoId,
         nombre_medico: d.nombre_medico || null,
         especialidad: d.especialidad || null,
         tono: d.tono || null,
