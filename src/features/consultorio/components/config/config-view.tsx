@@ -14,6 +14,7 @@ import {
 import { desbloquearDias, bloquearDias } from '@/actions/consultorio-agenda'
 import { invitarSecretaria, revocarSecretaria } from '@/actions/consultorio-secretaria'
 import { HorariosEditor } from './horarios-editor'
+import { ActividadAsistente } from './actividad-asistente'
 
 function Seccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
@@ -380,6 +381,10 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
             Invitar
           </button>
         </div>
+      </Seccion>
+
+      <Seccion titulo="Actividad del asistente">
+        <ActividadAsistente medicoId={medicoId} />
       </Seccion>
     </div>
   )

@@ -245,6 +245,18 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
     const turno = await runAgentTurn({ systemPrompt, historial, tools })
     // Barrera de plata: solo pueden salir links que devolvió cobrar_receta.
     reply = sanitizarReplyCobro(turno.text, turno.cobros)
+    // Bitácora (spec §10): registramos el turno cuando el agente HIZO algo
+    // (usó tools). Los turnos de pura charla no ensucian la traza. Best-effort.
+    if (turno.resumen.tools.length > 0) {
+      await registrarEvento(db, {
+        medicoId: canal.medicoId,
+        origen: 'agente',
+        nivel: 'info',
+        evento: 'agente_turno',
+        detalle: { ...turno.resumen },
+        conversacionId,
+      })
+    }
   } catch (e) {
     console.error('[wa] agent error:', e)
     await registrarEvento(db, {

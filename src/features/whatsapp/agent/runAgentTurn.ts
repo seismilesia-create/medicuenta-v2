@@ -2,11 +2,14 @@ import { generateText, stepCountIs, type ToolSet } from 'ai'
 import { openrouter, getAgentModel } from '@/lib/ai/openrouter'
 import type { HistorialMsg } from '@/features/whatsapp/services/conversaciones'
 import type { CobroGenerado } from './sanitizarReply'
+import { resumirPasosAgente, type ResumenAgente } from '@/lib/whatsapp/resumenPasos'
 
 export interface AgentTurnResult {
   text: string
   /** Links de pago generados DE VERDAD por cobrar_receta en este turno. */
   cobros: CobroGenerado[]
+  /** Traza estructurada del turno para la bitácora (spec §10). */
+  resumen: ResumenAgente
 }
 
 /**
@@ -55,5 +58,7 @@ export async function runAgentTurn(opts: {
   const toolsUsadas = result.steps.flatMap((s) => s.toolCalls.map((c) => c.toolName))
   console.log(`[wa] agente steps=${result.steps.length} tools=[${toolsUsadas.join(',')}] cobros=${cobros.length}`)
 
-  return { text: result.text.trim() || fallbackConEfecto, cobros }
+  const text = result.text.trim() || fallbackConEfecto
+  const resumen = resumirPasosAgente(result.steps, text)
+  return { text, cobros, resumen }
 }
