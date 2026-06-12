@@ -22,6 +22,10 @@ import {
   Sparkles,
   Menu,
   X,
+  CalendarDays,
+  MessageCircle,
+  Users,
+  Settings2,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -41,13 +45,19 @@ interface NavItem {
   badge?: string
 }
 
-const navigation: { principal: NavItem[]; avanzado: NavItem[] } = {
+const navigation: { principal: NavItem[]; consultorio: NavItem[]; avanzado: NavItem[] } = {
   principal: [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Ordenes', href: '/ordenes', icon: FileText },
     { name: 'Liquidaciones', href: '/liquidaciones', icon: Receipt },
     { name: 'Debitos', href: '/debitos', icon: AlertTriangle },
     { name: 'Reportes', href: '/reportes', icon: BarChart3 },
+  ],
+  consultorio: [
+    { name: 'Agenda', href: '/agenda', icon: CalendarDays },
+    { name: 'Conversaciones', href: '/conversaciones', icon: MessageCircle },
+    { name: 'Pacientes', href: '/pacientes', icon: Users },
+    { name: 'Config consultorio', href: '/consultorio/config', icon: Settings2 },
   ],
   avanzado: [
     { name: 'Nomenclador', href: '/nomenclador', icon: Grid3X3 },
@@ -109,6 +119,7 @@ export function Sidebar({ nombre }: { nombre?: string | null }) {
       {/* Navigation */}
       <nav className="relative flex-1 space-y-8 overflow-y-auto px-4 py-6">
         <NavSection title="Principal" items={navigation.principal} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
+        <NavSection title="Consultorio" items={navigation.consultorio} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
         <NavSection title="Avanzado" items={navigation.avanzado} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
       </nav>
 
