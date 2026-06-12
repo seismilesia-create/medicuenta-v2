@@ -23,11 +23,23 @@ function Seccion({ titulo, children }: { titulo: string; children: React.ReactNo
   )
 }
 
+function Campo({ label, ayuda, children }: { label: string; ayuda: string; children: React.ReactNode }) {
+  return (
+    <label className="block space-y-1">
+      <span className="block text-sm font-medium">{label}</span>
+      {children}
+      <span className="block text-[11px] text-[var(--color-muted-foreground)]">{ayuda}</span>
+    </label>
+  )
+}
+
 export function ConfigView({ medicoId }: { medicoId: string }) {
   const [cfg, setCfg] = useState<ConfigConsultorio | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [osNueva, setOsNueva] = useState({ nombre: '', nota: '' })
   const [bloqueo, setBloqueo] = useState({ desde: '', hasta: '', nota: '' })
+  const [agenteSaving, setAgenteSaving] = useState(false)
+  const [agenteOk, setAgenteOk] = useState(false)
 
   const refetch = useCallback(async () => {
     const supabase = createClient()
@@ -42,17 +54,22 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
     refetch()
   }, [refetch])
 
-  async function onAccion(fn: () => Promise<{ error?: string } | { ok: true }>) {
+  async function onAccion(fn: () => Promise<{ error?: string } | { ok: true }>): Promise<boolean> {
     const r = await fn()
-    setError('error' in r && r.error ? r.error : null)
+    const fallo = 'error' in r && !!r.error
+    setError(fallo ? (r as { error: string }).error : null)
     refetch()
+    return !fallo
   }
 
   async function guardarAgente(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (agenteSaving) return
+    setAgenteSaving(true)
+    setAgenteOk(false)
     const fd = new FormData(e.currentTarget)
     const precio = String(fd.get('precio_receta') ?? '').trim()
-    await onAccion(() =>
+    const ok = await onAccion(() =>
       guardarAsistente({
         nombre_medico: String(fd.get('nombre_medico') ?? ''),
         especialidad: String(fd.get('especialidad') ?? ''),
@@ -62,6 +79,9 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
         precio_receta: precio ? parseMontoArs(precio) : null,
       }),
     )
+    setAgenteSaving(false)
+    setAgenteOk(ok)
+    if (ok) setTimeout(() => setAgenteOk(false), 3000)
   }
 
   if (!cfg)
@@ -209,45 +229,74 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
       </Seccion>
 
       <Seccion titulo="El asistente">
-        <form onSubmit={guardarAgente} className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              name="nombre_medico"
-              defaultValue={cfg.agente?.nombre_medico ?? ''}
-              placeholder="Nombre del médico (cómo se presenta)"
-              className={input}
-            />
-            <input
-              name="especialidad"
-              defaultValue={cfg.agente?.especialidad ?? ''}
-              placeholder="Especialidad"
-              className={input}
-            />
+        <p className="text-xs text-[var(--color-muted-foreground)]">
+          Así se presenta y habla el asistente de WhatsApp con tus pacientes. Lo que cambies acá rige desde el
+          próximo mensaje.
+        </p>
+        <form onSubmit={guardarAgente} className="space-y-3">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Campo
+              label="Nombre del médico"
+              ayuda="Cómo se presenta el asistente: «el consultorio del Dr. Pérez»."
+            >
+              <input
+                name="nombre_medico"
+                defaultValue={cfg.agente?.nombre_medico ?? ''}
+                placeholder="Dr. Juan Pérez"
+                className={input}
+              />
+            </Campo>
+            <Campo label="Especialidad" ayuda="La menciona al presentarse y al dar información del consultorio.">
+              <input
+                name="especialidad"
+                defaultValue={cfg.agente?.especialidad ?? ''}
+                placeholder="Clínica médica"
+                className={input}
+              />
+            </Campo>
           </div>
-          <input
-            name="tono"
-            defaultValue={cfg.agente?.tono ?? ''}
-            placeholder='Tono (ej. "cordial, claro y breve")'
-            className={input}
-          />
-          <input
-            name="saludo"
-            defaultValue={cfg.agente?.saludo ?? ''}
-            placeholder="Saludo inicial (opcional)"
-            className={input}
-          />
-          <input
-            name="precio_receta"
-            defaultValue={cfg.agente?.precio_receta_default ?? ''}
-            placeholder="Precio de la receta ($)"
-            className={input}
-          />
+          <Campo label="Tono de las respuestas" ayuda="Cómo les habla a los pacientes en cada mensaje.">
+            <input
+              name="tono"
+              defaultValue={cfg.agente?.tono ?? ''}
+              placeholder="cordial, claro y breve"
+              className={input}
+            />
+          </Campo>
+          <Campo
+            label="Saludo inicial"
+            ayuda="Lo primero que dice cuando un paciente escribe. Si lo dejás vacío, usa un saludo estándar."
+          >
+            <textarea
+              name="saludo"
+              rows={2}
+              defaultValue={cfg.agente?.saludo ?? ''}
+              placeholder="¡Hola! Soy el asistente del Dr. Pérez. ¿En qué te puedo ayudar?"
+              className={input}
+            />
+          </Campo>
+          <Campo
+            label="Precio de la receta"
+            ayuda="Monto en pesos que el asistente informa cuando un paciente pide una receta."
+          >
+            <input
+              name="precio_receta"
+              defaultValue={cfg.agente?.precio_receta_default ?? ''}
+              placeholder="5.000"
+              className={input + ' !w-36'}
+            />
+          </Campo>
           <p className="text-[11px] text-[var(--color-muted-foreground)]">
-            Las FAQs se editan por ahora con el equipo técnico (v2 del panel).
+            Las preguntas frecuentes (FAQs) se editan por ahora con el equipo técnico.
           </p>
-          <button className="rounded-xl bg-primary text-white px-4 py-2 text-sm font-medium">
-            Guardar asistente
+          <button
+            disabled={agenteSaving}
+            className="rounded-xl bg-primary text-white px-4 py-2 text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+          >
+            {agenteSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {agenteSaving ? 'Guardando…' : 'Guardar asistente'}
           </button>
+          {agenteOk && <p className="text-sm text-emerald-600 font-medium">Guardado ✓</p>}
         </form>
       </Seccion>
 
