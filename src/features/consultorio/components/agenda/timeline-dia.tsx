@@ -94,17 +94,27 @@ export function TimelineDia({
   const ahoraMin = esHoy ? minutosAR(new Date().toISOString()) : null
 
   return (
-    <div className={`relative ${sinHoras ? '' : 'pl-14'}`} style={{ height: alto }}>
-      {/* Regla de horas */}
-      {horas.map((min) => (
-        <div key={min} className="absolute inset-x-0 border-t border-border/50" style={{ top: top(min) }}>
-          {!sinHoras && (
-            <span className="absolute -left-14 -top-2 w-12 pr-2 text-right text-[11px] tabular-nums text-[var(--color-muted-foreground)]">
+    <div className="flex">
+      {/* Gutter de horas (columna propia: los hijos absolute ignoran el padding del padre) */}
+      {!sinHoras && (
+        <div className="relative w-14 shrink-0" style={{ height: alto }}>
+          {horas.map((min) => (
+            <span
+              key={min}
+              className="absolute right-2 -translate-y-1/2 text-[11px] tabular-nums text-[var(--color-muted-foreground)]"
+              style={{ top: top(min) }}
+            >
               {`${String(Math.floor(min / 60)).padStart(2, '0')}:00`}
             </span>
-          )}
+          ))}
         </div>
-      ))}
+      )}
+
+      <div className="relative flex-1 min-w-0" style={{ height: alto }}>
+        {/* Líneas de hora */}
+        {horas.map((min) => (
+          <div key={min} className="absolute inset-x-0 border-t border-border/50" style={{ top: top(min) }} />
+        ))}
 
       {/* Huecos ofrecidos por el asistente (decisión del dueño: visibles, no espacio mudo) */}
       {libres.map((slot) => {
@@ -157,14 +167,15 @@ export function TimelineDia({
         )
       })}
 
-      {/* Línea "ahora" (solo hoy, dentro de la jornada) */}
-      {ahoraMin !== null && ahoraMin >= desdeMin && ahoraMin <= hastaMin && (
-        <div className="absolute inset-x-0 z-10 pointer-events-none" style={{ top: top(ahoraMin) }}>
-          <div className="relative border-t-2 border-red-500">
-            <span className="absolute -left-1.5 -top-[5px] w-2 h-2 rounded-full bg-red-500" />
+        {/* Línea "ahora" (solo hoy, dentro de la jornada) */}
+        {ahoraMin !== null && ahoraMin >= desdeMin && ahoraMin <= hastaMin && (
+          <div className="absolute inset-x-0 z-10 pointer-events-none" style={{ top: top(ahoraMin) }}>
+            <div className="relative border-t-2 border-red-500">
+              <span className="absolute left-0 -top-[5px] w-2 h-2 rounded-full bg-red-500" />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
