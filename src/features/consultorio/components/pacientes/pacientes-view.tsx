@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { Loader2, Search, MessageCircle, Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -15,15 +15,21 @@ export function PacientesView({ medicoId }: { medicoId: string }) {
   const [ficha, setFicha] = useState<FichaPaciente | null>(null)
   const [editando, setEditando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const seq = useRef(0)
 
   const refetch = useCallback(async () => {
+    const id = ++seq.current
     const supabase = createClient()
     try {
-      setPacientes(await getPacientes(supabase, medicoId, q))
+      const data = await getPacientes(supabase, medicoId, q)
+      if (id !== seq.current) return
+      setPacientes(data)
       setError(null)
     } catch {
+      if (id !== seq.current) return
       setError('No pude cargar los pacientes. Probá de nuevo.')
     }
+    if (id !== seq.current) return
     setLoading(false)
   }, [medicoId, q])
 
@@ -189,8 +195,8 @@ export function PacientesView({ medicoId }: { medicoId: string }) {
                       <p key={t.id} className="flex gap-2">
                         <span className="tabular-nums">{new Date(t.starts_at).toLocaleDateString('es-AR')}</span>
                         <span className="text-[var(--color-muted-foreground)] truncate flex-1">{t.notas ?? ''}</span>
-                        <span className={ef === 'no_vino' ? 'text-red-500' : ef === 'proximo' ? 'text-blue-500' : 'text-emerald-600'}>
-                          {ef === 'no_vino' ? '✗ no vino' : ef === 'proximo' ? 'próximo' : '✓ atendida'}
+                        <span className={ef === 'no_vino' ? 'text-red-500' : ef === 'cancelado' ? 'text-[var(--color-muted-foreground)] line-through' : ef === 'proximo' ? 'text-blue-500' : 'text-emerald-600'}>
+                          {ef === 'no_vino' ? '✗ no vino' : ef === 'cancelado' ? 'cancelado' : ef === 'proximo' ? 'próximo' : '✓ atendida'}
                         </span>
                       </p>
                     )

@@ -24,19 +24,29 @@ export function HiloPanel({ medicoId, conversacionId, onChange }: { medicoId: st
   const [texto, setTexto] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const seq = useRef(0)
 
   const refetch = useCallback(async () => {
+    const id = ++seq.current
     const supabase = createClient()
     try {
-      setHilo(await getHilo(supabase, medicoId, conversacionId))
+      const data = await getHilo(supabase, medicoId, conversacionId)
+      if (id !== seq.current) return
+      setHilo(data)
+      setLoadError(false)
     } catch {
-      // El hilo mantiene el último estado; el error de envío se muestra aparte.
+      if (id !== seq.current) return
+      // Si no hay hilo cargado aún, marcamos el error para mostrar mensaje en lugar del spinner.
+      setLoadError(true)
     }
   }, [medicoId, conversacionId])
 
   useEffect(() => {
+    seq.current++ // invalida cualquier fetch en vuelo de la conversación anterior
     setHilo(null)
+    setLoadError(false)
     refetch()
     const t = setInterval(refetch, POLL_MS)
     return () => clearInterval(t)
@@ -49,7 +59,11 @@ export function HiloPanel({ medicoId, conversacionId, onChange }: { medicoId: st
   if (!hilo)
     return (
       <div className="h-full flex items-center justify-center">
-        <Loader2 className="animate-spin" />
+        {loadError ? (
+          <p className="text-sm text-[var(--color-muted-foreground)]">No pude cargar la conversación. Reintentando…</p>
+        ) : (
+          <Loader2 className="animate-spin" />
+        )}
       </div>
     )
 
@@ -83,7 +97,8 @@ export function HiloPanel({ medicoId, conversacionId, onChange }: { medicoId: st
           {hilo.necesitaHumano && (
             <button
               onClick={async () => {
-                await resolverAlarma(conversacionId)
+                const r = await resolverAlarma(conversacionId)
+                if ('error' in r && r.error) setError(r.error)
                 refetch()
                 onChange()
               }}
@@ -94,7 +109,8 @@ export function HiloPanel({ medicoId, conversacionId, onChange }: { medicoId: st
           )}
           <button
             onClick={async () => {
-              await setBotPausado(conversacionId, !hilo.botPausado)
+              const r = await setBotPausado(conversacionId, !hilo.botPausado)
+              if ('error' in r && r.error) setError(r.error)
               refetch()
               onChange()
             }}

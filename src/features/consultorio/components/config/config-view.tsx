@@ -64,7 +64,11 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
   }
 
   if (!cfg)
-    return (
+    return error ? (
+      <div className="p-4 md:p-6 max-w-3xl">
+        <div className="p-3 rounded-lg text-sm bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 border border-red-500/20">{error}</div>
+      </div>
+    ) : (
       <div className="flex justify-center py-16">
         <Loader2 className="animate-spin" />
       </div>

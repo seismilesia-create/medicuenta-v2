@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2, Plus, CalendarOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getSemana, getDia, type DiaSemana, type DiaAgenda } from '@/features/consultorio/services/panelService'
@@ -26,17 +26,22 @@ export function AgendaView({ medicoId }: { medicoId: string }) {
   const [error, setError] = useState<string | null>(null)
   const [slotElegido, setSlotElegido] = useState<{ fecha: string; hora: string } | null>(null)
   const [sobreturnoOpen, setSobreturnoOpen] = useState(false)
+  const seq = useRef(0)
 
   const refetch = useCallback(async () => {
+    const id = ++seq.current
     const supabase = createClient()
     try {
       const [s, d] = await Promise.all([getSemana(supabase, medicoId), getDia(supabase, medicoId, fecha)])
+      if (id !== seq.current) return
       setSemana(s)
       setDia(d)
       setError(null)
     } catch {
+      if (id !== seq.current) return
       setError('No pude cargar la agenda. Reintentando…')
     }
+    if (id !== seq.current) return
     setLoading(false)
   }, [medicoId, fecha])
 
@@ -48,10 +53,12 @@ export function AgendaView({ medicoId }: { medicoId: string }) {
   }, [refetch])
 
   async function onAccion(fn: () => Promise<{ error?: string } | { ok: true }>) {
+    // El refetch borra errores obsoletos con setError(null) en su rama éxito.
+    // El error de la acción se pone DESPUÉS para que persista (el poll de 15s
+    // lo borrará si el siguiente refetch es exitoso — comportamiento aceptable).
     const r = await fn()
+    await refetch()
     if ('error' in r && r.error) setError(r.error)
-    else setError(null)
-    refetch()
   }
 
   return (
