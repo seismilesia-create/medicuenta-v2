@@ -198,5 +198,61 @@ deriva de estructura, no de cálculo".
 - Revocar = `estado='revocada'` → la función RLS deja de matchear al instante ✓
 - Multi-consultorio: cookie validada contra `medicos` permitidos ✓
 
-## Notas de la ejecución
-(se completa al ejecutar)
+## Notas de la ejecución (2026-06-12)
+
+Ejecutado completo por clusters con gate por cluster. 6 commits sobre `12fd28b`:
+`c48873b` (A) · `94fc5c2` (B) · `73ec799` (C) · `8bb955d` (D) · `1785867` (tests E). La migración
+`20260612_fase3b_secretaria.sql` se aplicó al proyecto de prueba (`eylcrxhpccwobipcjzal`).
+
+**Validaciones (todas verdes):**
+- **Cluster A** (RLS): verificación estructural de `pg_policies` (7 tablas full + `wa_bitacora`
+  select/insert + `wa_horarios`/`wa_servicios` solo-SELECT delegadas; facturación/recetas/config
+  intactas) + `get_advisors` + prueba funcional por impersonación.
+- **Cluster B**: typecheck + 153 tests + smoke del médico (sigue viendo sus turnos y entrando a config).
+- **Cluster C**: smoke del flujo de invitación end-to-end (gabriel cuenta-existente → 'activa' al
+  instante, input se limpia).
+- **Cluster D**: verificado en **build de producción** (`next start`): secretaria redirigida de
+  `/dashboard /ordenes /nomenclador /asistente /` → `/agenda`, conserva `/agenda /conversaciones
+  /pacientes /perfil`; médico con acceso completo (ninguna redirección).
+- **Cluster E** (LA VARA §10): los 5 escenarios de `scripts/test-rls-secretaria.sql` verdes —
+  ve consultorio (3 turnos, 2 pacientes, 74 mensajes, 10 horarios) / **0 en toda la
+  facturación+recetas+config** · insert de turno delegado OK · insert en `ordenes` rechazado
+  (42501) · update de horarios/servicios = 0 (solo-SELECT) · revocar = 0 al instante · médico
+  ajeno aislado.
+
+**Desviación del plan (decidida en ejecución):** el guard de rol del middleware se resolvió leyendo
+el **claim `app_metadata.rol` del JWT** (cero query por request), NO con un read a `perfiles` en el
+edge. Motivo: la query `.from('perfiles')` en el middleware corría sin autenticar (anon → RLS la
+vaciaba). El trigger `handle_new_user` setea el claim en el signup; para cuentas existentes invitadas
+NO se toca el claim (multi-rol queda con nav de médico, RLS protege igual).
+
+**Auto-blindaje nuevo (para 3C y futuras):**
+1. **`next dev --turbopack` (Next 16.2.3) NO ejecuta el middleware** — ni el guard de rol ni el
+   redirect de auth-route. Se verifica con `npm run build && npm start` (o el deploy). El
+   `console.log`/`console.error` del edge runtime tampoco aparece en stdout del dev. En el futuro:
+   probar TODO lo que dependa de middleware en build de producción, no en dev.
+2. **Dev servers zombie**: reinicios repetidos de `npm run dev` dejaron varios procesos peleando por
+   `:3000` sirviendo código viejo (causa de horas de confusión). Matar SIEMPRE con
+   `pkill -9 -f "next dev"; pkill -9 -f "next-server"` antes de relanzar.
+3. **RLS en el middleware NO**: una query `.from()` en el edge middleware no lleva el token del
+   usuario de forma confiable → corre como anon. Para decisiones de rol en middleware, usar el
+   claim del JWT (`app_metadata`), no la DB.
+4. **Postgres: `REVOKE EXECUTE ... FROM anon, authenticated` NO basta** — el grant por defecto va a
+   PUBLIC. Para cerrar de verdad una función: `REVOKE ... FROM PUBLIC` + `GRANT ... TO service_role`
+   (cazado por `get_advisors` en `uid_por_email`).
+5. **`mis_consultorios()` con `rol IS DISTINCT FROM 'secretaria'`** (no `= 'medico'`): el usuario de
+   prueba tenía `rol='admin'`; filtrar por `='medico'` lo dejaba sin su propio consultorio.
+6. **Impersonación para tests de RLS**: `set local role authenticated` (baja de superusuario, así la
+   RLS se evalúa) + `set local request.jwt.claims = '{"sub":"<uuid>"}'`. El MCP corre como postgres
+   (bypassa RLS) si no se baja el rol.
+
+**Datos de prueba dejados en la DB (proyecto eylcrxhpccwobipcjzal):** gabriel@seismilesia.com quedó
+como **secretaria-de-prueba** vinculada a admin (`perfiles.rol='secretaria'`,
+`app_metadata.rol='secretaria'`, fila `equipo_consultorio` 'activa') — fixture para la prueba en
+vivo del dueño. Revertir a médico, si se quisiera: `update perfiles set rol='medico'` +
+`update auth.users set raw_app_meta_data = raw_app_meta_data - 'rol'` + borrar/revocar la fila de
+`equipo_consultorio`, los tres para el id `9e473632-1f3f-4d25-a73c-adb08050d1f9`.
+
+**Deuda menor:** mover `rol` a un claim del JWT como fuente única (hoy vive en `perfiles.rol` para
+el resolver/server y se denormaliza a `app_metadata.rol` para el middleware; el trigger los sincroniza
+en el signup, pero un cambio manual de `perfiles.rol` no propaga al claim hasta el próximo login).
