@@ -12,6 +12,7 @@ import {
   guardarAsistente,
 } from '@/actions/consultorio-config'
 import { desbloquearDias, bloquearDias } from '@/actions/consultorio-agenda'
+import { invitarSecretaria, revocarSecretaria } from '@/actions/consultorio-secretaria'
 import { HorariosEditor } from './horarios-editor'
 
 function Seccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
@@ -40,6 +41,7 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
   const [bloqueo, setBloqueo] = useState({ desde: '', hasta: '', nota: '' })
   const [agenteSaving, setAgenteSaving] = useState(false)
   const [agenteOk, setAgenteOk] = useState(false)
+  const [emailSec, setEmailSec] = useState('')
 
   const refetch = useCallback(async () => {
     const supabase = createClient()
@@ -321,6 +323,62 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
           <span className="flex items-center gap-1 opacity-50">
             <XCircle className="w-4 h-4" /> Google Calendar (llega en 3C)
           </span>
+        </div>
+      </Seccion>
+
+      <Seccion titulo="Secretaria">
+        <p className="text-xs text-[var(--color-muted-foreground)]">
+          Invitá a tu secretaria con su email. Solo verá la agenda, las conversaciones y los pacientes —
+          nunca tu facturación ni las recetas. Si todavía no tiene cuenta, queda «pendiente» y se activa
+          cuando se registre con ese email. <strong>Revocar corta el acceso al instante.</strong>
+        </p>
+        <div className="space-y-1 text-sm">
+          {cfg.secretarias.map((s) => (
+            <div key={s.id} className="flex items-center gap-2">
+              <span className="flex-1 truncate">{s.email}</span>
+              <span
+                className={`text-[11px] px-2 py-0.5 rounded-full border ${
+                  s.estado === 'activa'
+                    ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                    : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                }`}
+              >
+                {s.estado === 'activa' ? 'activa' : 'pendiente'}
+              </span>
+              <button
+                className="text-xs underline text-red-500"
+                onClick={() => {
+                  if (window.confirm(`¿Revocar el acceso de ${s.email}? El corte es inmediato.`)) {
+                    onAccion(() => revocarSecretaria(s.id))
+                  }
+                }}
+              >
+                Revocar
+              </button>
+            </div>
+          ))}
+          {cfg.secretarias.length === 0 && (
+            <p className="text-[var(--color-muted-foreground)]">Todavía no invitaste a nadie.</p>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="email"
+            placeholder="email@de-tu-secretaria.com"
+            className={input}
+            value={emailSec}
+            onChange={(e) => setEmailSec(e.target.value)}
+          />
+          <button
+            onClick={async () => {
+              if (!emailSec.trim()) return
+              const ok = await onAccion(() => invitarSecretaria(emailSec))
+              if (ok) setEmailSec('')
+            }}
+            className="rounded-xl border border-border px-4 whitespace-nowrap"
+          >
+            Invitar
+          </button>
         </div>
       </Seccion>
     </div>

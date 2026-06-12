@@ -519,11 +519,12 @@ export interface ConfigConsultorio {
     precio_receta_default: number | null
   } | null
   conexiones: { whatsapp: boolean; mercadopago: boolean }
+  secretarias: { id: string; email: string; estado: 'pendiente' | 'activa' | 'revocada'; invited_at: string }[]
 }
 
 export async function getConfig(db: SupabaseClient, medicoId: string): Promise<ConfigConsultorio> {
   const hoy = arDateString(Date.now(), 0)
-  const [horariosRes, serviciosRes, excepcionesRes, osRes, agenteRes, canalRes, mpRes] = await Promise.all([
+  const [horariosRes, serviciosRes, excepcionesRes, osRes, agenteRes, canalRes, mpRes, secretariasRes] = await Promise.all([
     db.from('wa_horarios').select('id, weekday, open_time, close_time').eq('medico_id', medicoId).order('weekday').then(ok),
     db.from('wa_servicios').select('id, duracion_min').eq('medico_id', medicoId).eq('activo', true).limit(1).then(ok),
     db
@@ -542,6 +543,13 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
       .then(ok),
     db.from('wa_canales').select('id').eq('medico_id', medicoId).eq('estado', 'conectado').maybeSingle().then(ok),
     db.from('mp_conexiones').select('id').eq('medico_id', medicoId).eq('estado', 'conectado').maybeSingle().then(ok),
+    db
+      .from('equipo_consultorio')
+      .select('id, secretaria_email, estado, invited_at')
+      .eq('medico_id', medicoId)
+      .neq('estado', 'revocada')
+      .order('invited_at')
+      .then(ok),
   ])
   const servicio = ((serviciosRes.data as { id: string; duracion_min: number }[] | null) ?? [])[0] ?? null
   const agente = agenteRes.data as ConfigConsultorio['agente'] & { precio_receta_default: unknown } | null
@@ -555,5 +563,8 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
       ? { ...agente, precio_receta_default: agente.precio_receta_default != null ? Number(agente.precio_receta_default) : null }
       : null,
     conexiones: { whatsapp: !!canalRes.data, mercadopago: !!mpRes.data },
+    secretarias: (
+      (secretariasRes.data as { id: string; secretaria_email: string; estado: 'pendiente' | 'activa' | 'revocada'; invited_at: string }[] | null) ?? []
+    ).map((s) => ({ id: s.id, email: s.secretaria_email, estado: s.estado, invited_at: s.invited_at })),
   }
 }
