@@ -27,6 +27,23 @@ export async function invitarSecretaria(emailRaw: string) {
   const { data: uid } = await service.rpc('uid_por_email', { p_email: email })
   if (uid && uid === ctx.userId) return { error: 'Ese es tu propio email' }
 
+  // Cuenta YA existente → la promovemos a secretaria (rol + claim del JWT) para que el resolver,
+  // el menú y el guard del middleware la traten igual que a una que se registra por invitación.
+  // Single-rol (spec): si la cuenta ya tiene consultorio propio, NO la convertimos (sería un
+  // lockout de su propia facturación) — la rechazamos explícitamente.
+  if (uid) {
+    const { count } = await service
+      .from('wa_servicios')
+      .select('id', { count: 'exact', head: true })
+      .eq('medico_id', uid)
+    if ((count ?? 0) > 0) {
+      return { error: 'Esa cuenta ya tiene un consultorio propio; por ahora no puede ser secretaria.' }
+    }
+    await service.from('perfiles').update({ rol: 'secretaria' }).eq('id', uid)
+    // app_metadata se mergea (no pisa provider/providers); el claim entra en el JWT al próximo refresh.
+    await service.auth.admin.updateUserById(uid as string, { app_metadata: { rol: 'secretaria' } })
+  }
+
   const { error } = await supabase.from('equipo_consultorio').upsert(
     {
       medico_id: ctx.userId,
