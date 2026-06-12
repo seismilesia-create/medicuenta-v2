@@ -26,6 +26,7 @@ import {
   MessageCircle,
   Users,
   CalendarCog,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -73,9 +74,11 @@ interface SidebarProps {
   medicoActivoId?: string | null
   /** Plan del consultorio activo: 'basico' oculta el grupo Consultorio (candado §3). */
   plan?: 'basico' | 'full'
+  /** El dueño: muestra el acceso de vuelta al panel /admin. */
+  esSuperadmin?: boolean
 }
 
-export function Sidebar({ nombre, rol = 'medico', medicos = [], medicoActivoId = null, plan = 'full' }: SidebarProps) {
+export function Sidebar({ nombre, rol = 'medico', medicos = [], medicoActivoId = null, plan = 'full', esSuperadmin = false }: SidebarProps) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const { theme, setTheme } = useTheme()
@@ -144,6 +147,16 @@ export function Sidebar({ nombre, rol = 'medico', medicos = [], medicoActivoId =
 
       {/* Navigation */}
       <nav className="relative flex-1 space-y-8 overflow-y-auto px-4 py-6">
+        {esSuperadmin && (
+          <Link
+            href="/admin"
+            onClick={handleNavClick}
+            className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-medium text-primary transition-colors hover:bg-primary/15"
+          >
+            <ShieldCheck className="h-[18px] w-[18px]" />
+            Panel del dueño
+          </Link>
+        )}
         {!esSecretaria && (
           <NavSection title="Principal" items={navigation.principal} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
         )}

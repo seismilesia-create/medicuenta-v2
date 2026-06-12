@@ -22,6 +22,8 @@ export interface ConsultorioContexto {
   medicos: MedicoOpcion[]
   /** Plan del consultorio activo: canda el acceso al asistente/WhatsApp (Full). */
   plan: Plan
+  /** El dueño de la plataforma: muestra el acceso de vuelta a /admin. */
+  esSuperadmin: boolean
 }
 
 export const COOKIE_CONSULTORIO = 'consultorio_activo'
@@ -43,11 +45,12 @@ export async function resolverConsultorio(): Promise<{
 
   const { data: perfil } = await supabase
     .from('perfiles')
-    .select('nombre, apellido, rol')
+    .select('nombre, apellido, rol, es_superadmin')
     .eq('id', user.id)
     .maybeSingle()
 
   const rol: RolConsultorio = perfil?.rol === 'secretaria' ? 'secretaria' : 'medico'
+  const esSuperadmin = perfil?.es_superadmin === true
   const nombre = [perfil?.nombre, perfil?.apellido].filter(Boolean).join(' ') || null
 
   const { data: rows } = await supabase.rpc('mis_consultorios')
@@ -74,7 +77,7 @@ export async function resolverConsultorio(): Promise<{
     plan = normalizarPlan(sub?.plan as string | null)
   }
 
-  return { supabase, ctx: { userId: user.id, rol, nombre, medicoActivoId, medicos, plan } }
+  return { supabase, ctx: { userId: user.id, rol, nombre, medicoActivoId, medicos, plan, esSuperadmin } }
 }
 
 /** Solo el dueño del consultorio (ni la secretaria ni un médico operando otro consultorio).

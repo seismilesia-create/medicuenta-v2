@@ -22,6 +22,7 @@ export default async function MainLayout({
         medicos={ctx?.medicos ?? []}
         medicoActivoId={ctx?.medicoActivoId ?? null}
         plan={ctx?.plan ?? 'full'}
+        esSuperadmin={ctx?.esSuperadmin ?? false}
       />
       <MainShell>{children}</MainShell>
       <BottomNav rol={ctx?.rol ?? 'medico'} />
