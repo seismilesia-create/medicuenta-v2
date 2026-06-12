@@ -14,50 +14,6 @@ function ok<T extends { data: unknown; error: { message: string } | null }>(res:
 
 // ── Agenda ────────────────────────────────────────────────────────────────────
 
-export interface DiaSemana {
-  fecha: string // YYYY-MM-DD
-  turnos: number
-  sobreturnos: number
-}
-
-/** Tira semanal: contadores de los próximos 7 días (hoy incluido). */
-export async function getSemana(db: SupabaseClient, medicoId: string): Promise<DiaSemana[]> {
-  const desde = arDateString(Date.now(), 0)
-  const hasta = arDateString(Date.now(), 7)
-  const desdeIso = new Date(`${desde}T00:00:00${AR_OFFSET}`).toISOString()
-  const hastaIso = new Date(`${hasta}T00:00:00${AR_OFFSET}`).toISOString()
-  const [turnosRes, sobresRes] = await Promise.all([
-    db
-      .from('wa_turnos')
-      .select('starts_at')
-      .eq('medico_id', medicoId)
-      .neq('estado', 'cancelado')
-      .gte('starts_at', desdeIso)
-      .lt('starts_at', hastaIso)
-      .then(ok),
-    db
-      .from('wa_sobreturnos')
-      .select('fecha')
-      .eq('medico_id', medicoId)
-      .neq('estado', 'cancelado')
-      .gte('fecha', desde)
-      .lt('fecha', hasta)
-      .then(ok),
-  ])
-  const dias: DiaSemana[] = []
-  for (let i = 0; i < 7; i++) {
-    const fecha = arDateString(Date.now(), i)
-    dias.push({
-      fecha,
-      turnos: ((turnosRes.data as { starts_at: string }[] | null) ?? []).filter(
-        (t) => arDateString(new Date(t.starts_at).getTime(), 0) === fecha,
-      ).length,
-      sobreturnos: ((sobresRes.data as { fecha: string }[] | null) ?? []).filter((s) => s.fecha === fecha).length,
-    })
-  }
-  return dias
-}
-
 export interface SobreturnoRow {
   id: string
   fecha: string

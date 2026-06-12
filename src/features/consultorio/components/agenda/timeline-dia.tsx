@@ -9,6 +9,14 @@ import { fmtHora } from '@/lib/turnos/formato'
 export type TurnoItem = Extract<ItemDia, { tipo: 'turno' }>
 type LibreItem = Extract<ItemDia, { tipo: 'libre' }>
 
+export const PX_POR_MIN_NORMAL = 1.6
+export const PX_POR_MIN_COMPACTO = 1.1
+
+/** Rango del timeline redondeado a horas completas (compartido con la regla de la semana). */
+export function rangoRedondeado(j: JornadaDia): { desdeMin: number; hastaMin: number } {
+  return { desdeMin: Math.floor(j.desdeMin / 60) * 60, hastaMin: Math.ceil(j.hastaMin / 60) * 60 }
+}
+
 const ESTADO_BLOQUE: Record<string, string> = {
   proximo: 'bg-blue-500/10 border-blue-500 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20',
   atendido: 'bg-emerald-500/10 border-emerald-500 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20',
@@ -71,9 +79,8 @@ export function TimelineDia({
   onSlotClick,
   onTurnoClick,
 }: TimelineDiaProps) {
-  const pxPorMin = compacto ? 1.1 : 1.6
-  const desdeMin = Math.floor(jornada.desdeMin / 60) * 60
-  const hastaMin = Math.ceil(jornada.hastaMin / 60) * 60
+  const pxPorMin = compacto ? PX_POR_MIN_COMPACTO : PX_POR_MIN_NORMAL
+  const { desdeMin, hastaMin } = rangoRedondeado(jornada)
   const alto = (hastaMin - desdeMin) * pxPorMin
   const top = (min: number) => (min - desdeMin) * pxPorMin
 
