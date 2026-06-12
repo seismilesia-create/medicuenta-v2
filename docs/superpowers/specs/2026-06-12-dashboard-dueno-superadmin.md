@@ -100,8 +100,11 @@ de precio para la promo (DD7):
 
 ## 7. Fases sugeridas (construir por etapas, con prueba en vivo cada una)
 
-- **F4.1 — Superadmin read-only** (DESBLOQUEADO, sin pagos): rol superadmin + vista de todos los
-  médicos + métricas del negocio + salud del sistema. Te da visibilidad ya.
+- **F4.1 — Superadmin read-only** ✅ HECHO (commit c25b5ed): `perfiles.es_superadmin` (flag ortogonal
+  al rol) + ruta `/admin` guardada + vista cross-tenant de médicos (número, costo de tokens 30d,
+  mensajes con costo, errores 7d, turnos) con outliers destacados. Lee por service-role (función
+  `superadmin_metricas_medicos` cerrada a service_role). admin@medicuenta.com flaggeado para probar.
+  Pendiente de pulido: link de nav al panel + (opcional) redirect del dueño a /admin.
 - **F4.2 — Planes + candado + trial:** tabla de suscripciones + feature-gating Básico/Full + prueba
   gratis de 15 días con el **sandbox demo** (número de prueba compartido + dashboard demo, DD8/DD9).
 - **F4.3 — MercadoPago Suscripciones:** cobro recurrente, webhooks, estados (prueba→activa→morosa→…).
