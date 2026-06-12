@@ -41,7 +41,7 @@ export async function turnoManual(input: z.infer<typeof turnoManualSchema>) {
   if (d.dni && !/^\d{7,8}$/.test(dniNorm)) return { error: 'DNI inválido (7 u 8 dígitos), o dejalo vacío' }
 
   const servicios = await getServiciosActivos(supabase, user.id)
-  if (servicios.length === 0) return { error: 'Configurá primero los horarios y la duración en Config' }
+  if (servicios.length === 0) return { error: 'Configurá primero los horarios y la duración en Asistente de turnos' }
   const startsAt = armarStartsAtISO(d.fecha, d.hora.padStart(5, '0'))
   if (!startsAt) return { error: 'Fecha u hora inválida' }
   // Horizonte hasta la fecha pedida (las vistas semana/mes permiten dar turnos más allá

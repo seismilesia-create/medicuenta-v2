@@ -25,7 +25,7 @@ import {
   CalendarDays,
   MessageCircle,
   Users,
-  Settings2,
+  CalendarCog,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -57,7 +57,7 @@ const navigation: { principal: NavItem[]; consultorio: NavItem[]; avanzado: NavI
     { name: 'Agenda', href: '/agenda', icon: CalendarDays },
     { name: 'Conversaciones', href: '/conversaciones', icon: MessageCircle },
     { name: 'Pacientes', href: '/pacientes', icon: Users },
-    { name: 'Config consultorio', href: '/consultorio/config', icon: Settings2 },
+    { name: 'Asistente de turnos', href: '/consultorio/config', icon: CalendarCog },
   ],
   avanzado: [
     { name: 'Nomenclador', href: '/nomenclador', icon: Grid3X3 },

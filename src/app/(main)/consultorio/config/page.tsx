@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { ConfigView } from '@/features/consultorio/components/config/config-view'
 
 export const metadata = {
-  title: 'Config del consultorio | MediCuenta',
+  title: 'Asistente de turnos | MediCuenta',
 }
 
 export default async function ConfigPage() {

@@ -79,7 +79,7 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-3xl">
-      <h1 className="text-xl font-semibold">Config del consultorio</h1>
+      <h1 className="text-xl font-semibold">Asistente de turnos</h1>
       {error && (
         <div className="p-3 rounded-lg text-sm bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 border border-red-500/20">
           {error}
