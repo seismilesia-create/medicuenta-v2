@@ -149,7 +149,7 @@ export function PacientesView({ medicoId }: { medicoId: string }) {
                 <div className="flex gap-2">
                   {ficha.conversacionId && (
                     <Link
-                      href="/conversaciones"
+                      href={`/conversaciones?id=${ficha.conversacionId}`}
                       className="text-xs flex items-center gap-1 rounded-lg border border-blue-500/40 text-blue-500 px-2 py-1"
                     >
                       <MessageCircle className="w-3 h-3" /> Conversación

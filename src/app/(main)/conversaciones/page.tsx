@@ -6,11 +6,12 @@ export const metadata = {
   title: 'Conversaciones | MediCuenta',
 }
 
-export default async function ConversacionesPage() {
+export default async function ConversacionesPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-  return <ConversacionesView medicoId={user.id} />
+  const { id } = await searchParams
+  return <ConversacionesView medicoId={user.id} initialId={id ?? null} />
 }

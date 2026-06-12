@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Loader2, Trash2, CheckCircle2, XCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { parseMontoArs } from '@/lib/recetas/normalizar'
 import { getConfig, type ConfigConsultorio } from '@/features/consultorio/services/panelService'
 import {
   guardarDuracionConsulta,
@@ -58,7 +59,7 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
         tono: String(fd.get('tono') ?? ''),
         saludo: String(fd.get('saludo') ?? ''),
         faqs: cfg?.agente?.faqs ?? [], // edición de FAQs: v2 del panel — hoy se preservan
-        precio_receta: precio ? Number(precio.replace(/[^\d.,]/g, '').replace(',', '.')) : null,
+        precio_receta: precio ? parseMontoArs(precio) : null,
       }),
     )
   }
@@ -90,23 +91,27 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
       </Seccion>
 
       <Seccion titulo="Duración de la consulta">
-        <div className="flex items-center gap-2 text-sm">
-          Turno cada
-          <select
-            defaultValue={cfg.duracionMin}
-            onChange={(e) =>
-              cfg.servicioId && onAccion(() => guardarDuracionConsulta(cfg.servicioId!, Number(e.target.value)))
-            }
-            className="rounded-lg border border-border bg-[var(--color-background)] px-2 py-1"
-          >
-            {[10, 15, 20, 30, 40, 60].map((m) => (
-              <option key={m} value={m}>
-                {m} min
-              </option>
-            ))}
-          </select>
-          <span className="text-[var(--color-muted-foreground)]">— afecta solo turnos futuros</span>
-        </div>
+        {cfg.servicioId ? (
+          <div className="flex items-center gap-2 text-sm">
+            Turno cada
+            <select
+              defaultValue={cfg.duracionMin}
+              onChange={(e) =>
+                cfg.servicioId && onAccion(() => guardarDuracionConsulta(cfg.servicioId!, Number(e.target.value)))
+              }
+              className="rounded-lg border border-border bg-[var(--color-background)] px-2 py-1"
+            >
+              {[10, 15, 20, 30, 40, 60].map((m) => (
+                <option key={m} value={m}>
+                  {m} min
+                </option>
+              ))}
+            </select>
+            <span className="text-[var(--color-muted-foreground)]">— afecta solo turnos futuros</span>
+          </div>
+        ) : (
+          <p className="text-sm text-[var(--color-muted-foreground)]">Todavía no hay un servicio de consulta configurado — se crea con el alta del consultorio (seed).</p>
+        )}
       </Seccion>
 
       <Seccion titulo="Días bloqueados">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getBandeja, type ConversacionItem } from '@/features/consultorio/services/panelService'
@@ -14,20 +14,26 @@ const SEMAFORO_CLS: Record<string, string> = {
   terminada: 'border-l-4 border-l-blue-400 bg-blue-500/5 opacity-80',
 }
 
-export function ConversacionesView({ medicoId }: { medicoId: string }) {
+export function ConversacionesView({ medicoId, initialId }: { medicoId: string; initialId: string | null }) {
   const [items, setItems] = useState<ConversacionItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [seleccionada, setSeleccionada] = useState<string | null>(null)
+  const [seleccionada, setSeleccionada] = useState<string | null>(initialId)
+  const seq = useRef(0)
 
   const refetch = useCallback(async () => {
+    const id = ++seq.current
     const supabase = createClient()
     try {
-      setItems(await getBandeja(supabase, medicoId))
+      const data = await getBandeja(supabase, medicoId)
+      if (id !== seq.current) return
+      setItems(data)
       setError(null)
     } catch {
+      if (id !== seq.current) return
       setError('No pude cargar las conversaciones. Reintentando…')
     }
+    if (id !== seq.current) return
     setLoading(false)
   }, [medicoId])
 
