@@ -16,12 +16,17 @@ export default async function HomePage() {
     redirect('/login')
   }
 
-  // Traemos solo el nombre para el saludo; si falla, mostramos saludo genérico.
+  // Traemos el nombre para el saludo + si es dueño para mandarlo a su panel.
   const { data: perfil } = await supabase
     .from('perfiles')
-    .select('nombre')
+    .select('nombre, es_superadmin')
     .eq('id', user.id)
     .maybeSingle()
+
+  // El dueño (superadmin) entra directo a SU panel, no al asistente del médico.
+  if (perfil?.es_superadmin) {
+    redirect('/admin')
+  }
 
   const nombre = (perfil?.nombre ?? null) as string | null
 
