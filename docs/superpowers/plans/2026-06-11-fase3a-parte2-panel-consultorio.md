@@ -2559,3 +2559,25 @@ npm run build     # Expected: build OK
 - **Notas de parte 1 pagadas**: origen/creadoPor/conversacionId ✓ (T1) · 23P01 guard ✓ (T1) · evento `_error` ✓ (T1) · anti-mudez avisar ✓ (T2) · normalización OS al insertar ✓ (T7) · bitácora con origen 'panel' en actions ✓.
 - **Tipos consistentes**: `panelService` exporta `DiaSemana/DiaAgenda/SobreturnoRow/ConversacionItem/Hilo/PacienteRow/FichaPaciente/ConfigConsultorio` y las vistas los importan con esos nombres ✓ · actions devuelven `{ error?: string } | { ok: true }` y las vistas chequean `'error' in r` ✓ · `armarDia` consume `estadoEfectivoTurno` de T2-parte-1 ✓.
 - **Placeholders**: Tasks 2 y 8 instruyen leer el archivo real y copiar su estructura con escape NEEDS_CONTEXT (los archivos no estaban citados textualmente al escribir el plan) — explícito, no placeholder silencioso. Todo el resto: código completo.
+
+---
+
+## Notas de la ejecución (2026-06-11/12) — insumo para los planes de 3B y 3C
+
+Ejecutado completo con subagent-driven development (13 tasks, doble review por cluster + review final de integración). Todos los hallazgos de los reviews fueron plan-level (el código prescripto), no de los implementers; quedaron arreglados en los commits `49256c6`, `c077b64`, `a14b819` y `c646b2f`. **Patrones a respetar en 3B/3C (auto-blindaje):**
+
+1. **supabase-js devuelve errores, no los lanza** — todo service de lectura debe convertirlos en `throw` (helper `ok()` en `panelService.ts`) o las pantallas muestran vacíos convincentes ante fallas en vez del banner.
+2. **Refetch tras acción no debe limpiar el error de la acción** — setear el error DESPUÉS de `await refetch()` (patrón `onAccion` de `agenda-view.tsx`).
+3. **Todo refetch async con polling o cambio de contexto necesita epoch guard** (`seq` ref) — sin él, una respuesta vieja pisa el estado nuevo al cambiar de día/conversación/búsqueda.
+4. **El early-return de loading no debe tapar el banner de error** — en la carga inicial, renderizar `error ? banner : spinner`.
+5. **Montos SIEMPRE con `parseMontoArs`** (`src/lib/recetas/normalizar.ts`) — un parser a mano convirtió "5.000" en $5; paridad panel↔bot obligatoria.
+6. **Teléfonos: dualidad de formatos** — `wa_contactos.telefono` guarda el formato crudo de Meta (`549...`), `wa_pacientes.telefonos` el normalizado (`54...`). Cruzar con variantes (ver `getFicha`) o normalizar en el borde SIEMPRE (`normalizeRecipient`).
+7. **Literales de estado: verificar contra el código real, no asumir** — `mp_conexiones.estado` es `'conectado'` (el plan decía `'activa'`: el badge habría quedado siempre apagado).
+8. **PostgREST `.or()`: sanitizar `, ( ) "` del input del usuario** — el médico pega "Apellido, Nombre" y el filtro se rompe (400 silencioso).
+9. **Hilos/listas largas: traer los N MÁS RECIENTES** (`desc` + `limit` + `reverse`), nunca `asc + limit`.
+10. **Escrituras reemplaza-todo (delete+insert): insertar primero, borrar después por id** — si el insert falla, lo viejo queda (`guardarHorarios`); validar solapes antes.
+11. **OS suspendidas se guardan canónicas con `normalizarOs()` en minúsculas** — el matcher normaliza ambos lados; NO uppercasear al guardar.
+
+**Deudas conocidas anotadas (menores, no bloquean 3A):** botones de config sin guard anti-doble-click (un doble click en "Bloquear" duplica la excepción — visible y borrable) · auto-scroll del hilo salta al fondo aunque estés leyendo historia · preview de bandeja con cap de 300 mensajes puede dejar conversaciones viejas sin preview · `getDia` lanza con `fecha` malformada (hoy inalcanzable: la fecha sale de la tira) · helper `medicoAutenticado` duplicado entre action files · `error.message` crudo de Postgres puede aparecer en la UI es-AR · revert de asistencia siempre vuelve a `'reservado'` (hoy nada escribe `'confirmado'`) · pestaña abierta cruzando medianoche deja la fecha seleccionada fuera de la tira (se corrige al recargar) · burbuja `'medico'` del hilo es inalcanzable hoy (nada persiste ese origen) · `?id=` con uuid ajeno editado a mano → spinner local en el panel del hilo · texto no numérico en el precio del panel limpia a null sin aviso (el bot sí rechaza con mensaje) · select de duración solo lista valores fijos (un `duracion_min` por SQL fuera de la lista muestra "10 min").
+
+**Para el plan 3B además:** el patrón `initialId` por searchParams (preselección de hilo) sirve igual para deep-links de la secretaria; `wa_bitacora` necesita INSERT delegado (ya anotado en parte 1).
