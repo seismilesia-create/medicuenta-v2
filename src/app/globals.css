@@ -602,3 +602,21 @@ h1, h2, h3, h4, h5, h6, .heading {
     display: none;
   }
 }
+
+/* ============================================
+   SHELL ADAPTATIVO — celular vs web
+   La clase `is-phone`/`is-web` la pone el script
+   del layout raíz antes del primer paint.
+   - `.only-phone`: visible SOLO en celular.
+   - `.only-web`:   visible SOLO en web (default).
+   Fallback sin JS: se muestra la web (.only-phone oculto).
+   ============================================ */
+.only-phone {
+  display: none;
+}
+html.is-phone .only-phone {
+  display: block;
+}
+html.is-phone .only-web {
+  display: none;
+}
