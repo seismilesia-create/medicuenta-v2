@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { ventanaAbierta } from '@/lib/consultorio/semaforo'
 
 export interface HistorialMsg {
   role: 'user' | 'assistant'
@@ -76,6 +77,20 @@ export async function addMensaje(
     wamid?: string
   },
 ): Promise<void> {
+  // Costo de Meta (spec §5.1): un SALIENTE fuera de la ventana de 24 h cuesta.
+  // La ventana se ancla en el último entrante (last_paciente_at). Lo leemos antes
+  // de insertar; un entrante nunca tiene costo (false).
+  let fueraVentana = false
+  if (args.direccion === 'saliente') {
+    const { data: conv } = await db
+      .from('wa_conversaciones')
+      .select('last_paciente_at')
+      .eq('medico_id', args.medicoId)
+      .eq('id', args.conversacionId)
+      .maybeSingle()
+    fueraVentana = !ventanaAbierta((conv?.last_paciente_at as string | null) ?? null, Date.now())
+  }
+
   await db.from('wa_mensajes').insert({
     medico_id: args.medicoId,
     conversacion_id: args.conversacionId,
@@ -83,6 +98,7 @@ export async function addMensaje(
     origen: args.origen,
     contenido: args.contenido,
     wamid: args.wamid ?? null,
+    fuera_ventana_24h: fueraVentana,
   })
   const ahora = new Date().toISOString()
   const update: Record<string, string> = { last_message_at: ahora }

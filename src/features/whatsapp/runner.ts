@@ -25,6 +25,7 @@ import { sanitizarReplyCobro, scrubLinksMP } from '@/features/whatsapp/agent/san
 import { buildPacienteTools } from '@/features/whatsapp/agent/tools'
 import { buildConsultorioTools } from '@/features/whatsapp/agent/toolsConsultorio'
 import { registrarEvento } from '@/features/whatsapp/services/bitacora'
+import { registrarUsoIa } from '@/lib/ai/usoIa'
 
 type Db = ReturnType<typeof createServiceClient>
 
@@ -245,6 +246,14 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
     const turno = await runAgentTurn({ systemPrompt, historial, tools })
     // Barrera de plata: solo pueden salir links que devolvió cobrar_receta.
     reply = sanitizarReplyCobro(turno.text, turno.cobros)
+    // Costo de IA (spec §5.1): registramos los tokens del turno. Best-effort.
+    await registrarUsoIa(db, {
+      medicoId: canal.medicoId,
+      origen: 'whatsapp',
+      modelo: turno.modelo,
+      usage: turno.usage,
+      conversacionId,
+    })
     // Bitácora (spec §10): registramos el turno cuando el agente HIZO algo
     // (usó tools). Los turnos de pura charla no ensucian la traza. Best-effort.
     if (turno.resumen.tools.length > 0) {

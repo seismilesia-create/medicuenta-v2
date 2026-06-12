@@ -1,4 +1,5 @@
 import { openrouter, getAgentModel } from '@/lib/ai/openrouter'
+import { registrarUsoIa } from '@/lib/ai/usoIa'
 import { streamText, convertToModelMessages, stepCountIs, type UIMessage } from 'ai'
 import { SYSTEM_PROMPT } from '@/features/assistant/config/systemPrompt'
 import { PLATFORM_KNOWLEDGE } from '@/features/assistant/config/platformKnowledge'
@@ -149,6 +150,14 @@ export async function POST(req: Request) {
       } catch (err) {
         console.error('[chat] onFinish persistence failed:', err)
       }
+      // Costo de IA (spec §5.1): tokens del asistente de facturación. Best-effort.
+      await registrarUsoIa(supabase, {
+        medicoId,
+        origen: 'panel',
+        modelo: modelId,
+        usage: event.totalUsage,
+        conversacionId: conversacionIdResolved,
+      })
     },
   })
 

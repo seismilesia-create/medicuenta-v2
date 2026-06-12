@@ -3,6 +3,7 @@ import { openrouter, getAgentModel } from '@/lib/ai/openrouter'
 import type { HistorialMsg } from '@/features/whatsapp/services/conversaciones'
 import type { CobroGenerado } from './sanitizarReply'
 import { resumirPasosAgente, type ResumenAgente } from '@/lib/whatsapp/resumenPasos'
+import type { UsageLike } from '@/lib/ai/usoIa'
 
 export interface AgentTurnResult {
   text: string
@@ -10,6 +11,9 @@ export interface AgentTurnResult {
   cobros: CobroGenerado[]
   /** Traza estructurada del turno para la bitácora (spec §10). */
   resumen: ResumenAgente
+  /** Tokens consumidos en el turno (costo §5.1) + modelo usado. */
+  usage: UsageLike
+  modelo: string
 }
 
 /**
@@ -22,8 +26,9 @@ export async function runAgentTurn(opts: {
   historial: HistorialMsg[]
   tools?: ToolSet
 }): Promise<AgentTurnResult> {
+  const modelo = getAgentModel()
   const result = await generateText({
-    model: openrouter(getAgentModel()),
+    model: openrouter(modelo),
     system: opts.systemPrompt,
     messages: opts.historial,
     tools: opts.tools,
@@ -60,5 +65,5 @@ export async function runAgentTurn(opts: {
 
   const text = result.text.trim() || fallbackConEfecto
   const resumen = resumirPasosAgente(result.steps, text)
-  return { text, cobros, resumen }
+  return { text, cobros, resumen, usage: result.usage, modelo }
 }
