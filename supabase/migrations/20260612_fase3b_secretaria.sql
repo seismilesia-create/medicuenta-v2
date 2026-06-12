@@ -104,6 +104,10 @@ BEGIN
   );
 
   IF v_es_secretaria THEN
+    -- Claim en el JWT para el guard de rutas del middleware (lee app_metadata, sin query a la DB).
+    UPDATE auth.users
+    SET raw_app_meta_data = COALESCE(raw_app_meta_data, '{}'::jsonb) || jsonb_build_object('rol', 'secretaria')
+    WHERE id = NEW.id;
     UPDATE public.equipo_consultorio
     SET secretaria_id = NEW.id, estado = 'activa', accepted_at = now()
     WHERE lower(secretaria_email) = lower(NEW.email) AND estado = 'pendiente';

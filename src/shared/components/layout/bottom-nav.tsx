@@ -3,10 +3,47 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { CalendarDays, MessageCircle, Users } from 'lucide-react'
 import { logout } from '@/actions/auth'
 
-export function BottomNav() {
+const SECRETARIA_NAV = [
+  { name: 'Agenda', href: '/agenda', icon: CalendarDays },
+  { name: 'Conversaciones', href: '/conversaciones', icon: MessageCircle },
+  { name: 'Pacientes', href: '/pacientes', icon: Users },
+]
+
+export function BottomNav({ rol = 'medico' }: { rol?: 'medico' | 'secretaria' }) {
   const pathname = usePathname()
+
+  // La secretaria solo navega el consultorio (sin facturación).
+  if (rol === 'secretaria') {
+    return (
+      <nav
+        className="fixed bottom-0 left-0 right-0 md:hidden z-40"
+        style={{ backgroundColor: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}
+      >
+        <div className="flex items-center justify-around h-16 px-2 pb-[env(safe-area-inset-bottom)]">
+          {SECRETARIA_NAV.map((item) => {
+            const activo = pathname === item.href || pathname.startsWith(item.href + '/')
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex flex-col items-center justify-center gap-0.5 flex-1 py-1"
+                style={{ color: activo ? 'var(--color-primary)' : 'var(--color-muted-foreground)' }}
+              >
+                <Icon className="w-6 h-6" />
+                <span className="text-[10px] font-medium">{item.name}</span>
+              </Link>
+            )
+          })}
+        </div>
+      </nav>
+    )
+  }
+
+
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 

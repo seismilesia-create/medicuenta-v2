@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logout } from '@/actions/auth'
+import { ConsultorioSelector } from './consultorio-selector'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,13 +66,26 @@ const navigation: { principal: NavItem[]; consultorio: NavItem[]; avanzado: NavI
   ],
 }
 
-export function Sidebar({ nombre }: { nombre?: string | null }) {
+interface SidebarProps {
+  nombre?: string | null
+  rol?: 'medico' | 'secretaria'
+  medicos?: { id: string; nombre: string | null }[]
+  medicoActivoId?: string | null
+}
+
+export function Sidebar({ nombre, rol = 'medico', medicos = [], medicoActivoId = null }: SidebarProps) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => setMounted(true), [])
+
+  const esSecretaria = rol === 'secretaria'
+  // La secretaria solo ve el grupo Consultorio, y sin "Asistente de turnos" (config médico-only).
+  const itemsConsultorio = esSecretaria
+    ? navigation.consultorio.filter((i) => i.href !== '/consultorio/config')
+    : navigation.consultorio
 
   const isDark = theme === 'dark'
   const toggleTheme = () => setTheme(isDark ? 'light' : 'dark')
@@ -116,11 +130,22 @@ export function Sidebar({ nombre }: { nombre?: string | null }) {
       {/* Divider with gradient */}
       <div className="mx-6 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
+      {/* Selector de consultorio (solo si opera más de uno) */}
+      {medicos.length > 1 && (
+        <div className="relative pt-2">
+          <ConsultorioSelector medicos={medicos} activo={medicoActivoId} />
+        </div>
+      )}
+
       {/* Navigation */}
       <nav className="relative flex-1 space-y-8 overflow-y-auto px-4 py-6">
-        <NavSection title="Principal" items={navigation.principal} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
-        <NavSection title="Consultorio" items={navigation.consultorio} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
-        <NavSection title="Avanzado" items={navigation.avanzado} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
+        {!esSecretaria && (
+          <NavSection title="Principal" items={navigation.principal} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
+        )}
+        <NavSection title="Consultorio" items={itemsConsultorio} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
+        {!esSecretaria && (
+          <NavSection title="Avanzado" items={navigation.avanzado} isActiveRoute={isActiveRoute} onNavClick={handleNavClick} />
+        )}
       </nav>
 
       {/* Footer */}
