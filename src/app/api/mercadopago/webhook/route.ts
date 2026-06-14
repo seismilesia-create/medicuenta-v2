@@ -2,7 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { consultarPago } from '@/lib/mercadopago/client'
 import { procesarPagoNotificado, type ProcesarPagoDeps } from '@/lib/mercadopago/procesarPago'
 import { getConexionActiva } from '@/features/whatsapp/services/mpConexiones'
-import { getCanalByMedicoId } from '@/features/whatsapp/services/canales'
+import { resolverSaliente } from '@/features/whatsapp/services/nodos'
 import { getRecetaDelMedico, marcarPagada, marcarDevuelta } from '@/features/whatsapp/services/recetasService'
 import { entregarReceta } from '@/features/whatsapp/services/entrega'
 import { sendWhatsAppText } from '@/lib/whatsapp/client'
@@ -52,12 +52,12 @@ export async function POST(req: Request) {
         const medicoId = (recetaRow as { medico_id: string } | null)?.medico_id
         if (!medicoId) return false
         const receta = await getRecetaDelMedico(db, medicoId, id)
-        const canal = await getCanalByMedicoId(db, medicoId)
+        const canal = await resolverSaliente(db, medicoId)
         if (!receta || !canal) return false
         return entregarReceta(db, canal, receta)
       },
       avisarMedico: async (medicoId, texto) => {
-        const canal = await getCanalByMedicoId(db, medicoId)
+        const canal = await resolverSaliente(db, medicoId)
         if (!canal) return
         await sendWhatsAppText({
           phoneNumberId: canal.phoneNumberId,

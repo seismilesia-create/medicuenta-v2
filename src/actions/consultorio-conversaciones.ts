@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
-import { getCanalByMedicoId } from '@/features/whatsapp/services/canales'
+import { resolverSaliente } from '@/features/whatsapp/services/nodos'
 import { sendWhatsAppText } from '@/lib/whatsapp/client'
 import { addMensaje } from '@/features/whatsapp/services/conversaciones'
 import { registrarEvento } from '@/features/whatsapp/services/bitacora'
@@ -60,7 +60,7 @@ export async function responderComoHumano(input: z.infer<typeof responderSchema>
 
   // wa_canales NO se delega (médico-only): leer con service-client; la autorización ya la dio
   // el resolver (medicoId ∈ consultorios que este usuario puede operar).
-  const canal = await getCanalByMedicoId(createServiceClient(), medicoId)
+  const canal = await resolverSaliente(createServiceClient(), medicoId)
   if (!canal) return { error: 'No hay canal de WhatsApp conectado' }
 
   // sendWhatsAppText devuelve boolean (no lanza): false = Meta rechazó.

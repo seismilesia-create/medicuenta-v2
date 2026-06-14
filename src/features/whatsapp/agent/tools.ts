@@ -81,7 +81,7 @@ export function buildPacienteTools(ctx: PacienteToolsCtx) {
         const body = buildPreferenciaBody(
           {
             recetaId: receta.id,
-            titulo: `Receta médica — ${resumenMedicamento(receta)}`,
+            titulo: 'Gestión de receta médica',
             monto: Number(receta.monto),
             notificationUrl: `${baseUrl}/api/mercadopago/webhook?receta=${receta.id}`,
             expiraEnDias: 7,

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { descifrar } from '@/lib/crypto/encryption'
-import { getCanalByPhoneNumberId, type CanalResuelto } from './canales'
+import { getCanalByPhoneNumberId, getCanalByMedicoId, type CanalResuelto } from './canales'
 import { getRuteoMedico, upsertRuteoMedico } from './ruteoConversacion'
 import { extraerIdSlug, limpiarMarcadorId } from '@/lib/whatsapp/linkNodo'
 import { normalizeRecipient } from '@/lib/whatsapp/client'
@@ -166,4 +166,9 @@ export async function resolverIngreso(
 
   // (d) Nada resolvió (paciente nuevo sin marcador en un nodo multi-médico): no rompemos.
   return null
+}
+
+/** Canal de SALIDA del médico: nodo asignado (modelo nuevo) con fallback al canal legacy (wa_canales). */
+export async function resolverSaliente(db: SupabaseClient, medicoId: string): Promise<CanalResuelto | null> {
+  return (await getNodoByMedicoId(db, medicoId)) ?? (await getCanalByMedicoId(db, medicoId))
 }

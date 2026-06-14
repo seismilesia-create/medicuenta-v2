@@ -238,6 +238,7 @@ resolverIngreso(phoneNumberId, from, text):
 ### Fase 4: Salientes por nodo + compliance Pilar 4
 **Objetivo**: `getCanalByMedicoId` (y por ende entrega de receta, webhook MP, toma humana) resuelve el **nodo** del médico vía `wa_asignaciones` → envía desde el `phone_number_id`/token del nodo, no del número personal. Ajustar copys de cobro al Pilar 4 (honorario/gestión administrativa, no venta de medicamento) en system prompt / textos salientes.
 **Validación**: entrega de una receta pagada del médico piloto sale por el número del nodo; revisar que ningún texto saliente diga "comprá/pagá tu medicamento/remedio"; `npm run build` pasa.
+**✅ COMPLETADA (2026-06-14)**: `resolverSaliente` (nodo → fallback legacy) en `nodos.ts`; reapuntados los 3 call-sites (MP webhook entrega + aviso, toma humana del panel). Compliance Pilar 4 **aprobado por Héctor**: línea de cobro → "El costo de gestión de tu receta es $X" (`systemPrompt.ts`); título de MercadoPago → "Gestión de receta médica" sin nombre del medicamento (`tools.ts`); heading → "GESTIÓN Y ENTREGA". typecheck + 230 tests + build OK. Entrega real por el nodo se verifica en Fase 5 (número real).
 
 ### Fase 5: Validación Final (E2E con 1 nodo)
 **Objetivo**: Flujo completo link → WhatsApp → bot → cobro/entrega con 1 nodo y el médico piloto, end-to-end.
