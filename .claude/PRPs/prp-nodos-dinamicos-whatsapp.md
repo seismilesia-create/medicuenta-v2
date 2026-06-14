@@ -226,8 +226,9 @@ resolverIngreso(phoneNumberId, from, text):
 **✅ COMPLETADA (2026-06-14)**: migración `20260614_fase1_nodos_dinamicos.sql` aplicada (MCP) + espejo versionado; seed piloto (`dr-prueba` → nodo reusando el canal real `1084361314771068`, `numero_whatsapp` placeholder); servicios `nodos.ts` (`getNodoActivoBySlug`, `getAsignacionBySlug`, `getNodoByPhoneNumberId`, `getNodoByMedicoId`) y `ruteoConversacion.ts` (`getRuteoMedico`, `upsertRuteoMedico`); typecheck OK; advisor `wa_nodos` INFO intencional.
 
 ### Fase 2: Redirect público `/c/[slug]`
-**Objetivo**: Route handler `GET /c/[slug]` que resuelve slug → nodo activo y devuelve `302` a `wa.me/<numero>?text=<saludo+[ID:medicoId]>` URL-encoded; slug inválido → 404/página amable. Namespaced bajo `/c/` (no raíz).
+**Objetivo**: Route handler `GET /c/[slug]` que resuelve slug → nodo activo y devuelve `302` a `wa.me/<numero>?text=<saludo+[ID:slug]>` URL-encoded; slug inválido → 404/página amable. Namespaced bajo `/c/` (no raíz).
 **Validación**: `curl -i /c/dr-<piloto>` devuelve 302 con `Location` correcto y `text` bien encodeado; un slug inexistente devuelve 404; no rompe el App Router (`npm run build`).
+**✅ COMPLETADA (2026-06-14)**: ruta `src/app/c/[slug]/route.ts` (302 → wa.me con [ID:slug]) + lógica pura `src/lib/whatsapp/linkNodo.ts` (+ test, 7 casos) + página "consultorio no disponible". Verificado EN VIVO (`npm start`): slug inexistente y placeholder → 404; con número válido → 302 a `wa.me/<n>?text=...%5BID%3Adr-prueba%5D`. Middleware NO gatea `/c/` (allowlist de `protectedPaths`). build OK (`ƒ /c/[slug]`).
 
 ### Fase 3: Resolución de identidad en el ingreso (runner)
 **Objetivo**: Evolucionar `canales.ts` (`resolverIngreso` por nodo + ruteo + `[ID]`, y limpieza del marcador) y reconectar `runner.ts:50` para usarla; la clasificación médico/paciente pasa a hacerse **después** de resolver el médico. Persistir ruteo en el 1.er mensaje; leerlo en los siguientes. Fallback conversacional si no hay identidad.
@@ -263,6 +264,10 @@ resolverIngreso(phoneNumberId, from, text):
 
 ### 2026-06-14: `wa_nodos` dispara `rls_enabled_no_policy` (INFO) — es intencional
 - **Hallazgo**: el advisor de Supabase marca `wa_nodos` (RLS on, sin policy) igual que `orquestador_avisos`. Es **esperado y correcto**: tabla de infraestructura accedida solo por service-role. No agregar policy.
+
+### 2026-06-14: El middleware usa allowlist, no default-deny → `/c/` es público sin cambios
+- **Hallazgo**: `middleware.ts` matchea todo salvo assets, pero `updateSession` (`proxy.ts`) solo redirige a `/login` las rutas de `protectedPaths` (allowlist). `/c/` no está → pasa sin auth. No hubo que tocar el matcher.
+- **Aplicar en**: futuras rutas públicas (links, webhooks server-to-server) — no requieren excluirse del middleware, salvo que se quiera evitar el `getUser()` por performance.
 
 ---
 
