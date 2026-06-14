@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { construirSaludoConId, numeroNodoEsValido, construirWaMeUrl } from './linkNodo'
+import {
+  construirSaludoConId,
+  numeroNodoEsValido,
+  construirWaMeUrl,
+  extraerIdSlug,
+  limpiarMarcadorId,
+} from './linkNodo'
 
 describe('construirSaludoConId', () => {
   it('embebe el slug en el marcador [ID:...]', () => {
@@ -36,5 +42,25 @@ describe('construirWaMeUrl', () => {
   })
   it('devuelve null con el placeholder del piloto', () => {
     expect(construirWaMeUrl('TODO-E164-PRODUCCION', 'dr-prueba')).toBeNull()
+  })
+})
+
+describe('extraerIdSlug', () => {
+  it('extrae el slug del marcador', () => {
+    expect(extraerIdSlug('Hola, quiero hacer una consulta [ID:dr-prueba]')).toBe('dr-prueba')
+  })
+  it('null si no hay marcador (2.º mensaje en adelante)', () => {
+    expect(extraerIdSlug('hola necesito un turno para mañana')).toBeNull()
+  })
+})
+
+describe('limpiarMarcadorId', () => {
+  it('quita el marcador y normaliza espacios', () => {
+    expect(limpiarMarcadorId('Hola, quiero hacer una consulta [ID:dr-prueba]')).toBe('Hola, quiero hacer una consulta')
+  })
+  it('round-trip con construirSaludoConId', () => {
+    const s = construirSaludoConId('dr-perez')
+    expect(extraerIdSlug(s)).toBe('dr-perez')
+    expect(limpiarMarcadorId(s)).toBe('Hola, quiero hacer una consulta')
   })
 })

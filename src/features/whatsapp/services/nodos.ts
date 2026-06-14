@@ -1,6 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { descifrar } from '@/lib/crypto/encryption'
-import type { CanalResuelto } from './canales'
+import { getCanalByPhoneNumberId, type CanalResuelto } from './canales'
+import { getRuteoMedico, upsertRuteoMedico } from './ruteoConversacion'
+import { extraerIdSlug, limpiarMarcadorId } from '@/lib/whatsapp/linkNodo'
+import { normalizeRecipient } from '@/lib/whatsapp/client'
 
 // Servicios de lectura de la arquitectura de nodos (PRP-006, Fase 1).
 // El cliente llega sin tipar (igual que canales.ts): se castea cada fila a mano.
@@ -107,4 +110,60 @@ export async function getNodoByMedicoId(db: SupabaseClient, medicoId: string): P
     accessToken: descifrar(n.access_token_cifrado),
     numeroPersonal: a.numero_personal,
   }
+}
+
+/** Resultado de resolver el médico de un mensaje entrante: el canal (contrato existente) + el texto sin marcador. */
+export interface IngresoResuelto {
+  canal: CanalResuelto
+  /** Texto del mensaje con el marcador [ID:...] removido (solo si venía). undefined si no había marcador. */
+  textoLimpio?: string
+}
+
+/**
+ * Resuelve el médico de un mensaje entrante en el modelo de nodos, con fallback al canal legacy.
+ * Orden: (a) [ID:slug] del 1.er mensaje → re-ancla ruteo · (b) ruteo persistido (paciente recurrente)
+ * · (c) fallback legacy (wa_canales 1:1; en el piloto el nodo reusa el canal, así que cubre tanto al
+ * médico escribiéndole a su nodo como al paciente sin marcador) · (d) null (no romper).
+ * Mantiene el contrato CanalResuelto → el pipeline aguas abajo (runner) no cambia.
+ */
+export async function resolverIngreso(
+  db: SupabaseClient,
+  incoming: { phoneNumberId: string; from: string; text?: string },
+): Promise<IngresoResuelto | null> {
+  const phoneNumberId = incoming.phoneNumberId
+  const text = incoming.text ?? ''
+  const telefono = normalizeRecipient(incoming.from)
+
+  // ¿El número que recibió es un nodo? Si no, es flujo legacy puro (wa_canales 1:1).
+  const nodo = await getNodoByPhoneNumberId(db, phoneNumberId)
+  if (!nodo) {
+    const legacy = await getCanalByPhoneNumberId(db, phoneNumberId)
+    return legacy ? { canal: legacy } : null
+  }
+
+  // (a) Marcador [ID:slug] del 1.er mensaje (paciente que entró por el link).
+  const slug = extraerIdSlug(text)
+  if (slug) {
+    const asig = await getAsignacionBySlug(db, slug)
+    if (asig && asig.nodoPhoneNumberId === phoneNumberId) {
+      await upsertRuteoMedico(db, phoneNumberId, telefono, asig.medicoId)
+      const canal = await getNodoByMedicoId(db, asig.medicoId)
+      if (canal) return { canal, textoLimpio: limpiarMarcadorId(text) }
+    }
+    // slug inválido o de otro nodo → seguir resolviendo por otros medios
+  }
+
+  // (b) Ruteo persistido (paciente recurrente, ya sin marcador).
+  const ruteadoId = await getRuteoMedico(db, phoneNumberId, telefono)
+  if (ruteadoId) {
+    const canal = await getNodoByMedicoId(db, ruteadoId)
+    if (canal) return { canal }
+  }
+
+  // (c) Fallback legacy. El reverse-lookup por numero_personal para nodos multi-médico queda diferido (ver PRP).
+  const legacy = await getCanalByPhoneNumberId(db, phoneNumberId)
+  if (legacy) return { canal: legacy }
+
+  // (d) Nada resolvió (paciente nuevo sin marcador en un nodo multi-médico): no rompemos.
+  return null
 }

@@ -24,3 +24,17 @@ export function construirWaMeUrl(numeroWhatsapp: string, slug: string): string |
   const texto = construirSaludoConId(slug)
   return `https://wa.me/${digits}?text=${encodeURIComponent(texto)}`
 }
+
+// El marcador que viaja en el 1.er mensaje. NO global (evita el lastIndex de exec/replace).
+const MARCADOR_ID = /\[ID:([a-zA-Z0-9_-]+)\]/
+
+/** Extrae el slug del marcador [ID:slug] del texto entrante. null si no hay marcador (2.º msg en adelante). */
+export function extraerIdSlug(text: string): string | null {
+  const m = MARCADOR_ID.exec(text)
+  return m ? m[1] : null
+}
+
+/** Quita el marcador [ID:...] del texto y normaliza espacios (para no ensuciar historial ni respuestas). */
+export function limpiarMarcadorId(text: string): string {
+  return text.replace(MARCADOR_ID, '').replace(/\s+/g, ' ').trim()
+}

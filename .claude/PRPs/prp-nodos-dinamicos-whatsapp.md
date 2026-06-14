@@ -233,6 +233,7 @@ resolverIngreso(phoneNumberId, from, text):
 ### Fase 3: Resolución de identidad en el ingreso (runner)
 **Objetivo**: Evolucionar `canales.ts` (`resolverIngreso` por nodo + ruteo + `[ID]`, y limpieza del marcador) y reconectar `runner.ts:50` para usarla; la clasificación médico/paciente pasa a hacerse **después** de resolver el médico. Persistir ruteo en el 1.er mensaje; leerlo en los siguientes. Fallback conversacional si no hay identidad.
 **Validación**: simular webhook del 1.er mensaje con `[ID:...]` → se crea fila en `wa_ruteo_conversacion` y el agente arranca con el médico correcto; 2.º mensaje sin `[ID]` → resuelve por ruteo; mensaje sin ruteo ni `[ID]` → fallback sin crashear. `npm run typecheck` pasa.
+**✅ COMPLETADA (2026-06-14)**: `resolverIngreso` en `nodos.ts` (NO canales.ts, para evitar ciclo de imports) — orden (a) `[ID:slug]` → re-ancla ruteo · (b) ruteo persistido · (c) fallback legacy · (d) null. Helpers puros `extraerIdSlug`/`limpiarMarcadorId` en `linkNodo.ts` (+4 tests). `runner.ts:49-54` reconectado (marcador removido de `incoming.text`; la clasificación médico/paciente YA ocurría después de resolver → sin reorder). Censo: 1 médico, ya sobre nodo → híbrido trivialmente seguro. **typecheck + 230 tests + build OK.** Live E2E de la resolución → Fase 5 (con número real, sin ensuciar prod).
 
 ### Fase 4: Salientes por nodo + compliance Pilar 4
 **Objetivo**: `getCanalByMedicoId` (y por ende entrega de receta, webhook MP, toma humana) resuelve el **nodo** del médico vía `wa_asignaciones` → envía desde el `phone_number_id`/token del nodo, no del número personal. Ajustar copys de cobro al Pilar 4 (honorario/gestión administrativa, no venta de medicamento) en system prompt / textos salientes.
@@ -268,6 +269,16 @@ resolverIngreso(phoneNumberId, from, text):
 ### 2026-06-14: El middleware usa allowlist, no default-deny → `/c/` es público sin cambios
 - **Hallazgo**: `middleware.ts` matchea todo salvo assets, pero `updateSession` (`proxy.ts`) solo redirige a `/login` las rutas de `protectedPaths` (allowlist). `/c/` no está → pasa sin auth. No hubo que tocar el matcher.
 - **Aplicar en**: futuras rutas públicas (links, webhooks server-to-server) — no requieren excluirse del middleware, salvo que se quiera evitar el `getUser()` por performance.
+
+### 2026-06-14: Censo de canales — 1 solo médico, ya sobre nodo → híbrido sin migración
+- **Hallazgo**: hay un único `wa_canales` en prod (el piloto) y ya tiene asignación de nodo. No hay médicos legacy que migrar; el fallback a `wa_canales` queda solo como red de seguridad.
+
+### 2026-06-14: Lado MÉDICO en nodos multi-médico (DIFERIDO)
+- **Hallazgo**: en el piloto, el médico escribiéndole a su nodo se resuelve por el fallback legacy (el nodo reusa su canal 1:1, mismo `phone_number_id`). En un nodo con 50 médicos eso NO alcanza: haría falta un reverse-lookup `numero_personal → médico` (entre los asignados al nodo) antes del fallback, y `wa_ruteo_conversacion` para el lado paciente.
+- **Aplicar en**: la fase de escalamiento (nodos multi-médico), NO en este PRP.
+
+### 2026-06-14: `resolverIngreso` vive en `nodos.ts`, no en `canales.ts`
+- **Hallazgo**: el PRP decía "evolucionar canales.ts", pero `resolverIngreso` necesita llamar a `getCanalByPhoneNumberId` (canales.ts) como fallback → ponerlo en nodos.ts evita un ciclo de imports (nodos → canales, una sola dirección). `canales.ts` queda intacto (legacy).
 
 ---
 

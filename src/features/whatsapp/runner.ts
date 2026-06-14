@@ -2,7 +2,8 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { parseIncomingMessage, type IncomingMessage } from '@/lib/whatsapp/parse'
 import { sendWhatsAppText, markAsRead, fetchWhatsAppMedia, normalizeRecipient } from '@/lib/whatsapp/client'
 import { esRemitenteMedico } from '@/lib/whatsapp/clasificar'
-import { getCanalByPhoneNumberId, type CanalResuelto } from '@/features/whatsapp/services/canales'
+import { type CanalResuelto } from '@/features/whatsapp/services/canales'
+import { resolverIngreso } from '@/features/whatsapp/services/nodos'
 import {
   ensureContacto,
   ensureConversacion,
@@ -47,11 +48,15 @@ export async function handleIncomingWhatsApp(payload: unknown): Promise<void> {
   if (incoming.type !== 'text' && incoming.type !== 'document') return
 
   const db = createServiceClient()
-  const canal = await getCanalByPhoneNumberId(db, incoming.phoneNumberId)
-  if (!canal) {
-    console.warn('[wa] sin canal para phone_number_id', incoming.phoneNumberId)
+  const resuelto = await resolverIngreso(db, incoming)
+  if (!resuelto) {
+    console.warn('[wa] sin médico para phone_number_id', incoming.phoneNumberId)
     return
   }
+  const canal = resuelto.canal
+  // El marcador [ID:slug] del 1.er mensaje ya cumplió su función: lo quitamos para que no
+  // ensucie el historial ni se filtre en las respuestas del agente.
+  if (resuelto.textoLimpio !== undefined) incoming.text = resuelto.textoLimpio
 
   markAsRead({
     phoneNumberId: canal.phoneNumberId,
