@@ -5,6 +5,7 @@ import { resumenNegocio } from '@/lib/admin/negocio'
 import { MetricCard } from '@/features/dashboard/components'
 import { MedicosTabla } from '@/features/admin/components/medicos-tabla'
 import { AlertasPanel } from '@/features/admin/components/alertas-panel'
+import { EnviarDigestBoton } from '@/features/admin/components/enviar-digest-boton'
 
 export const metadata = {
   title: 'Panel del dueño | MediCuenta',
@@ -79,10 +80,13 @@ export default async function AdminPage() {
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Bot className="w-4 h-4 text-primary" />
-          <h2 className="font-semibold">Orquestador</h2>
-          <span className="text-xs text-[var(--color-muted-foreground)]">— lo que detectó al vigilar</span>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Bot className="w-4 h-4 text-primary" />
+            <h2 className="font-semibold">Orquestador</h2>
+            <span className="text-xs text-[var(--color-muted-foreground)]">— lo que detectó al vigilar</span>
+          </div>
+          <EnviarDigestBoton />
         </div>
         <AlertasPanel alertas={alertas} />
       </div>

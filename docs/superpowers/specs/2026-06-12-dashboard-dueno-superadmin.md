@@ -114,8 +114,17 @@ de precio para la promo (DD7):
 - **F4.3 — MercadoPago Suscripciones:** cobro recurrente, webhooks, estados (prueba→activa→morosa→…).
 - **F5 v1a — Orquestador que observa** ✅ HECHO (commit e3d0dae): detecta problemas (errores,
   prueba por vencer, moroso, WhatsApp desconectado) y los muestra en la sección "Orquestador" del
-  panel. Pura `alertas.ts`. **v1b PENDIENTE:** entrega proactiva por WhatsApp/email (necesita un
-  servicio de email + un emisor de WhatsApp para Héctor).
+  panel. Pura `alertas.ts`.
+- **F5 v1b — Orquestador con entrega proactiva (email)** ✅ HECHO: cron diario (Vercel Cron,
+  `vercel.json` → `/api/cron/orquestador`, 09:00 ART) que corre `procesarYEnviarDigest`: lee las
+  métricas, detecta alertas, arma el digest (puro `digest.ts`) y, **si hay novedades**, le manda
+  un email al dueño vía Resend (`lib/email/resend.ts`). **Dedup por cambio** contra la tabla
+  `orquestador_avisos` (no reenvía si el set no cambió). Botón "Enviar resumen ahora" en `/admin`
+  (acción `enviarDigestAhora`, fuerza el envío para probar). Requiere `RESEND_API_KEY`,
+  `ORQUESTADOR_EMAIL_TO`, `CRON_SECRET`.
+  **v1c PENDIENTE (WhatsApp a Héctor):** Meta exige una **plantilla aprobada** para mensajes
+  business-initiated fuera de la ventana de 24 h (el `sendWhatsAppText` actual solo manda texto
+  libre, válido dentro de la ventana). Es un trámite de aprobación aparte.
 
 ## 8. Pendientes del dueño (TBD — definir para cerrar el spec)
 
