@@ -1,234 +1,150 @@
-# HANDOFF — MediCuenta V2 — 2026-06-14
+# HANDOFF — MediCuenta V2 — 2026-06-14 (noche, ~22:30 ART)
 
-> Documento de traspaso autocontenido. Si abrís una charla nueva, esto te da el contexto
-> total: qué es el proyecto, qué está hecho, qué sigue, qué está bloqueado y cómo verificar.
-
----
-
-## 0. Qué es MediCuenta (contexto en 30 segundos)
-
-App de **facturación para médicos** de Catamarca (Argentina). Automatiza la presentación
-manual a obras sociales. Es un proyecto de **monetización directa** (genera cash). Modelo
-mental: el tenant es "el profesional" (médico es el primer vertical). Visión a futuro:
-toda Catamarca → Argentina → otros profesionales; app B2B para círculos médicos; asistente
-financiero (informar, nunca asesorar); versión agéntica vía MCP.
-
-**UX clave:** el médico NO es técnico → claridad, menos clicks, automatización visible.
-
-**Stack:** Next.js 16 (App Router, React 19, TS) · Tailwind · Supabase (Auth + DB + RLS) ·
-Vercel AI SDK v5 + OpenRouter (modelo asistente: Claude Haiku 4.5) · Zod · deploy en **Vercel**.
-
-**Patrón de código del proyecto (respetarlo):**
-- **Lógica pura separada de efectos**: la decisión vive en `src/lib/**` (puro, testeable con
-  vitest); los efectos (DB, email, WhatsApp) en services/actions/routes.
-- **Cross-tenant del dueño**: la RLS es por médico (`auth.uid() = medico_id`). El superadmin
-  NO rompe esa RLS: lee/escribe por **service-role** en server actions/funciones SECURITY
-  DEFINER cerradas a `service_role` (REVOKE de PUBLIC/anon/authenticated + GRANT a service_role).
-- Archivos ≤500 líneas, funciones ≤50, sin `any`, validar entradas con Zod, RLS siempre.
+> Sesión enorme: se implementó la **Arquitectura de Nodos Dinámicos de WhatsApp** completa (PRP-006,
+> Fases 1-4), se **mergeó a `main` y se desplegó a producción**, se **registró el número de WhatsApp
+> real en Meta** y se **cableó al nodo piloto**. El **E2E quedó bloqueado por config de Vercel** (4 env
+> vars que están solo en Preview, no en Production). Mañana se retoma desde ahí. **No queda nada
+> creativo pendiente — es pura configuración.**
 
 ---
 
-## 1. Estado actual
+## 0. Estado actual
 
-- **Línea de trabajo activa:** **Dashboard del dueño (Fases 4-5).** Última entrega:
-  **F5 v1b — orquestador con entrega proactiva por email** (recién terminada).
-- **Branch:** `feat/whatsapp-recetas-turnos`.
-- **Último commit:** `300117d` *feat(5-v1b): orquestador con entrega proactiva por email*.
-  El árbol está **limpio**. ⚠️ Este commit reescribió un auto-backup que ya estaba en
-  `origin` → la rama local quedó `ahead 1, behind 1`. **Falta force-push**
-  (`git push --force-with-lease`) para sincronizar origin.
-- **Gates:** `npm test` → **219 verdes** · `npm run typecheck` OK · `npm run build` OK
-  (la ruta `ƒ /api/cron/orquestador` aparece en el build). `npm run lint` está roto (deuda
-  vieja, NO es gate).
+- **Tarea**: Arquitectura de Nodos Dinámicos WhatsApp (1 número compartido ≤50 médicos + link público
+  `/c/slug` + ruteo). F1-F4 hechas, en `main`, desplegadas en prod. Número de producción registrado en
+  Meta y cableado al nodo piloto.
+- **Estado**: **BLOCKED** — el E2E no corre porque faltan 4 env vars en el entorno **Production** de Vercel.
+- **Branch**: `feat/whatsapp-recetas-turnos` (= `main` = `origin/main` = `91f46a2`, todo idéntico).
+- **Último commit ANTES de este handoff**: `91f46a2` *feat(nodos-f4): salientes por nodo + compliance Pilar 4 (PRP-006 F4)*.
+- **Deploy**: `main` desplegado en producción Vercel (`medicuenta-v2`, deploy Ready). URL estable de prod:
+  **`https://medicuenta-v2.vercel.app`**.
 
 ---
 
-## 2. Mapa completo de fases
+## 1. 🚧 EL BLOQUEADOR (empezar acá mañana)
 
-### Fase 1-2 (base) ✅
-Facturación: órdenes (carga por foto con OCR/visión), liquidaciones, débitos, cirugías,
-nomenclador, reportes, pacientes. Auth + perfiles + RLS. Asistente IA de facturación (chat
-que ayuda a cargar órdenes). Recetas electrónicas con cobro vía MercadoPago.
+`https://medicuenta-v2.vercel.app/c/dr-prueba` devuelve **HTTP 500** en prod (debería ser 302).
+**Causa confirmada**: 4 env vars están scopeadas **solo a Preview** (branch `feat/whatsapp-recetas-turnos`),
+**no a Production**. El redirect usa `createServiceClient()` (Supabase service role) → sin esa env en
+Production, revienta. La app "andaba" porque corría en deploys **Preview**; ahora prod es real y faltan.
 
-### Fase 3 — Consultorio / WhatsApp ✅ (pendiente prueba en vivo del dueño)
-- **3A** Agenda estilo Google Calendar + asistente de turnos ✅
-- **3B** Secretaria con acceso delegado (RLS por `puede_acceder_consultorio`) ✅ —
-  pendiente prueba en vivo (gabriel@seismilesia.com en build de prod). Ver
-  `scripts/test-rls-secretaria.sql`.
-- **3C**:
-  - Shell adaptativo celular/web ✅ (`e04e73d`): médico en celular = asistente puro (sin nav;
-    la agenda la ve por su Google Calendar; los turnos se editan solo desde la compu).
-    Detección sin parpadeo a prueba de rotación. `src/app/layout.tsx` + globals.css
-    (`.only-phone`/`.only-web`) + `src/app/(main)/layout.tsx`.
-  - Correlación turno→orden + control 15 min ✅ (`a436968`): al facturar con DNI propone la
-    fecha/hora reales del turno (un click → `ordenes.turno_id`). Lógica
-    `src/lib/consultorio/correlacion.ts`.
-  - Bitácora del agente formalizada ✅ (`89acf64`): traza estructurada por turno en
-    `wa_bitacora` (médico la ve en Config → "Actividad del asistente"). **Es la semilla del
-    orquestador** — sus errores alimentan las alertas del panel del dueño.
-  - **Espejo Google Calendar** ⏳ **BLOQUEADO** — necesita que el dueño cree proyecto Cloud +
-    credenciales con **iaceleratech@gmail.com** (Gmail de pruebas definido). Tablas pendientes:
-    `gcal_conexiones`, `wa_turnos.gcal_event_id`. Ver memoria `fase3c-google-cuenta-pruebas`.
+**Las 4 env vars a pasar a Production** (en Vercel → proyecto `medicuenta-v2` → Settings → Environment Variables):
+1. `ENCRYPTION_KEY`
+2. `SUPABASE_SERVICE_ROLE_KEY`
+3. `WHATSAPP_APP_SECRET`
+4. `WHATSAPP_VERIFY_TOKEN`
 
-### Fase 4-5 — Dashboard del dueño (LÍNEA ACTIVA)
-Spec: `docs/superpowers/specs/2026-06-12-dashboard-dueno-superadmin.md` (leerla, está al día).
+(Ya están en "All Environments": `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `OPENROUTER_API_KEY` — esas OK.)
 
-| Fase | Qué es | Estado |
-|---|---|---|
-| **F4.1** | Superadmin read-only (`/admin`, vista cross-tenant de médicos + costos) | ✅ `c25b5ed` |
-| **F4.2a** | Planes Básico/Full + candado de funciones (feature-gating) | ✅ `9774a44` |
-| **F4.2 redondeo** | Cartera de negocio + gestión de la prueba en el panel | ✅ `c68b0c0` |
-| **F5 v1a** | Orquestador que **observa** (detecta y muestra alertas en `/admin`) | ✅ `e3d0dae` |
-| **F5 v1b** | Orquestador que **avisa por email** (cron + digest + dedup + botón) | ✅ (esta sesión) |
-| **F4.2b** | Trial sandbox (prueba gratis 15 días + dashboard demo) | ⏳ pendiente |
-| **F4.3** | MercadoPago Suscripciones (cobro recurrente) | ⏸️ EN PAUSA (creds MP del hijo) |
-| **F5 v1c** | Aviso por **WhatsApp** a Héctor | ⏳ pendiente (plantilla Meta) |
+**Cómo arreglarlo (3 opciones, elegir una):**
+- **(A) UI de Vercel** — editar cada una de las 4 → **sacar el filtro de branch** (la X del recuadro
+  "feat/whatsapp-recetas-t...") → en Environments elegir **"All Environments"** → Save. *(Ojo: con el
+  filtro de branch puesto, la UI NO deja agregar Production — hay que sacarlo primero.)*
+- **(B) CLI** — desde el repo: `vercel env add <NAME> production` para cada una, tomando el valor del
+  `.env.local`. **El guardrail de seguridad bloquea que Claude lo haga** (mueve secretos a prod); lo
+  corre Héctor, o se agrega una Bash permission rule para habilitarlo a Claude.
+- **(C) Re-crear** — "Add Environment Variable" con valor copiado del `.env.local`, scope "All Environments".
 
-**Cómo funciona el panel hoy:** `/admin` (guardado por `resolverSuperadmin`) muestra cartera
-(chips por plan/estado), métricas de costo (tokens IA 30d, mensajes WhatsApp con costo fuera
-de ventana 24h, errores 7d), la sección "Orquestador" con las alertas detectadas, y la tabla
-de médicos con selectores de plan/estado (cambio a mano hasta que entre MP). Datos por la
-función SECURITY DEFINER `superadmin_metricas_medicos` (service-role).
+**Después de arreglar las env vars:**
+1. **Redeploy de prod** (las env vars no se aplican solas): `vercel --prod` desde el repo, o un push a `main`, o "Redeploy" en el dashboard.
+2. **Retest**: `curl -i https://medicuenta-v2.vercel.app/c/dr-prueba` → debe pasar de **500 → 302** (Location a `wa.me/...`).
 
 ---
 
-## 3. F5 v1b — entrega proactiva por email (lo último que se hizo)
+## 2. Lo que se hizo esta sesión (todo commiteado + en prod)
 
-**Qué hace:** un cron diario (09:00 ART) corre el orquestador: lee las métricas de todos los
-médicos, detecta alertas (reusa `detectarAlertas` de v1a) y, **si hay novedades respecto al
-último aviso**, le manda a Héctor un email agrupado por gravedad. Si nada cambió, no manda
-nada (dedup por cambio — un vigía no spamea). Hay un botón "Enviar resumen ahora" en `/admin`
-que fuerza el envío para probar.
-
-**Por qué email y no WhatsApp:** Meta solo permite mensajes business-initiated (fuera de la
-ventana de 24h) con una **plantilla aprobada** (trámite de días). `sendWhatsAppText` actual
-solo manda texto libre, válido dentro de la ventana. Por eso WhatsApp → v1c.
-
-**Archivos (todos nuevos salvo el panel):**
-- `src/lib/email/resend.ts` — cliente Resend por `fetch` (sin SDK; estilo `whatsapp/client.ts`).
-- `src/lib/admin/digest.ts` (+ `digest.test.ts`, 7 tests) — arma asunto/HTML/texto + `firma`
-  estable del set de alertas (para el dedup). **Puro.**
-- `src/lib/admin/orquestadorEnvio.ts` — orquesta: métricas → alertas → digest → dedup → email.
-  Resuelve destinatario (`ORQUESTADOR_EMAIL_TO` o el email del perfil `es_superadmin`).
-- `src/app/api/cron/orquestador/route.ts` — GET protegido por `Authorization: Bearer CRON_SECRET`.
-- `vercel.json` — cron `0 12 * * *` (12:00 UTC = 09:00 ART) → `/api/cron/orquestador`.
-- `src/actions/orquestador.ts` — action `enviarDigestAhora` (guard superadmin, `forzar:true`).
-- `src/features/admin/components/enviar-digest-boton.tsx` — botón en la sección Orquestador.
-- `supabase/migrations/20260613_fase5_orquestador_avisos.sql` — tabla `orquestador_avisos`
-  (bitácora de avisos + base del dedup). **YA APLICADA** en Supabase (vía MCP). Solo
-  service-role la toca (RLS on + revoke PUBLIC + grant service_role). El advisor
-  `rls_enabled_no_policy` en esta tabla es INFO y es **intencional**.
-
-**⚠️ Para activarlo en producción (lo tiene que hacer Héctor):**
-1. Crear cuenta gratis en **resend.com** → generar **API key** (~2 min). Con el remitente
-   sandbox `onboarding@resend.dev` se puede enviar **al email de la propia cuenta** sin
-   verificar dominio (justo lo que necesita: él se manda a sí mismo).
-2. Setear 3 env vars en Vercel (y en `.env.local` para probar local). Ver `.env.local.example`:
-   - `RESEND_API_KEY` — el key de Resend.
-   - `ORQUESTADOR_EMAIL_TO` — el email donde quiere recibir el digest.
-   - `CRON_SECRET` — un string largo random (protege el cron).
-   - (opcional) `ORQUESTADOR_EMAIL_FROM` — solo si verifica un dominio para mandar a otra casilla.
-
-**Probar local:** `npm run build && npm start`, luego:
-`curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/orquestador`
-→ responde `{ ok, enviado, motivo }`. Correrlo 2 veces: la 2ª da `motivo:'sin-cambios'`.
-O directo: botón "Enviar resumen ahora" en `/admin` (fuerza, ignora el dedup).
+- **F1** `f808391` — fundación de datos: tablas `wa_nodos`, `wa_asignaciones`, `wa_ruteo_conversacion` (RLS), servicios `nodos.ts` + `ruteoConversacion.ts`, seed del nodo piloto.
+- **F2** `994454a` — redirect público `GET /c/[slug]` → 302 a `wa.me` con `[ID:slug]`. Lógica pura `lib/whatsapp/linkNodo.ts` (+tests). Verificado en vivo (302 OK con número de prueba).
+- **F3** `f2d8880` — resolución de identidad por nodo en el ingreso (`runner.ts`): `resolverIngreso` = (a) `[ID:slug]` → re-ancla ruteo, (b) ruteo persistido, (c) fallback legacy `wa_canales`, (d) null. Cierra el "HUECO" del informe.
+- **F4** `91f46a2` — salientes por nodo (`resolverSaliente`) + compliance Pilar 4 ("costo de gestión", no "venta de medicamento") en `systemPrompt.ts` y título de MercadoPago en `tools.ts`.
+- **Merge a `main`** (fast-forward, 155 commits — incluye también el trabajo de `dev/gaby`, que ya estaba contenido en esta branch) → **deploy a prod en Vercel**.
+- **Meta / número de producción**: registrado el número real en la WhatsApp Cloud API (app existente), nombre "Asistente MediCuenta", categoría "Medicina y salud", verificado por SMS, PIN de 2FA seteado (lo guardó Héctor), webhook suscripto.
+- **Token permanente** generado (System User "MediCuenta API", permisos `whatsapp_business_messaging` + `whatsapp_business_management`, sin vencimiento) → encriptado con la `ENCRYPTION_KEY` del proyecto → guardado **cifrado** en `wa_nodos.access_token_cifrado` del nodo piloto. (Se verificó que la `ENCRYPTION_KEY` local == prod descifrando el token de prueba.)
 
 ---
 
-## 4. Próximos pasos (priorizado)
+## 3. IDs y valores clave (SIN secretos)
 
-1. **Sincronizar la rama**: el commit descriptivo `300117d` ya está local; falta
-   `git push --force-with-lease` (reescribió un auto-backup ya pusheado).
-2. **Activar F5 v1b** cuando Héctor traiga el API key de Resend (ver §3) — y probar el envío real.
-3. **Elegir la próxima fase a construir.** Las construibles ya (sin esperar credenciales):
-   - **F4.2b — Trial sandbox**: prueba gratis 15 días + dashboard demo (el médico se prueba a
-     sí mismo, desambigua por su teléfono — DD8/DD9 de la spec). Parte se puede hacer ya
-     (countdown, estados); la parte "real" depende de infra de WhatsApp de producción.
-   - **F5 v1c — Aviso por WhatsApp a Héctor**: requiere plantilla Meta aprobada (trámite).
-4. **Bloqueadas por el dueño / credenciales:**
-   - **F4.3 MercadoPago Suscripciones** ⏸️ EN PAUSA hasta tener credenciales MP (cobranza va
-     bajo el nombre del hijo monotributista). Ver memoria `facturacion-fiscal-mp`.
-   - **Espejo Google Calendar** ⏳ bloqueado por credenciales Cloud (`iaceleratech@gmail.com`).
-   - **Precios finales** (hoy rango: Básico US$25-30, Full US$55-65) — se cierran tras calcular
-     costos con las métricas de §5.1 de la spec.
-   - **Documento operativo de onboarding** + **contrato legal**.
-
----
-
-## 5. Modelo operativo / comercial (definido por el dueño) — memoria `modelo-operativo-onboarding`
-
-- **Héctor provee y es dueño de TODOS los números de WhatsApp** (los configura él); el servicio
-  se cobra completo, números incluidos. El médico solo aporta su Gmail + datos. Ya soportado
-  (canal por médico en `wa_canales`, service-role).
-- **Dos planes:** **Básico = facturación** (+ asistente IA de facturación). **Full =** lo
-  anterior **+** agenda, conversaciones, pacientes, asistente de WhatsApp (turnos/recetas/cobros)
-  y secretaria. El candado de plan (F4.2a) ya lo hace cumplir server-side, no solo en el menú.
-- **Prueba gratis: 15 días.** Cobranza: **MercadoPago Suscripciones** (F4.3, en pausa).
-- **Cobranza fiscal:** bajo el nombre del hijo (monotributista). Ver memoria `facturacion-fiscal-mp`.
+| Qué | Valor |
+|---|---|
+| URL estable de prod | `https://medicuenta-v2.vercel.app` |
+| Meta App ID | `1556981509178874` |
+| WABA (cuenta WhatsApp Business) | `27343280775302597` |
+| **phone_number_id PRODUCCIÓN** | `1110153015523184` |
+| Número producción (display) | `+54 383 15-488-4384` |
+| `numero_whatsapp` cargado en el nodo (para `wa.me`) | `543834884384` (SIN el 9 — **validar en E2E** si `wa.me` abre bien, si no probar `5493834884384`) |
+| Nodo piloto (`wa_nodos.id`) | `ac72b38a-53ea-4fec-8e4a-280c04dcc0df` |
+| Slug del piloto | `dr-prueba` → `https://medicuenta-v2.vercel.app/c/dr-prueba` |
+| Médico piloto | `admin@medicuenta.com` · `924014ac-fb0a-4d9c-9028-49535e5e2e60` (es superadmin) |
+| System User Meta | "MediCuenta API" · `61590718924782` |
+| Número de PRUEBA (legacy, sigue en `wa_canales`) | `phone_number_id 1084361314771068` |
+| Proyecto Supabase | `eylcrxhpccwobipcjzal` (migraciones por MCP `apply_migration`) |
 
 ---
 
-## 6. Lo que NO funcionó (no repetir)
+## 4. Próximos pasos concretos (en orden)
 
-- **`next dev` NO ejecuta el middleware** (Next 16.2.x). Los guards de rol/plan SOLO corren en
-  build de producción (`npm run build && npm start`). Matar zombies:
-  `pkill -9 -f "next dev"; pkill -9 -f "next-server"` antes de relanzar.
-- **`REVOKE ... FROM anon, authenticated` no basta** (queda el grant a PUBLIC). Usar
-  `REVOKE ... FROM PUBLIC` + `GRANT ... TO service_role`.
-- **Haiku NO sirve como agente conversacional** (sí para OCR/visión).
-- **El token de WhatsApp de Meta (test) vence en horas** — para pruebas largas hay que renovarlo.
-- **`npm run lint` está roto** (deuda vieja, no es gate).
-- Las **pruebas en vivo van en PRODUCCIÓN** (Supabase pago) — ver memoria `produccion-y-pruebas`:
-  aplicar migraciones y reflaggear superadmin también allá. Migraciones siempre **aditivas e
-  idempotentes** (`IF NOT EXISTS`); ver `docs/REGLAS-ACTUALIZACION.md`.
+1. **Pasar las 4 env vars a Production en Vercel** (ver §1, opción A/B/C) y **redeployar**.
+2. **Retest**: `curl -i https://medicuenta-v2.vercel.app/c/dr-prueba` → esperar **302** (no 500).
+3. **Confirmar/poner el webhook de Meta** apuntando a **`https://medicuenta-v2.vercel.app/api/whatsapp`**
+   (Meta → app `1556981509178874` → Configurar webhooks → Callback URL). El endpoint ya responde 403 a un
+   GET sin params = nuestra app OK; falta confirmar que el webhook apunte a ESA URL estable.
+4. **E2E real**: abrir `https://medicuenta-v2.vercel.app/c/dr-prueba` en un celular → se abre WhatsApp con el
+   número de producción → mandar el mensaje → el bot debe **identificar al médico (dr-prueba) y responder**.
+   Verificar que se cree la fila en `wa_ruteo_conversacion` y que un 2º mensaje (sin `[ID]`) mantenga el médico.
+5. Si el redirect abre mal el `wa.me` (número), cambiar `wa_nodos.numero_whatsapp` a `5493834884384` (con 9) y reprobar.
 
 ---
 
-## 7. Datos de prueba (proyecto Supabase `eylcrxhpccwobipcjzal`)
+## 5. Lo que NO funcionó / gotchas (no repetir)
 
-> Este es el proyecto conectado por el MCP de Supabase y donde viven TODAS las migraciones de
-> las fases 3/4/5 (se aplican vía MCP `apply_migration`). Las migraciones locales en
-> `supabase/migrations/*.sql` son el espejo versionado.
-
-- Médico: **admin@medicuenta.com** `924014ac-fb0a-4d9c-9028-49535e5e2e60` (flaggeado
-  `es_superadmin = true` para probar `/admin`; con turnos: Quinteros DNI 3452167,
-  Figueroa/Martinez DNI 23309087).
-- Secretaria: **gabriel@seismilesia.com** `9e473632-...` (vínculo 'activa' con admin).
-- Para designar superadmin:
-  `UPDATE perfiles SET es_superadmin = true WHERE id = (SELECT id FROM auth.users WHERE email = '...');`
+- **Deploys recientes eran todos Preview** → prod no tenía las env vars de WhatsApp/Supabase-service/Encryption → `/c/` 500. (Este es EL bloqueador, §1.)
+- **La UI de Vercel no deja cambiar el scope** de una var que tiene **filtro de branch** sin sacar el filtro primero (la X), después recién "All Environments".
+- **El guardrail de seguridad bloqueó (correctamente) a Claude** dos veces: (a) escribir el token en texto plano a un archivo, (b) copiar secretos del `.env.local` a Vercel prod. → Estas dos las tiene que hacer **Héctor** (o habilitar con una Bash permission rule).
+- **Browser control (Chrome MCP)**: la ventana de automatización **no comparte la sesión logueada** de Vercel (pide login aparte). Para usarla, Héctor tiene que loguearse en esa ventana primero.
+- **Número argentino en Meta va SIN el 9** (el tilde verde de Meta lo confirma). El "15" es prefijo de discado, no va.
+- **iPhone 16 Pro Max US (modelo `MYW63LL/A`) es solo eSIM** (sin ranura física). La línea Claro se activó en un Android prestado (por eso recibe el SMS de verificación ahí).
+- **Número de prueba de Meta NO se promueve a producción** — por eso se registró un número propio nuevo.
 
 ---
 
-## 8. Pruebas en vivo pendientes (el dueño las hace en build de producción)
+## 6. ⚠️ Pendientes de seguridad/limpieza (hacer mañana)
 
-`npm run build && npm start` (NO dev — el middleware solo corre en prod):
-1. **3B** secretaria: gabriel ve solo Consultorio, da turnos, NO ve facturación; rutas
-   médico-only → redirigen a /agenda.
-2. **3A** agenda mes/semana/día.
-3. **3C celular**: abrir como médico en un teléfono real → debe verse SOLO el asistente.
-4. **3C correlación**: orden por foto con DNI de un paciente con turno → aparece la sugerencia.
-5. **3C bitácora**: Config → "Actividad del asistente".
-6. **F5 v1b** (cuando haya Resend): botón "Enviar resumen ahora" en `/admin` → llega el email.
+- **Sacar `WA_TOKEN_TMP` de `.env.local`** — fue temporal para encriptar el token; ya no se usa (el token vive cifrado en `wa_nodos`). El `.env.local` está gitignoreado, pero igual conviene borrar esa línea.
+- **El token permanente apareció en el chat de esta sesión** → por higiene, considerar **revocarlo y regenerarlo** (Meta → Configuración del negocio → Usuarios del sistema → MediCuenta API → "Revocar tokens"), y re-cablearlo con el mismo flujo de encriptado. El token NO está en este HANDOFF ni en git.
 
 ---
 
-## 9. Comandos para verificar al retomar
+## 7. Comandos para verificar estado al retomar
 
 ```bash
 cd ~/proyectos/Medicuenta-V2.0
-git status                 # limpio
-git log --oneline -5       # último: 300117d feat(5-v1b): ... (ojo: ahead/behind, falta force-push)
-npm test                   # 219 verdes
-npm run typecheck          # OK
-npm run build              # OK, "ƒ Proxy (Middleware)" + "ƒ /api/cron/orquestador" presentes
+git status                 # limpio; branch feat/whatsapp-recetas-turnos = main = 91f46a2
+git log -3 --oneline       # último: 91f46a2 feat(nodos-f4)
+npm test                   # 230 verdes
+npm run build              # OK
+# el bloqueador:
+curl -i https://medicuenta-v2.vercel.app/c/dr-prueba   # HOY: 500 ; OBJETIVO tras arreglar env vars: 302
+vercel env ls production   # ver si ENCRYPTION_KEY / SERVICE_ROLE / WHATSAPP_* ya están en Production
 ```
 
-## 10. Punteros
+---
 
-- **Spec del dashboard del dueño:** `docs/superpowers/specs/2026-06-12-dashboard-dueno-superadmin.md`
-- **Spec Fase 3:** `docs/superpowers/specs/2026-06-11-fase3-panel-consultorio-design.md`
-- **Reglas de actualización (no romper prod):** `docs/REGLAS-ACTUALIZACION.md`
-- **Memorias** (en `.claude-ministerio/.../memory/MEMORY.md`): `modelo-operativo-onboarding`,
-  `dashboard-dueno-superadmin`, `produccion-y-pruebas`, `facturacion-fiscal-mp`,
-  `fase3c-google-cuenta-pruebas`, `fase3c-shell-adaptativo`.
+## 8. Archivos clave para releer
+
+- `.claude/PRPs/prp-nodos-dinamicos-whatsapp.md` — el PRP completo (objetivo, fases, modelo de datos, aprendizajes). **Empezar por acá.**
+- `src/features/whatsapp/services/nodos.ts` — `resolverIngreso` (entrada), `resolverSaliente` (salida), lecturas de nodos.
+- `src/features/whatsapp/services/ruteoConversacion.ts` — ruteo (nodo,paciente)→médico.
+- `src/lib/whatsapp/linkNodo.ts` (+ `.test.ts`) — lógica pura del link/marcador.
+- `src/app/c/[slug]/route.ts` — el redirect que hoy da 500 en prod.
+- `src/features/whatsapp/runner.ts` — ingreso del webhook (usa `resolverIngreso`).
+- `supabase/migrations/20260614_fase1_nodos_dinamicos.sql` — esquema de nodos.
+
+---
+
+## 9. Notas contextuales
+
+- Memoria del proyecto actualizada: `project_medicuenta_nodos_whatsapp.md` (en la auto-memory) tiene la decisión + estado.
+- Diferido a "fase de escalamiento" (NO en este PRP): flota de 10-15 nodos, failover automático, monitoreo de quality rating, reverse-lookup `numero_personal→médico` para nodos multi-médico.
+- El orquestador (cron de email, ya en prod) necesita `RESEND_API_KEY` + `CRON_SECRET` en prod para los avisos; si faltan, falla solo sin afectar el bot. No es prioridad.
+- Para la cobranza de recetas por el bot (parte del flujo), prod necesitará `PUBLIC_BASE_URL` apuntando a `https://medicuenta-v2.vercel.app` — verificar cuando se pruebe el cobro.
