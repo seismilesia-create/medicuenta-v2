@@ -30,7 +30,7 @@ export default async function DashboardPage() {
     supabase.from('debitos').select('monto, fecha, refacturable, refacturado'),
     supabase.from('liquidaciones').select('estado'),
     supabase.from('cirugias').select('estado, total_calculado'),
-    supabase.from('perfiles').select('nombre').eq('id', user.id).maybeSingle(),
+    supabase.from('perfiles').select('nombre, apellido, especialidad').eq('id', user.id).maybeSingle(),
     supabase.from('wa_asignaciones').select('slug_publico').eq('medico_id', user.id).eq('activo', true).maybeSingle(),
   ])
 
@@ -58,6 +58,8 @@ export default async function DashboardPage() {
   }
 
   const nombre = (perfilRes.data?.nombre ?? null) as string | null
+  const apellido = (perfilRes.data?.apellido ?? null) as string | null
+  const especialidad = (perfilRes.data?.especialidad ?? null) as string | null
   const slug = asignacionRes.data?.slug_publico ?? null
   const linkAsistente = slug ? `${process.env.PUBLIC_BASE_URL ?? ''}/c/${slug}` : null
   const trendData = computeTrendData(ordenes, debitos)
@@ -90,7 +92,7 @@ export default async function DashboardPage() {
 
       <div className="px-4 md:px-8 pb-8 md:pb-12 space-y-6">
         {/* Asistente WhatsApp */}
-        <MiAsistenteWhatsapp link={linkAsistente} />
+        <MiAsistenteWhatsapp link={linkAsistente} nombre={nombre} apellido={apellido} especialidad={especialidad} />
 
         {/* Metrics Grid */}
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
