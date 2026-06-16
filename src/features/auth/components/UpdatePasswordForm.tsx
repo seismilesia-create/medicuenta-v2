@@ -13,6 +13,20 @@ export function UpdatePasswordForm() {
     setLoading(true)
     setError(null)
 
+    const password = (formData.get('password') as string) ?? ''
+    const confirm = (formData.get('confirmPassword') as string) ?? ''
+
+    if (password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres')
+      setLoading(false)
+      return
+    }
+    if (password !== confirm) {
+      setError('Las contraseñas no coinciden')
+      setLoading(false)
+      return
+    }
+
     const result = await updatePassword(formData)
 
     if (result?.error) {
@@ -34,9 +48,19 @@ export function UpdatePasswordForm() {
         minLength={6}
       />
 
+      <Input
+        id="confirmPassword"
+        name="confirmPassword"
+        type="password"
+        label="Repetir contraseña"
+        placeholder="Volvé a escribir la contraseña"
+        required
+        minLength={6}
+      />
+
       {error && (
-        <div className="rounded-lg bg-error-50 border border-error-500 p-3">
-          <p className="text-sm text-error-700">{error}</p>
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+          <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
 
