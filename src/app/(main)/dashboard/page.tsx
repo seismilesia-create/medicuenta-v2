@@ -6,6 +6,7 @@ import {
   DashboardAlerts,
   MetricCard,
   QuickActions,
+  MiAsistenteWhatsapp,
 } from '@/features/dashboard/components'
 import type { TrendDataPoint } from '@/features/dashboard/components/DashboardTrendChart'
 import type { AlertItem } from '@/features/dashboard/components/DashboardAlerts'
@@ -24,12 +25,13 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  const [ordenesRes, debitosRes, liquidacionesRes, cirugiasRes, perfilRes] = await Promise.all([
+  const [ordenesRes, debitosRes, liquidacionesRes, cirugiasRes, perfilRes, asignacionRes] = await Promise.all([
     supabase.from('ordenes').select('estado, honorario_calculado, monto_particular, monto_plus, fecha_atencion'),
     supabase.from('debitos').select('monto, fecha, refacturable, refacturado'),
     supabase.from('liquidaciones').select('estado'),
     supabase.from('cirugias').select('estado, total_calculado'),
     supabase.from('perfiles').select('nombre').eq('id', user.id).maybeSingle(),
+    supabase.from('wa_asignaciones').select('slug_publico').eq('medico_id', user.id).eq('activo', true).maybeSingle(),
   ])
 
   const ordenes = ordenesRes.data ?? []
@@ -56,6 +58,8 @@ export default async function DashboardPage() {
   }
 
   const nombre = (perfilRes.data?.nombre ?? null) as string | null
+  const slug = asignacionRes.data?.slug_publico ?? null
+  const linkAsistente = slug ? `${process.env.PUBLIC_BASE_URL ?? ''}/c/${slug}` : null
   const trendData = computeTrendData(ordenes, debitos)
   const alerts = computeAlerts(ordenes, debitos, liquidaciones, cirugias)
   const greeting = getGreeting()
@@ -85,6 +89,9 @@ export default async function DashboardPage() {
       </div>
 
       <div className="px-4 md:px-8 pb-8 md:pb-12 space-y-6">
+        {/* Asistente WhatsApp */}
+        <MiAsistenteWhatsapp link={linkAsistente} />
+
         {/* Metrics Grid */}
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
