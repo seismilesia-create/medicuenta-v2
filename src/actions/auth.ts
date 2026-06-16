@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { type EmailOtpType } from '@supabase/supabase-js'
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
@@ -81,4 +82,21 @@ export async function logout() {
   const supabase = await createClient()
   await supabase.auth.signOut()
   redirect('/login')
+}
+
+export async function activarCuenta(formData: FormData) {
+  const tokenHash = String(formData.get('token_hash') ?? '')
+  const type = String(formData.get('type') ?? '') as EmailOtpType
+  const next = String(formData.get('next') ?? '/update-password')
+
+  if (!tokenHash || !type) {
+    redirect('/login?error=enlace_invalido')
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash })
+  if (error) {
+    redirect('/login?error=enlace_expirado')
+  }
+  redirect(next)
 }
