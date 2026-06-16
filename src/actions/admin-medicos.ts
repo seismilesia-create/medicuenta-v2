@@ -4,7 +4,7 @@
 import { resolverSuperadmin } from '@/features/admin/access/superadmin'
 import { createServiceClient } from '@/lib/supabase/server'
 import { normalizeRecipient } from '@/lib/whatsapp/client'
-import { onboardMedicoSchema, type OnboardMedicoInput, type MedicoFila, type OnboardMedicoResult } from '@/features/admin/medicos/types'
+import { onboardMedicoSchema, type OnboardMedicoInput, type MedicoFila, type OnboardMedicoResult, editarMedicoSchema, type EditarMedicoInput, type MedicoDetalle } from '@/features/admin/medicos/types'
 
 function siteUrl(): string {
   // El proyecto usa PUBLIC_BASE_URL (no NEXT_PUBLIC_SITE_URL) para la URL pública server-side.
@@ -114,6 +114,73 @@ export async function onboardMedico(input: OnboardMedicoInput): Promise<OnboardM
   if (rpc.error) return { error: traducirErrorCableado(rpc.error.message) }
 
   return { slug: d.slug, link: `${siteUrl()}/c/${d.slug}`, medicoId }
+}
+
+/** Trae los datos editables de un médico (para precargar el form de edición). */
+export async function getMedicoDetalle(medicoId: string): Promise<{ data: MedicoDetalle } | { error: string }> {
+  const guard = await requireSuperadmin()
+  if ('error' in guard) return guard
+
+  const service = createServiceClient()
+  const { data: perfil, error } = await service
+    .from('perfiles')
+    .select('nombre, apellido, especialidad, matricula, cuit, telefono')
+    .eq('id', medicoId)
+    .maybeSingle()
+  if (error) return { error: error.message }
+  if (!perfil) return { error: 'Médico no encontrado' }
+
+  const { data: asig } = await service
+    .from('wa_asignaciones')
+    .select('numero_personal, slug_publico')
+    .eq('medico_id', medicoId)
+    .maybeSingle()
+
+  return {
+    data: {
+      nombre: (perfil.nombre as string | null) ?? '',
+      apellido: (perfil.apellido as string | null) ?? '',
+      especialidad: (perfil.especialidad as string | null) ?? '',
+      matricula: (perfil.matricula as string | null) ?? '',
+      cuit: (perfil.cuit as string | null) ?? '',
+      telefono: (perfil.telefono as string | null) ?? '',
+      numeroWhatsapp: (asig?.numero_personal as string | null) ?? '',
+      slug: (asig?.slug_publico as string | null) ?? null,
+    },
+  }
+}
+
+/** Actualiza identidad (perfiles) + número de WhatsApp (wa_asignaciones) de un médico. */
+export async function actualizarMedico(medicoId: string, input: EditarMedicoInput): Promise<{ ok: true } | { error: string }> {
+  const guard = await requireSuperadmin()
+  if ('error' in guard) return guard
+
+  const parsed = editarMedicoSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  const d = parsed.data
+
+  const service = createServiceClient()
+  const { error: e1 } = await service
+    .from('perfiles')
+    .update({
+      nombre: d.nombre,
+      apellido: d.apellido,
+      especialidad: d.especialidad || null,
+      matricula: d.matricula || null,
+      cuit: d.cuit || null,
+      telefono: d.telefono || null,
+    })
+    .eq('id', medicoId)
+  if (e1) return { error: e1.message }
+
+  const numeroPersonal = normalizeRecipient(d.numeroWhatsapp)
+  const { error: e2 } = await service
+    .from('wa_asignaciones')
+    .update({ numero_personal: numeroPersonal })
+    .eq('medico_id', medicoId)
+  if (e2) return { error: e2.message }
+
+  return { ok: true }
 }
 
 /** Reintento idempotente del cableado: relee la "memoria del intento" de raw_user_meta_data. */

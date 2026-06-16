@@ -39,3 +39,30 @@ export interface OnboardMedicoResult {
   link: string
   medicoId: string
 }
+
+export const editarMedicoSchema = z.object({
+  nombre: z.string().trim().min(1, 'Nombre requerido'),
+  apellido: z.string().trim().min(1, 'Apellido requerido'),
+  especialidad: z.string().trim().optional().default(''),
+  matricula: z.string().trim().optional().default(''),
+  cuit: z.string().trim().optional().default(''),
+  telefono: z.string().trim().optional().default(''),
+  numeroWhatsapp: z
+    .string()
+    .trim()
+    .min(8, 'Número de WhatsApp inválido')
+    .refine((v) => v.replace(/\D/g, '').length >= 10, 'Número de WhatsApp inválido'),
+})
+
+export type EditarMedicoInput = z.infer<typeof editarMedicoSchema>
+
+export interface MedicoDetalle {
+  nombre: string
+  apellido: string
+  especialidad: string
+  matricula: string
+  cuit: string
+  telefono: string
+  numeroWhatsapp: string
+  slug: string | null
+}
