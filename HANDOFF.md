@@ -1,103 +1,71 @@
-# HANDOFF — MediCuenta V2 — 2026-06-15 (tarde)
+# HANDOFF — MediCuenta V2 — 2026-06-16 (madrugada)
 
-> Sesión de **validación E2E** de la Arquitectura de Nodos WhatsApp (PRP-006) en **PRODUCCIÓN**.
-> El bloqueador del handoff anterior (4 env vars en Vercel) **ya estaba resuelto** al empezar.
-> El bot no respondía por **OTRA causa** (config de Meta), que se diagnosticó y arregló.
-> **Resultado: el bot funciona de punta a punta en producción** — flujos médico y paciente validados.
-> **No hubo cambios de código esta sesión** (diagnóstico + config en Meta + memoria).
+> Sesión larga. DOS cosas: (1) se **VALIDÓ el E2E del bot WhatsApp en prod** (estaba bloqueado), y
+> (2) se **diseñó + speceó el Panel de onboarding de médicos** (PENDIENTE de implementar).
+> Se retoma **MAÑANA TEMPRANO**. Sin código nuevo de la app esta sesión (diagnóstico + config Meta + specs + memoria).
 
 ---
 
 ## 0. Estado actual
-
-- **Tarea**: Validación E2E del bot WhatsApp (nodos dinámicos PRP-006) en producción.
-- **Estado**: **working — E2E core VALIDADO**. Quedan pulidos NO bloqueantes (B y C abajo).
-- **Branch**: `feat/whatsapp-recetas-turnos` — idéntica a `origin/main` salvo este `HANDOFF.md`; el código F1-F4 **ya está en producción** (`origin/main`).
-- **Último commit ANTES de este handoff**: `f18ef65` *WIP(checkpoint): nodos F1-F4*.
-- **Prod**: `https://medicuenta-v2.vercel.app` (Vercel deploya `origin/main`).
+- **Tarea en curso**: **Panel de onboarding de médicos** — spec aprobado y commiteado (`9ddffba`); falta el PLAN y la implementación.
+- **Estado**: spec done; próximo = revisar spec → `writing-plans` → bucle-agentico.
+- **Branch**: `feat/whatsapp-recetas-turnos` (= `origin/main` = prod, salvo los commits de docs). **Pusheado.**
+- **Último commit ANTES de este handoff**: `9ddffba` *docs(spec): panel de onboarding*.
 
 ---
 
-## 1. Qué se hizo esta sesión
-
-- **Diagnóstico sistemático de "el bot no responde".** Se descartó que fuera el código o las env vars.
-- **CAUSA RAÍZ (arreglada por Héctor en Meta):** el **Callback URL del webhook en Meta** apuntaba a una
-  **URL de prueba** (Preview/túnel), no a producción → Meta entregaba los mensajes (✓✓) pero **nunca
-  hacía POST** a `/api/whatsapp`. **Fix:** Callback URL = `https://medicuenta-v2.vercel.app/api/whatsapp`
-  + verify token = `WHATSAPP_VERIFY_TOKEN` + suscribir el campo **`messages`**.
-- **E2E VALIDADO en prod:**
-  - Flujo **MÉDICO** (desde el nº del médico): `precio 8000` ✅, `recetas` → resumen ✅.
-  - Flujo **PACIENTE** (desde OTRO número): el bot se presenta como *"asistente virtual del Dr. Héctor
-    Martínez, cirujano general"* y ofrece turno/receta ✅.
-  - Ruteo de identidad por nodo escribiendo en `wa_ruteo_conversacion` ✅.
-- Se confirmó que el **dedupe por `wamid`** (índice UNIQUE `wa_eventos_webhook_wamid_key`) funciona:
-  2 menús = 2 mensajes distintos, NO duplicación.
-- **QR directo** `whatsapp://send?...` probado: abre la app **sin navegador** y **sigue ruteando**
-  (el marcador `[ID:slug]` viaja en el texto).
-- Auto-memory actualizada: `project_medicuenta_nodos_whatsapp.md` → F5 E2E validado + gotcha del Callback URL.
+## 1. ⭐ PRIMEROS PASOS MAÑANA (en orden)
+1. **Supabase a plan pago.** Héctor va a poner la base paga. **Pregunta a resolver: ¿upgradear el MISMO proyecto (`eylcrxhpccwobipcjzal`) o crear uno nuevo?** → **Lean de Claude: upgradear el mismo, in-place** (conserva datos, schema, migraciones y env vars; uno nuevo obliga a migrar todo + re-apuntar Vercel). Confirmar antes de tocar.
+2. **Panel de onboarding**: que Héctor revise el spec → invocar `writing-plans` → implementar por fases.
 
 ---
 
-## 2. Decisiones tomadas (con el porqué)
+## 2. Lo que se hizo esta sesión
 
-- **No se mergea nada**: el código F1-F4 ya está en `origin/main` (producción). `feat` solo difiere en este `HANDOFF.md`.
-- **QR directo vs `/c/slug`**: el directo (`whatsapp://`) gana UX (abre la app sin navegador) y mantiene el
-  ruteo; pierde número-dinámico + analytics de escaneo. **Decisión de producto pendiente** (para el piloto el directo alcanza).
+### A. Bot WhatsApp — E2E VALIDADO en prod ✅
+- El bloqueador era el **Callback URL de Meta** apuntando a una URL de prueba (NO env vars, NO código). **Fix**: Callback URL de prod (`…/api/whatsapp`) + verify token = `WHATSAPP_VERIFY_TOKEN` + suscribir el campo `messages`.
+- **Médico** (`precio`, `recetas`) ✅ · **Paciente** (se presenta como asistente del Dr. Martínez) ✅ · **Turno agendado end-to-end** ✅ (Federico Ravetti, datos completos, `origen=bot`).
+- **Cobro de receta**: validado en LOCAL; el E2E con MercadoPago **real** se difiere al 1er médico real con infra paga. El MP del piloto es CUENTA DE PRUEBA.
+- **Display name** "Asistente MediCuenta": bien configurado, pero NO aparece en el header del chat porque la cuenta no está verificada (tilde azul "Enviar solicitud") — se difiere (negocio nuevo, Meta puede rechazar).
+- Checkpoint previo del E2E: `95a9458`.
 
----
-
-## 3. Lo que NO funcionó / gotchas (no repetir)
-
-- Asumir que el bloqueador eran las env vars: **ya estaban OK**. El bloqueador real era el **Callback URL de Meta**.
-- **✓✓ (entregado) NO garantiza que el webhook procese**: si el Callback URL está mal, Meta entrega al número
-  pero no POSTea. Diagnóstico decisivo: `wa_eventos_webhook` en 0 + **cero `POST /api/whatsapp`** en
-  `vercel logs --since` a pesar de ✓✓.
-- **Probar el flujo paciente desde el nº del MÉDICO no sirve**: el bot lo identifica como médico (`esRemitenteMedico`).
-  Para probar paciente hay que usar OTRO número.
+### B. Panel de onboarding de médicos — DISEÑADO (spec listo)
+- **Spec**: `docs/superpowers/specs/2026-06-16-panel-onboarding-medicos-design.md` (`9ddffba`). **Empezar por acá mañana.**
+- Decisiones: admin hace todo (llave en mano); alcance = **cuenta + identidad + servicio "Consulta" + cableado WhatsApp** (horarios/asistente quedan en `/consultorio/config`); acceso por **invitación email**; **nodo+slug automáticos** editables; enfoque A (formulario único + lista con "reintentar").
 
 ---
 
-## 4. Próximo paso concreto (plan B → C)
+## 3. Decisiones / gotchas (no repetir)
+- **✓✓ entregado NO garantiza que el webhook procese** (puede ser el Callback URL mal). Diagnóstico decisivo: `wa_eventos_webhook` en 0 + **cero `POST /api/whatsapp`** en `vercel logs --since` a pesar de ✓✓.
+- **Probar el flujo paciente desde el nº del MÉDICO no sirve** (lo toma como médico por `esRemitenteMedico`). Usar OTRO número.
+- **Onboarding HOY es semi-manual**: el cableado de WhatsApp + el servicio requieren SQL/script. El panel mata eso. Hoy el único "médico" es la cuenta `admin@medicuenta.com` (rol `admin`+superadmin); no hay `rol='medico'` real todavía.
 
-- **B) Display name en Meta**: configurar/forzar que aparezca **"Asistente MediCuenta"** en vez del número pelado
-  (WhatsApp Manager → número → verified name). Es lo más visible para la confianza del paciente.
-- **C) Flujos profundos**: probar **cobro real de una receta** (MercadoPago) + **agendar un turno** end-to-end.
+---
+
+## 4. Próximo paso concreto
+Mañana: (1) confirmar y hacer el upgrade de Supabase (lean: mismo proyecto); (2) revisar el spec del panel → `writing-plans` → arrancar la implementación por fases.
 
 ---
 
 ## 5. Comandos para verificar estado al retomar
-
 ```bash
-git status                 # limpio, en feat/whatsapp-recetas-turnos
-curl -i https://medicuenta-v2.vercel.app/c/dr-prueba          # 302 -> wa.me
-# enviar un WhatsApp NUEVO al link y ver que llegue el POST:
-vercel logs medicuenta-v2.vercel.app --since 10m | grep -i whatsapp   # esperar POST /api/whatsapp 200
+git status        # limpio, en feat/whatsapp-recetas-turnos
+git log -3        # último: 9ddffba docs(spec) panel onboarding
+curl -i https://medicuenta-v2.vercel.app/c/dr-prueba   # 302 (el bot sigue vivo)
 ```
 
 ---
 
 ## 6. Archivos clave para releer
-
-- `.claude/PRPs/prp-nodos-dinamicos-whatsapp.md` — el PRP completo.
-- `src/app/api/whatsapp/route.ts` — webhook (verificación de firma + dedupe por wamid).
-- `src/features/whatsapp/runner.ts` — ramas médico/paciente.
-- `src/features/whatsapp/services/nodos.ts` — `resolverIngreso` (a: marcador, b: ruteo persistido, c: legacy, d: null).
+- `docs/superpowers/specs/2026-06-16-panel-onboarding-medicos-design.md` — **EL SPEC, empezar acá.**
+- `middleware.ts` — guards por rol (`es_superadmin` → `/admin`).
+- `src/actions/perfil.ts`, `src/actions/consultorio-secretaria.ts` — patrones de server actions + `perfiles`.
+- `supabase/migrations/20260614_fase1_nodos_dinamicos.sql` — `wa_nodos` / `wa_asignaciones`.
 
 ---
 
-## 7. IDs y notas contextuales (SIN secretos)
-
-| Qué | Valor |
-|---|---|
-| phone_number_id PRODUCCIÓN | `1110153015523184` |
-| Número (display) | `+54 383 15-488-4384` (WhatsApp lo muestra como `+54 9 3834 88-4384`) |
-| `numero_whatsapp` del nodo (wa.me) | `543834884384` (SIN el 9; entrega ✓✓ OK) |
-| Nodo piloto | `ac72b38a-53ea-4fec-8e4a-280c04dcc0df` · slug `dr-prueba` |
-| Médico piloto | `admin@medicuenta.com` · `924014ac-fb0a-4d9c-9028-49535e5e2e60` |
-| Proyecto Supabase | `eylcrxhpccwobipcjzal` |
-
-- **Pendientes de seguridad** (del handoff anterior, siguen abiertos): sacar `WA_TOKEN_TMP` de `.env.local`;
-  rotación del token permanente **diferida** hasta que Héctor anuncie "vamos a prod".
-- El **display name** y el **menú-en-cada-mensaje del médico** son pulidos de UX, no bugs.
-- Hay un desarrollo grande pendiente fuera de este PRP: **Fase 5 — Suscripciones** (que el médico pague por MediCuenta).
-- **Nota de repo**: el `main` LOCAL está desincronizado (commits "Auto-backup"). No afecta producción; ordenar en algún momento.
+## 7. Notas contextuales
+- Tablas del panel: `perfiles`, `wa_servicios`, `wa_asignaciones`, `wa_nodos`. Modelo **NODOS** (no el legacy `wa_canales`).
+- **Riesgos del spec a confirmar**: SMTP para los emails de invitación (Supabase default es limitado → Resend); página de "aceptar invitación" (`type=invite`).
+- Pendientes viejos: probar **rol secretaria**; seguridad §6 (sacar `WA_TOKEN_TMP`, rotar token); **Fase 5 Suscripciones**.
+- Repo: `main` LOCAL desincronizado (commits "Auto-backup"); no afecta prod, ordenar algún día.
