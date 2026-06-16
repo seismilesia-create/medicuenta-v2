@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { AssistantHome } from '@/features/assistant/components'
 
 export const metadata = {
   title: 'MediCuenta',
@@ -16,23 +15,19 @@ export default async function HomePage() {
     redirect('/login')
   }
 
-  // Traemos el nombre para el saludo + si es dueño para mandarlo a su panel.
   const { data: perfil } = await supabase
     .from('perfiles')
-    .select('nombre, es_superadmin')
+    .select('es_superadmin')
     .eq('id', user.id)
     .maybeSingle()
 
-  // El dueño (superadmin) entra directo a SU panel, no al asistente del médico.
+  // El dueño (superadmin) entra a SU panel.
   if (perfil?.es_superadmin) {
     redirect('/admin')
   }
 
-  const nombre = (perfil?.nombre ?? null) as string | null
-
-  return (
-    <div className="h-screen w-screen overflow-hidden">
-      <AssistantHome nombre={nombre} />
-    </div>
-  )
+  // Médico/secretaria → el dashboard, que ya tiene el shell responsive (escritorio:
+  // sidebar + dashboard + asistente lateral; celular: asistente puro) y el gating por
+  // plan. A la secretaria el middleware la reenvía a /agenda.
+  redirect('/dashboard')
 }
