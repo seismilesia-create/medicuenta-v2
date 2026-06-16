@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Users, Cpu, MessageSquareWarning, AlertTriangle, Bot } from 'lucide-react'
 import { getMedicosConMetricas } from '@/features/admin/services/superadminService'
 import { detectarAlertas } from '@/lib/admin/alertas'
@@ -77,6 +78,14 @@ export default async function AdminPage() {
           valueFormat="integer"
           description={resumen.totalErrores7d > 0 ? 'revisar en la bitácora' : 'todo en orden'}
         />
+      </div>
+
+      {/* Gestión */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Link href="/admin/medicos" className="block rounded-xl border border-border p-4 hover:bg-muted transition-colors">
+          <div className="font-medium">Médicos</div>
+          <div className="text-sm text-[var(--color-muted-foreground)]">Onboardear y ver el estado de cableado</div>
+        </Link>
       </div>
 
       <div className="space-y-2">
