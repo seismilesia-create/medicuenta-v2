@@ -16,10 +16,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border px-4 md:px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <Link href="/admin" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <ShieldCheck className="w-5 h-5 text-primary" />
           <span className="font-semibold">MediCuenta · Panel del dueño</span>
-        </div>
+        </Link>
         <div className="flex items-center gap-4">
           <Link
             href="/dashboard"
