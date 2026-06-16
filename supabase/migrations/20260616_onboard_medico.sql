@@ -108,3 +108,12 @@ as $$
   where p.rol = 'medico'
   order by p.apellido nulls last, p.nombre nulls last;
 $$;
+
+-- Seguridad: estas funciones SECURITY DEFINER son server-only (las llama la server action
+-- con service-role tras verificar es_superadmin). Cerramos EXECUTE a anon/authenticated para
+-- que NO sean invocables con la anon key desde el cliente (mismo patrón que
+-- superadmin_metricas_medicos / uid_por_email).
+revoke execute on function public.onboard_medico_cablear(uuid, text, text, text, text, text, text, text, text, text, int) from public, anon, authenticated;
+revoke execute on function public.superadmin_listar_medicos() from public, anon, authenticated;
+grant execute on function public.onboard_medico_cablear(uuid, text, text, text, text, text, text, text, text, text, int) to service_role;
+grant execute on function public.superadmin_listar_medicos() to service_role;
