@@ -88,28 +88,39 @@ export async function getNodoByPhoneNumberId(db: SupabaseClient, phoneNumberId: 
 }
 
 /**
- * ¿El teléfono entrante es el numero_personal de algún médico ACTIVO de ESE nodo?
- * Sirve para NO mandarle instrucciones de paciente a un médico (su ruteo por
- * numero_personal en nodos multi-médico está diferido — ver PRP).
+ * Reverse-lookup del médico por su número: medico_id si `telefonoNorm` es el numero_personal
+ * de un médico ACTIVO de ESE nodo, o null. Normaliza ambos lados (el "9" argentino) para no
+ * fallar por formato. Es lo que reconoce al médico cuando le escribe al bot sin marcador.
  */
-export async function esMedicoDelNodo(
+export async function getMedicoIdPorNumeroEnNodo(
   db: SupabaseClient,
   phoneNumberId: string,
-  telefono: string,
-): Promise<boolean> {
+  telefonoNorm: string,
+): Promise<string | null> {
   const { data: nodo } = await db
     .from('wa_nodos')
     .select('id')
     .eq('phone_number_id', phoneNumberId)
     .maybeSingle()
-  if (!nodo) return false
-  const { count } = await db
+  if (!nodo) return null
+  const { data: asigs } = await db
     .from('wa_asignaciones')
-    .select('id', { count: 'exact', head: true })
+    .select('medico_id, numero_personal')
     .eq('nodo_id', (nodo as { id: string }).id)
-    .eq('numero_personal', telefono)
     .eq('activo', true)
-  return (count ?? 0) > 0
+  for (const a of (asigs as { medico_id: string; numero_personal: string | null }[] | null) ?? []) {
+    if (a.numero_personal && normalizeRecipient(a.numero_personal) === telefonoNorm) return a.medico_id
+  }
+  return null
+}
+
+/** ¿El teléfono entrante es el de un médico de ese nodo? (guard para no mandarle msje de paciente). */
+export async function esMedicoDelNodo(
+  db: SupabaseClient,
+  phoneNumberId: string,
+  telefono: string,
+): Promise<boolean> {
+  return (await getMedicoIdPorNumeroEnNodo(db, phoneNumberId, telefono)) !== null
 }
 
 /** Nodo del médico para salientes (entrega receta, webhook MP, toma humana). Drop-in de getCanalByMedicoId (Fase 4). */
@@ -146,10 +157,10 @@ export interface IngresoResuelto {
 
 /**
  * Resuelve el médico de un mensaje entrante en el modelo de nodos, con fallback al canal legacy.
- * Orden: (a) [ID:slug] del 1.er mensaje → re-ancla ruteo · (b) ruteo persistido (paciente recurrente)
- * · (c) fallback legacy (wa_canales 1:1; en el piloto el nodo reusa el canal, así que cubre tanto al
- * médico escribiéndole a su nodo como al paciente sin marcador) · (d) null (no romper).
- * Mantiene el contrato CanalResuelto → el pipeline aguas abajo (runner) no cambia.
+ * Orden: (a) [ID:slug] del 1.er mensaje → re-ancla ruteo · (a.5) el número entrante = numero_personal
+ * de un médico del nodo → es el médico escribiéndole al bot · (b) ruteo persistido (paciente
+ * recurrente) · (c) fallback legacy (wa_canales 1:1; en el piloto el nodo reusa el canal) ·
+ * (d) null (no romper). Mantiene el contrato CanalResuelto → el pipeline aguas abajo (runner) no cambia.
  */
 export async function resolverIngreso(
   db: SupabaseClient,
@@ -178,6 +189,15 @@ export async function resolverIngreso(
     // slug inválido o de otro nodo → seguir resolviendo por otros medios
   }
 
+  // (a.5) El número entrante es el numero_personal de un médico de este nodo (el médico
+  // escribiéndole al bot, sin marcador). Lo resolvemos a SU canal → el runner lo reconoce
+  // como médico (esRemitenteMedico) y le da los comandos de médico (recetas, precio, turnos).
+  const medicoPropio = await getMedicoIdPorNumeroEnNodo(db, phoneNumberId, telefono)
+  if (medicoPropio) {
+    const canal = await getNodoByMedicoId(db, medicoPropio)
+    if (canal) return { canal }
+  }
+
   // (b) Ruteo persistido (paciente recurrente, ya sin marcador).
   const ruteadoId = await getRuteoMedico(db, phoneNumberId, telefono)
   if (ruteadoId) {
@@ -185,7 +205,8 @@ export async function resolverIngreso(
     if (canal) return { canal }
   }
 
-  // (c) Fallback legacy. El reverse-lookup por numero_personal para nodos multi-médico queda diferido (ver PRP).
+  // (c) Fallback legacy (wa_canales 1:1; en el piloto el nodo reusa el canal). El médico original
+  // del bot (sin fila en wa_asignaciones) se resuelve acá; los onboardeados, en (a.5).
   const legacy = await getCanalByPhoneNumberId(db, phoneNumberId)
   if (legacy) return { canal: legacy }
 
