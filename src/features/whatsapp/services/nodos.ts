@@ -87,6 +87,31 @@ export async function getNodoByPhoneNumberId(db: SupabaseClient, phoneNumberId: 
   }
 }
 
+/**
+ * ¿El teléfono entrante es el numero_personal de algún médico ACTIVO de ESE nodo?
+ * Sirve para NO mandarle instrucciones de paciente a un médico (su ruteo por
+ * numero_personal en nodos multi-médico está diferido — ver PRP).
+ */
+export async function esMedicoDelNodo(
+  db: SupabaseClient,
+  phoneNumberId: string,
+  telefono: string,
+): Promise<boolean> {
+  const { data: nodo } = await db
+    .from('wa_nodos')
+    .select('id')
+    .eq('phone_number_id', phoneNumberId)
+    .maybeSingle()
+  if (!nodo) return false
+  const { count } = await db
+    .from('wa_asignaciones')
+    .select('id', { count: 'exact', head: true })
+    .eq('nodo_id', (nodo as { id: string }).id)
+    .eq('numero_personal', telefono)
+    .eq('activo', true)
+  return (count ?? 0) > 0
+}
+
 /** Nodo del médico para salientes (entrega receta, webhook MP, toma humana). Drop-in de getCanalByMedicoId (Fase 4). */
 export async function getNodoByMedicoId(db: SupabaseClient, medicoId: string): Promise<CanalResuelto | null> {
   const { data: asig } = await db
