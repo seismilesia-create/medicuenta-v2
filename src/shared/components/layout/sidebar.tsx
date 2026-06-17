@@ -16,6 +16,7 @@ import {
   Moon,
   Sun,
   User,
+  KeyRound,
   LogOut,
   Activity,
   ChevronRight,
@@ -207,6 +208,12 @@ export function Sidebar({ nombre, rol = 'medico', medicos = [], medicoActivoId =
               <Link href="/perfil" onClick={handleNavClick}>
                 <User className="mr-2 h-4 w-4" />
                 Ver perfil
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/update-password" onClick={handleNavClick}>
+                <KeyRound className="mr-2 h-4 w-4" />
+                Cambiar contraseña
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

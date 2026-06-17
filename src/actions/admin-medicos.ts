@@ -5,11 +5,7 @@ import { resolverSuperadmin } from '@/features/admin/access/superadmin'
 import { createServiceClient } from '@/lib/supabase/server'
 import { normalizeRecipient } from '@/lib/whatsapp/client'
 import { onboardMedicoSchema, type OnboardMedicoInput, type MedicoFila, type OnboardMedicoResult, editarMedicoSchema, type EditarMedicoInput, type MedicoDetalle } from '@/features/admin/medicos/types'
-
-function siteUrl(): string {
-  // El proyecto usa PUBLIC_BASE_URL (no NEXT_PUBLIC_SITE_URL) para la URL pública server-side.
-  return process.env.PUBLIC_BASE_URL || 'http://localhost:3000'
-}
+import { siteUrl } from '@/lib/site-url'
 
 /** Verifica superadmin y devuelve error si no lo es. */
 async function requireSuperadmin(): Promise<{ userId: string } | { error: string }> {

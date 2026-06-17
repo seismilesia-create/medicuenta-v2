@@ -66,6 +66,26 @@ export async function isBotPausado(
   return (data as { bot_pausado: boolean } | null)?.bot_pausado ?? false
 }
 
+/**
+ * El bot resolvió la gestión por sí solo (reservó/cambió un turno): baja la
+ * alarma de "necesita atención humana" que pudo haberse encendido antes —p. ej.
+ * cuando el médico todavía no tenía horarios cargados y el bot escaló—. NO toca
+ * `bot_pausado`: ese es el mute manual del médico, no lo decide el bot.
+ */
+export async function bajarAlarmaHumano(
+  db: SupabaseClient,
+  medicoId: string,
+  conversacionId: string,
+): Promise<void> {
+  const { error } = await db
+    .from('wa_conversaciones')
+    .update({ necesita_humano: false, updated_at: new Date().toISOString() })
+    .eq('medico_id', medicoId)
+    .eq('id', conversacionId)
+  // Degradar está bien (el turno ya quedó creado); jamás en silencio (spec §10).
+  if (error) console.error('[conversaciones] bajarAlarmaHumano error:', error.message)
+}
+
 export async function addMensaje(
   db: SupabaseClient,
   args: {

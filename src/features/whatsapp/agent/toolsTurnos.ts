@@ -17,6 +17,7 @@ import {
   cancelarTurnoDePaciente,
   getOsSuspendidas,
 } from '@/features/whatsapp/services/turnosService'
+import { bajarAlarmaHumano } from '@/features/whatsapp/services/conversaciones'
 
 export interface TurnosToolsCtx {
   db: SupabaseClient
@@ -243,6 +244,12 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
           conversacionId: ctx.conversacionId,
         })
         if (!r.ok) return { ok: false, error: r.error }
+        // El bot resolvió la gestión (reservó/cambió el turno). Si esta conversación
+        // había escalado a atención humana —típicamente cuando el médico todavía no
+        // tenía horarios cargados— bajamos esa alarma del panel: ya quedó resuelta.
+        if (ctx.conversacionId) {
+          await bajarAlarmaHumano(ctx.db, ctx.medicoId, ctx.conversacionId)
+        }
         const inicioReal = r.yaExistia ?? startsAt
         return {
           ok: true,

@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { type EmailOtpType } from '@supabase/supabase-js'
+import { siteUrl } from '@/lib/site-url'
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
@@ -51,8 +52,12 @@ export async function resetPassword(formData: FormData) {
 
   const email = formData.get('email') as string
 
+  // Mismo patrón que el invite (admin-medicos): el link REAL del mail lo arma la
+  // plantilla de Supabase apuntando a /activar (POST, inmune al prefetch de Gmail).
+  // Este redirectTo solo tiene que ser una URL pública válida y consistente con el
+  // invite — antes usaba NEXT_PUBLIC_SITE_URL, que NO está seteada → caía a localhost.
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/update-password`,
+    redirectTo: `${siteUrl()}/api/auth/callback?next=/update-password`,
   })
 
   if (error) {

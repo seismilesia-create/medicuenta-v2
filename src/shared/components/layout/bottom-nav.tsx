@@ -223,6 +223,16 @@ export function BottomNav({ rol = 'medico' }: { rol?: 'medico' | 'secretaria' })
                 </svg>
                 Perfil
               </Link>
+              <Link
+                href="/update-password"
+                className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                style={{ color: isActive('/update-password') ? 'var(--color-primary)' : 'var(--color-foreground)' }}
+              >
+                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                Cambiar contraseña
+              </Link>
               <div style={{ borderTop: '1px solid var(--color-border)', margin: '4px 0' }} />
               <button
                 onClick={() => { setMenuOpen(false); logout() }}
