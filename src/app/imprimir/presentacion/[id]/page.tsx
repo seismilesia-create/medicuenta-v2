@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { ImprimirBoton } from '@/features/ordenes/components/ImprimirBoton'
+import { AGENTE_LABELS } from '@/features/ordenes/types/ordenes'
+import type { AgenteFacturador } from '@/features/ordenes/types/ordenes'
 
 function fmtMes(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
@@ -45,7 +47,7 @@ export default async function PlanillaImprimible({ params }: { params: Promise<{
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Planilla de presentación</h1>
         <p style={{ margin: '4px 0' }}><strong>{medico}</strong>{perfil?.matricula ? ` — Mat. ${perfil.matricula}` : ''}</p>
         <p style={{ margin: '4px 0' }}>
-          Obra social: <strong>{pres.obra_social}</strong> · Período: <strong style={{ textTransform: 'capitalize' }}>{fmtMes(pres.periodo_mes)}</strong>
+          Obra social: <strong>{pres.obra_social}</strong> · Período: <strong style={{ textTransform: 'capitalize' }}>{fmtMes(pres.periodo_mes)}</strong> · Agente: <strong>{AGENTE_LABELS[pres.agente_facturador as AgenteFacturador] ?? pres.agente_facturador}</strong>
         </p>
       </header>
 

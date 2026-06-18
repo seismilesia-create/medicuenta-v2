@@ -156,6 +156,13 @@ export function OrdenesTable() {
             </div>
 
             <div className="flex items-center gap-3">
+              <Link
+                href="/ordenes/presentaciones"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/50 bg-card hover:bg-accent/50 text-sm font-medium text-foreground transition-colors"
+              >
+                <FileText className="h-4 w-4" strokeWidth={1.5} />
+                Presentaciones
+              </Link>
               <button
                 onClick={exportToExcel}
                 disabled={ordenes.length === 0}
