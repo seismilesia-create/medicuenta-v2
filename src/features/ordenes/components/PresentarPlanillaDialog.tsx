@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { emitirPlanilla } from '@/actions/presentaciones'
-import { agruparPorObraSocial } from '@/lib/ordenes/planilla'
+import { agruparParaPlanilla } from '@/lib/ordenes/planilla'
 import { evaluarRiesgoOrden, FALTANTE_LABELS } from '@/lib/ordenes/riesgo-debito'
 import type { Orden } from '../types/ordenes'
 
@@ -12,9 +12,9 @@ export function PresentarPlanillaDialog({ ordenes, onClose }: { ordenes: Orden[]
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Solo obra social entra en la planilla (las particulares no se debitan ni se presentan).
-  const ordenesOS = ordenes.filter((o) => o.tipo === 'obra_social')
-  const particulares = ordenes.length - ordenesOS.length
+  // Solo obra social nivel 1 entra en la planilla. Particulares y nivel 2 (fojas quirúrgicas) no se presentan.
+  const ordenesOS = ordenes.filter((o) => o.tipo === 'obra_social' && o.nivel === 1)
+  const excluidas = ordenes.length - ordenesOS.length
   const enRiesgoIds = new Set(ordenesOS.filter((o) => evaluarRiesgoOrden(o).enRiesgo).map((o) => o.id))
   const riesgosas = ordenesOS.filter((o) => enRiesgoIds.has(o.id))
 
@@ -23,14 +23,18 @@ export function PresentarPlanillaDialog({ ordenes, onClose }: { ordenes: Orden[]
     if (aPresentar.length === 0) { setError('No quedan órdenes para presentar'); return }
     setLoading(true)
     setError(null)
-    const grupos = agruparPorObraSocial(aPresentar.map((o) => ({
-      id: o.id, obra_social: o.obra_social!, fecha_atencion: o.fecha_atencion,
-      honorario_calculado: Number(o.honorario_calculado), monto_plus: Number(o.monto_plus),
+    const grupos = agruparParaPlanilla(aPresentar.map((o) => ({
+      id: o.id,
+      obra_social: o.obra_social,
+      agente_facturador: o.agente_facturador,
+      fecha_atencion: o.fecha_atencion,
+      honorario_calculado: Number(o.honorario_calculado),
+      monto_plus: Number(o.monto_plus),
     })))
     for (const g of grupos) {
       const res = await emitirPlanilla({
         obra_social: g.obra_social,
-        agente_facturador: aPresentar.find((o) => o.obra_social === g.obra_social)?.agente_facturador ?? 'circulo_medico',
+        agente_facturador: g.agente_facturador,
         orden_ids: g.ordenes.map((o) => o.id),
       })
       if (res?.error) { setError(res.error); setLoading(false); return }
@@ -44,7 +48,7 @@ export function PresentarPlanillaDialog({ ordenes, onClose }: { ordenes: Orden[]
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-lg font-semibold text-foreground">Emitir planilla</h2>
         <p className="text-sm text-muted-foreground">
-          {ordenesOS.length} órdenes de obra social. Se emitirá una planilla por cada OS.{particulares > 0 ? ` (${particulares} particular${particulares === 1 ? '' : 'es'} no entran)` : ''}
+          {ordenesOS.length} órdenes de obra social nivel 1. Se emitirá una planilla por cada OS/mes/agente.{excluidas > 0 ? ` (${excluidas} no entran: particulares o nivel 2)` : ''}
         </p>
 
         {riesgosas.length > 0 && (

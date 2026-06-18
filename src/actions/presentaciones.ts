@@ -18,11 +18,13 @@ export async function emitirPlanilla(input: EmitirPlanillaInput) {
 
   const { data: ordenes, error: qErr } = await supabase
     .from('ordenes')
-    .select('id, obra_social, fecha_atencion, honorario_calculado, monto_plus, estado')
+    .select('id, obra_social, agente_facturador, fecha_atencion, honorario_calculado, monto_plus, estado')
     .in('id', input.orden_ids)
     .eq('medico_id', user.id)
     .eq('estado', 'borrador')
     .eq('obra_social', input.obra_social)
+    .eq('tipo', 'obra_social')
+    .eq('nivel', 1)
   if (qErr) return { error: qErr.message }
   const validas = ordenes ?? []
   if (validas.length === 0) return { error: 'No hay órdenes válidas (borrador, de esa obra social)' }
@@ -52,6 +54,8 @@ export async function emitirPlanilla(input: EmitirPlanillaInput) {
     .in('id', validas.map((o) => o.id))
     .eq('medico_id', user.id)
     .eq('estado', 'borrador')
+    .eq('tipo', 'obra_social')
+    .eq('nivel', 1)
   if (updErr) return { error: updErr.message }
 
   return { success: true, presentacion_id: pres.id as string, cantidad: validas.length }
