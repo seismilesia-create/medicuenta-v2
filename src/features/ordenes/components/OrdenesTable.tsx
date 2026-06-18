@@ -7,8 +7,8 @@ import * as XLSX from 'xlsx'
 import { FileText, Download, Plus, CheckCircle2, AlertCircle, Check, X, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { batchUpdateOrdenesEstado } from '@/actions/ordenes'
 import type { Orden, OrdenFilters as FilterType } from '../types/ordenes'
+import { PresentarPlanillaDialog } from './PresentarPlanillaDialog'
 import { AGENTE_LABELS } from '../types/ordenes'
 import { OrdenStatusBadge } from './OrdenStatusBadge'
 import { OrdenFilters } from './OrdenFilters'
@@ -41,7 +41,7 @@ export function OrdenesTable() {
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<FilterType>({})
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [batchLoading, setBatchLoading] = useState(false)
+  const [showPlanilla, setShowPlanilla] = useState(false)
   const [batchResult, setBatchResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   const borradores = ordenes.filter((o) => o.estado === 'borrador')
@@ -105,37 +105,6 @@ export function OrdenesTable() {
       })
     }
     setBatchResult(null)
-  }
-
-  async function handleBatchPresentar() {
-    if (selectedBorradores.length === 0) return
-
-    const confirmed = window.confirm(
-      `Marcar ${selectedBorradores.length} ${selectedBorradores.length === 1 ? 'orden' : 'ordenes'} como presentada${selectedBorradores.length === 1 ? '' : 's'}?`,
-    )
-    if (!confirmed) return
-
-    setBatchLoading(true)
-    setBatchResult(null)
-
-    try {
-      const ids = selectedBorradores.map((o) => o.id)
-      const result = await batchUpdateOrdenesEstado(ids, 'presentada')
-
-      if (result.error) {
-        setBatchResult({ type: 'error', message: result.error })
-        return
-      }
-
-      setBatchResult({
-        type: 'success',
-        message: `${selectedBorradores.length} ${selectedBorradores.length === 1 ? 'orden marcada' : 'ordenes marcadas'} como presentada${selectedBorradores.length === 1 ? '' : 's'}`,
-      })
-      setSelected(new Set())
-      fetchOrdenes(filters)
-    } finally {
-      setBatchLoading(false)
-    }
   }
 
   function exportToExcel() {
@@ -383,23 +352,20 @@ export function OrdenesTable() {
           </button>
 
           <button
-            onClick={handleBatchPresentar}
-            disabled={batchLoading}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            onClick={() => setShowPlanilla(true)}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all"
           >
-            {batchLoading ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Procesando...
-              </>
-            ) : (
-              <>
-                <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
-                Marcar como presentadas
-              </>
-            )}
+            <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+            Emitir planilla
           </button>
         </div>
+      )}
+
+      {showPlanilla && (
+        <PresentarPlanillaDialog
+          ordenes={selectedBorradores}
+          onClose={() => { setShowPlanilla(false); setSelected(new Set()); fetchOrdenes(filters) }}
+        />
       )}
     </div>
   )
