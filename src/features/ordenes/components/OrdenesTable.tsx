@@ -12,6 +12,7 @@ import type { Orden, OrdenFilters as FilterType } from '../types/ordenes'
 import { AGENTE_LABELS } from '../types/ordenes'
 import { OrdenStatusBadge } from './OrdenStatusBadge'
 import { OrdenFilters } from './OrdenFilters'
+import { evaluarRiesgoOrden, FALTANTE_LABELS } from '@/lib/ordenes/riesgo-debito'
 
 function formatMonto(valor: number): string {
   return new Intl.NumberFormat('es-AR', {
@@ -314,7 +315,22 @@ export function OrdenesTable() {
                           )}
                         </td>
                         <td className="px-3 md:px-5 py-4 text-foreground">{formatFecha(orden.fecha_atencion)}</td>
-                        <td className="px-3 md:px-5 py-4 font-medium text-foreground">{orden.nombre_paciente}</td>
+                        <td className="px-3 md:px-5 py-4 font-medium text-foreground">
+                          <span className="inline-flex items-center gap-2">
+                            {(() => {
+                              if (!isBorrador) return null
+                              const { enRiesgo, faltantes } = evaluarRiesgoOrden(orden)
+                              if (!enRiesgo) return null
+                              return (
+                                <span
+                                  className="inline-block h-2 w-2 rounded-full bg-amber-500 shrink-0"
+                                  title={`Riesgo de débito: falta ${faltantes.map((f) => FALTANTE_LABELS[f]).join(', ')}`}
+                                />
+                              )
+                            })()}
+                            {orden.nombre_paciente}
+                          </span>
+                        </td>
                         <td className="px-3 md:px-5 py-4 hidden lg:table-cell">
                           <span
                             className={cn(
