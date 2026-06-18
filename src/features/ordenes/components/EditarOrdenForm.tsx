@@ -147,7 +147,7 @@ export function EditarOrdenForm({ orden }: Props) {
           nro_afiliado: form.get('nro_afiliado') as string,
           token_osep: str('token_osep'),
           firma_paciente: form.get('firma_paciente') === 'on',
-          firma_sello_medico: orden.firma_sello_medico,
+          firma_sello_medico: form.get('firma_sello_medico') === 'on',
           codigo_practica: prestacionSeleccionada?.codigo ?? (form.get('codigo_practica') as string),
           nombre_practica: prestacionSeleccionada?.detalle ?? str('nombre_practica'),
           diagnostico_cie10: str('diagnostico_cie10'),
@@ -262,12 +262,6 @@ export function EditarOrdenForm({ orden }: Props) {
             {obraSocial === 'OSEP' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Campo name="token_osep" label="Token OSEP (6 dígitos)" mono placeholder="123456" defaultValue={orden.token_osep ?? ''} />
-                <div className="flex items-end">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input name="firma_paciente" type="checkbox" defaultChecked={orden.firma_paciente} className="w-4 h-4 rounded" style={{ accentColor: 'var(--color-primary)' }} />
-                    <span className="text-sm" style={{ color: 'var(--color-foreground)' }}>Firma del paciente</span>
-                  </label>
-                </div>
               </div>
             )}
           </section>
@@ -317,6 +311,21 @@ export function EditarOrdenForm({ orden }: Props) {
             )}
           </section>
 
+
+          {/* Firmas */}
+          <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Firmas</h3>
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input name="firma_paciente" type="checkbox" defaultChecked={orden.firma_paciente} className="w-4 h-4 rounded" style={{ accentColor: 'var(--color-primary)' }} />
+                <span className="text-sm" style={{ color: 'var(--color-foreground)' }}>Firma del afiliado</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input name="firma_sello_medico" type="checkbox" defaultChecked={orden.firma_sello_medico} className="w-4 h-4 rounded" style={{ accentColor: 'var(--color-primary)' }} />
+                <span className="text-sm" style={{ color: 'var(--color-foreground)' }}>Firma y sello del médico</span>
+              </label>
+            </div>
+          </section>
 
           {/* Origen */}
           <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
