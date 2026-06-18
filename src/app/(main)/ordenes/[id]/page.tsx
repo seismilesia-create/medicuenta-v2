@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { OrdenStatusBadge } from '@/features/ordenes/components'
+import { ResolverFaltantesPanel } from '@/features/ordenes/components/ResolverFaltantesPanel'
 import type { Orden } from '@/features/ordenes/types/ordenes'
 import { DeleteOrdenButton, EstadoSelector } from './_components'
 
@@ -170,6 +171,11 @@ export default async function OrdenDetallePage({
 
         <DeleteOrdenButton ordenId={id} />
       </div>
+
+      {/* ------------------------------------------------------------------
+          Resolver faltantes (auto-hidden when not a draft-with-risk)
+      ------------------------------------------------------------------ */}
+      <ResolverFaltantesPanel orden={typedOrden} />
 
       {/* ------------------------------------------------------------------
           Cambiar estado
