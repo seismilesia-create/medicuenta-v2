@@ -83,6 +83,7 @@ export const ordenExtraidaSchema = z.object({
   // OSEP
   token_osep: z.string().describe('Token de 6 dígitos. Las órdenes electrónicas (Web Service) pueden NO tenerlo → "".'),
   firma_paciente: z.boolean().describe('true si hay firma del afiliado, false si no.'),
+  firma_sello_medico: z.boolean().describe('true si hay firma Y sello del médico en la orden, false si no.'),
 
   observaciones: z.string().describe('Notas adicionales relevantes, o "".'),
   confianza: z.enum(['alta', 'media', 'baja']),
@@ -109,6 +110,7 @@ Lectura campo por campo:
 - **Profesional (abajo)**: matrícula (ej: 1735), nombre del profesional, entidad (ej: SANATORIO PASTEUR S.A.) y "Responsable".
 - **Agente facturador**: inferilo del "Responsable" (ej: "CÍRCULO MÉDICO DE CATAMARCA" → circulo_medico).
 - **Token OSEP** = 6 dígitos. Las órdenes electrónicas ("Web Service") NO suelen tenerlo → token_osep="" y usá el N° de Comprobante como identificador.
+- **Firmas**: firma_paciente = ¿hay firma manuscrita del AFILIADO? firma_sello_medico = ¿hay firma Y sello del MÉDICO? Son dos cosas distintas; evaluá cada una por separado.
 - Intentá leer letra manuscrita. Lo que no estés seguro → agregalo a campos_dudosos.
 - confianza: "alta" = casi todo claro; "media" = algunos a verificar; "baja" = mucha incertidumbre.
 - Si NO es una orden médica: es_orden_medica=false + motivo_rechazo breve.`
