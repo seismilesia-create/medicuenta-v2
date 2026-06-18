@@ -17,6 +17,7 @@ import {
 import { PracticaAutocomplete } from './PracticaAutocomplete'
 import { EscanearOrdenButton, type OrdenEscaneada } from './EscanearOrdenButton'
 import { SugerenciaTurnoCard } from './SugerenciaTurnoCard'
+import { evaluarRiesgoOrden, FALTANTE_LABELS } from '@/lib/ordenes/riesgo-debito'
 
 const inputBase = 'w-full px-4 py-3 rounded-lg text-sm'
 const inputStyle = {
@@ -146,6 +147,10 @@ export function NuevaOrdenForm() {
   const [imagenComprobante, setImagenComprobante] = useState<string | null>(null)
   const [formKey, setFormKey] = useState(0)
 
+  const [firmaPaciente, setFirmaPaciente] = useState(false)
+  const [firmaSelloMedico, setFirmaSelloMedico] = useState(false)
+  const [diagnostico, setDiagnostico] = useState('')
+
   // Correlación turno→orden (3C)
   const formRef = useRef<HTMLFormElement>(null)
   const [sugerencias, setSugerencias] = useState<SugerenciaTurno[]>([])
@@ -187,6 +192,9 @@ export function NuevaOrdenForm() {
     setTipo('obra_social')
     setTurnoAplicado(null)
     setAviso15(null)
+    setFirmaPaciente(!!data.firma_paciente)
+    setFirmaSelloMedico(!!data.firma_sello_medico)
+    setDiagnostico(data.diagnostico ?? '')
     const matched = matchesOsFromScan(data.obra_social)
     if (matched) setObraSocial(matched)
     if (data.agente_facturador) setAgenteFacturador(data.agente_facturador)
@@ -305,11 +313,11 @@ export function NuevaOrdenForm() {
           obra_social: obraSocial,
           nro_afiliado: form.get('nro_afiliado') as string,
           token_osep: str('token_osep'),
-          firma_paciente: form.get('firma_paciente') === 'on',
-          firma_sello_medico: form.get('firma_sello_medico') === 'on',
+          firma_paciente: firmaPaciente,
+          firma_sello_medico: firmaSelloMedico,
           codigo_practica: prestacionSeleccionada?.codigo ?? (form.get('codigo_practica') as string),
           nombre_practica: prestacionSeleccionada?.detalle ?? str('nombre_practica'),
-          diagnostico_cie10: str('diagnostico_cie10'),
+          diagnostico_cie10: diagnostico || undefined,
           honorario_calculado: prestacionSeleccionada?.total
             ? Number(prestacionSeleccionada.total)
             : Number(form.get('honorario_calculado') || 0),
@@ -503,16 +511,10 @@ export function NuevaOrdenForm() {
                 <Campo name="medico_solicitante" label="Prescriptor / médico solicitante" colSpan defaultValue={ocr?.medico_solicitante ?? ''} />
               </div>
 
-              {/* OSEP: token + firma */}
+              {/* OSEP: token */}
               {obraSocial === 'OSEP' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Campo name="token_osep" label="Token OSEP (6 dígitos)" mono placeholder="123456" defaultValue={ocr?.token_osep ?? ''} dudoso={isDudoso('token_osep')} />
-                  <div className="flex items-end">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input name="firma_paciente" type="checkbox" defaultChecked={!!ocr?.firma_paciente} className="w-4 h-4 rounded" style={{ accentColor: 'var(--color-primary)' }} />
-                      <span className="text-sm" style={{ color: 'var(--color-foreground)' }}>Firma del paciente</span>
-                    </label>
-                  </div>
                 </div>
               )}
             </section>
@@ -542,7 +544,11 @@ export function NuevaOrdenForm() {
                 <Campo name="cantidad" label="Cantidad" type="number" min="0" step="1" mono defaultValue={ocr?.cantidad || 1} />
                 <Campo name="cara" label="Cara (odontología)" defaultValue={ocr?.cara ?? ''} />
                 <Campo name="pieza" label="Pieza (odontología)" defaultValue={ocr?.pieza ?? ''} />
-                <Campo name="diagnostico_cie10" label="Diagnóstico CIE-10" colSpan defaultValue={ocr?.diagnostico ?? ''} />
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Diagnóstico CIE-10</label>
+                  <input value={diagnostico} onChange={(e) => setDiagnostico(e.target.value)}
+                    className={inputBase} style={inputStyle} placeholder="Ej: J00 — Rinofaringitis aguda" />
+                </div>
               </div>
 
               {/* Importe manual (fallback): si no se eligió práctica del nomenclador */}
@@ -567,6 +573,22 @@ export function NuevaOrdenForm() {
               )}
             </section>
 
+            {/* Firmas (checklist anti-débito, toda OS) */}
+            <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Firmas</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={firmaPaciente} onChange={(e) => setFirmaPaciente(e.target.checked)}
+                    className="w-4 h-4 rounded" style={{ accentColor: 'var(--color-primary)' }} />
+                  <span className="text-sm" style={{ color: 'var(--color-foreground)' }}>Firma del afiliado</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={firmaSelloMedico} onChange={(e) => setFirmaSelloMedico(e.target.checked)}
+                    className="w-4 h-4 rounded" style={{ accentColor: 'var(--color-primary)' }} />
+                  <span className="text-sm" style={{ color: 'var(--color-foreground)' }}>Firma y sello del médico</span>
+                </label>
+              </div>
+            </section>
 
             {/* Origen */}
             <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
@@ -648,6 +670,23 @@ export function NuevaOrdenForm() {
             </p>
           </div>
         )}
+
+        {(() => {
+          if (tipo !== 'obra_social') return null
+          const { enRiesgo, faltantes } = evaluarRiesgoOrden({
+            tipo, obra_social: obraSocial, nivel: 1,
+            firma_paciente: firmaPaciente, diagnostico_cie10: diagnostico, firma_sello_medico: firmaSelloMedico,
+          })
+          if (!enRiesgo) return null
+          return (
+            <div className="rounded-lg px-4 py-3 text-sm" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-warning)' }}>
+              <p className="font-medium" style={{ color: 'var(--color-warning)' }}>⚠️ Riesgo de débito</p>
+              <p className="mt-1" style={{ color: 'var(--color-foreground)' }}>
+                Falta: {faltantes.map((f) => FALTANTE_LABELS[f]).join(', ')}. Revisá la orden antes de presentarla (podés guardarla igual).
+              </p>
+            </div>
+          )
+        })()}
 
         {/* Botones */}
         <div className="flex gap-3 pt-2">
