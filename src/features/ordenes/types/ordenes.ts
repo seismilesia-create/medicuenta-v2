@@ -109,8 +109,21 @@ export interface Orden {
   rol_medico: string | null
   // Correlación 3C: turno de la agenda del que salió esta orden (nullable).
   turno_id: string | null
+  presentacion_id: string | null
   created_at: string
   updated_at: string
+}
+
+export interface Presentacion {
+  id: string
+  medico_id: string
+  periodo_mes: string
+  obra_social: string
+  agente_facturador: AgenteFacturador
+  fecha_emision: string
+  cantidad_ordenes: number
+  monto_total: number
+  created_at: string
 }
 
 export interface Prestacion {
