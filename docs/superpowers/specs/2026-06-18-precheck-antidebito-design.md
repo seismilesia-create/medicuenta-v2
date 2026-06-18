@@ -31,7 +31,7 @@
 - **Órdenes particulares.** No se debitan → sin chequeo y fuera de la planilla.
 - **Token OSEP** como ítem del checklist (se mantiene la validación de formato actual, pero no se suma al pre-check anti-débito en esta versión).
 - **Reglas por obra social** (qué campo es obligatorio según cada OS). Dependen de la *tabla canónica de OS* (Item 4 del backlog). En v1 el checklist es **universal**.
-- **Persistencia pesada de planillas** (entidad/tabla de planillas). En v1 la planilla se **imprime al vuelo** desde las órdenes del período.
+- **Snapshot completo de cada orden congelado dentro de la planilla.** En v1 se guarda un **registro liviano** de cada presentación (ver §5) + la membresía de órdenes; el detalle se re-imprime desde las órdenes vinculadas.
 
 ---
 
@@ -85,11 +85,23 @@
 
 > RLS ya está activa en `ordenes` por `medico_id`. Todos los campos nuevos son nullable/con default → migración segura.
 
+### Cambios en `ordenes`
 - `firma_sello_medico boolean DEFAULT false` — **esencial.** Detectado por OCR, corregible por el médico (espeja `firma_paciente`).
-- `presentada_at timestamptz NULL` — fecha en que se marcó como presentada. Hoy no existe timestamp de presentación (solo el estado `'presentada'` + `updated_at`). Útil para el período de la planilla y auditoría.
-- `faltantes_confirmados_at timestamptz NULL` — **constancia** de cuándo el médico confirmó haber resuelto los faltantes vía "Resolver faltantes". (Mínimo; el "qué" queda reflejado en los propios campos `firma_paciente` / `firma_sello_medico` / `diagnostico_cie10`.)
+- `faltantes_confirmados_at timestamptz NULL` — **constancia** de cuándo el médico confirmó haber resuelto los faltantes vía "Resolver faltantes". (Mínimo; el "qué" queda reflejado en `firma_paciente` / `firma_sello_medico` / `diagnostico_cie10`.)
+- `presentacion_id uuid NULL` → FK a `presentaciones(id)` `ON DELETE SET NULL`. Vincula la orden a la presentación en que se incluyó (membresía firme del lote).
 
-**No se crean tablas nuevas.** El riesgo es derivado; la planilla se arma al vuelo.
+### Tabla nueva `presentaciones` (registro liviano por presentación)
+- `id uuid PK`
+- `medico_id uuid NOT NULL` — RLS por `medico_id`, igual que `ordenes`
+- `periodo_mes date NOT NULL` — primer día del mes del período (agrupado por `fecha_atencion`)
+- `obra_social text NOT NULL` — una presentación por OS
+- `agente_facturador text NOT NULL` — `circulo_medico` | `medical_group` | `comunidad`
+- `fecha_emision timestamptz NOT NULL DEFAULT now()`
+- `cantidad_ordenes int NOT NULL`
+- `monto_total numeric NOT NULL DEFAULT 0`
+- `created_at timestamptz NOT NULL DEFAULT now()`
+
+El **riesgo sigue siendo derivado** (no se persiste). Lo que se persiste es el **registro de la presentación** (historial firme) + la membresía de órdenes vía `presentacion_id`.
 
 ---
 
@@ -124,9 +136,10 @@ evaluarRiesgoOrden(orden): { enRiesgo: boolean; faltantes: FaltanteDebito[] }
 - **Entrada: el listado de órdenes existente** (`/ordenes`, que ya tiene filtros y selección por lote). Se agrega la acción **"Emitir planilla"** (complementa el actual "marcar como presentadas"): el médico filtra por período (mes) + agente facturador (default `circulo_medico`), selecciona el lote y la dispara. Reutiliza `OrdenFilters`, `OrdenesTable` y `batchUpdateOrdenesEstado`.
 - Junta borradores de ese período/agente, **obra social, nivel 1**; agrupa por `obra_social`.
 - Corre `evaluarRiesgoOrden` sobre el lote → diálogo (ver ②).
-- Confirmar reutiliza la acción existente `batchUpdateOrdenesEstado(ids, 'presentada')` (`src/actions/ordenes.ts`) + setea `presentada_at`.
+- **Al confirmar (por cada OS del lote):** se crea un registro en `presentaciones` (período, OS, agente, fecha de emisión, cantidad, total) y las órdenes se marcan `'presentada'` vinculándolas con `presentacion_id` (extiende `batchUpdateOrdenesEstado`).
 - **Salida:** una **página imprimible por OS** (print CSS + `window.print()`; "guardar como PDF" del navegador). **Sin librería de PDF** en v1.
-- **Período:** se filtra por **`fecha_atencion`** dentro del mes elegido (la facturación es mensual; corte primeros 5 días hábiles del mes siguiente). *Supuesto a confirmar en el review.*
+- **Período:** se filtra por **`fecha_atencion`** dentro del mes elegido (facturación mensual; corte primeros 5 días hábiles del mes siguiente). **Confirmado.**
+- **Re-impresión / historial:** desde un listado de presentaciones guardadas se re-imprime cualquier planilla, usando el registro de `presentaciones` + las órdenes vinculadas por `presentacion_id`.
 
 ---
 
@@ -164,9 +177,9 @@ evaluarRiesgoOrden(orden): { enRiesgo: boolean; faltantes: FaltanteDebito[] }
 
 ## 12. Supuestos y preguntas abiertas (para el review del spec)
 
-- **S1.** El período de la planilla se filtra por `fecha_atencion`. *(Alternativa: por fecha de carga. Asumo `fecha_atencion`.)*
+- **S1. (Confirmado)** El período de la planilla se filtra por `fecha_atencion`.
 - **S2.** `faltantes_confirmados_at` como constancia mínima (un solo timestamp). Si más adelante se quiere "quién/qué confirmó" con detalle, se amplía.
-- **S3.** La planilla no se persiste como entidad en v1 (se re-imprime al vuelo seleccionando el mismo período/OS). Confirmar que no se necesita un registro guardado de cada presentación.
+- **S3. (Confirmado)** Se guarda un **registro liviano por presentación** (tabla `presentaciones` + `presentacion_id`, ver §5 y §8); el detalle se re-imprime desde las órdenes vinculadas.
 - **S4.** "Agente facturador" default = `circulo_medico`; el médico puede emitir también para `medical_group` / `comunidad` con el mismo flujo.
 
 ---
