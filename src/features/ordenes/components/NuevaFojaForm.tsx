@@ -206,6 +206,7 @@ export function NuevaFojaForm() {
       agente_facturador: 'circulo_medico',
       obra_social: obraSocial || 'OSEP',
       firma_paciente: false,
+      firma_sello_medico: false,
       codigo_practica: principal?.codigo ?? undefined,
       nombre_practica: principal?.detalle ?? undefined,
       honorario_calculado: Number(principal?.total ?? 0),

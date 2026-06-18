@@ -42,6 +42,7 @@ export async function createOrden(formData: OrdenFormData) {
     nro_afiliado: data.tipo === 'obra_social' ? data.nro_afiliado : null,
     token_osep: data.tipo === 'obra_social' ? (data.token_osep ?? null) : null,
     firma_paciente: data.tipo === 'obra_social' ? data.firma_paciente : false,
+    firma_sello_medico: data.tipo === 'obra_social' ? data.firma_sello_medico : false,
     codigo_practica: data.tipo === 'obra_social' ? data.codigo_practica : null,
     nombre_practica: data.tipo === 'obra_social'
       ? (data.nombre_practica ?? null)
@@ -140,6 +141,7 @@ export async function updateOrden(ordenId: string, formData: OrdenFormData) {
     nro_afiliado: data.tipo === 'obra_social' ? data.nro_afiliado : null,
     token_osep: data.tipo === 'obra_social' ? (data.token_osep ?? null) : null,
     firma_paciente: data.tipo === 'obra_social' ? data.firma_paciente : false,
+    firma_sello_medico: data.tipo === 'obra_social' ? data.firma_sello_medico : false,
     codigo_practica: data.tipo === 'obra_social' ? data.codigo_practica : null,
     nombre_practica: data.tipo === 'obra_social'
       ? (data.nombre_practica ?? null)
@@ -258,6 +260,38 @@ export async function deleteOrden(ordenId: string) {
   const { error } = await supabase
     .from('ordenes')
     .delete()
+    .eq('id', ordenId)
+    .eq('medico_id', user.id)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { success: true }
+}
+
+export async function resolverFaltantes(
+  ordenId: string,
+  campos: { firma_paciente?: boolean; firma_sello_medico?: boolean; diagnostico_cie10?: string },
+) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { error: 'No autenticado' }
+  }
+
+  const update: Record<string, unknown> = {
+    faltantes_confirmados_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+  if (campos.firma_paciente !== undefined) update.firma_paciente = campos.firma_paciente
+  if (campos.firma_sello_medico !== undefined) update.firma_sello_medico = campos.firma_sello_medico
+  if (campos.diagnostico_cie10 !== undefined) update.diagnostico_cie10 = campos.diagnostico_cie10
+
+  const { error } = await supabase
+    .from('ordenes')
+    .update(update)
     .eq('id', ordenId)
     .eq('medico_id', user.id)
 

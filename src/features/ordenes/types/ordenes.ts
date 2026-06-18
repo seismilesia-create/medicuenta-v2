@@ -54,6 +54,8 @@ export interface Orden {
   obra_social: string | null
   token_osep: string | null
   firma_paciente: boolean
+  firma_sello_medico: boolean
+  faltantes_confirmados_at: string | null
   codigo_practica: string | null
   nombre_practica: string | null
   diagnostico_cie10: string | null
@@ -207,6 +209,7 @@ export const ordenObraSocialSchema = ordenBaseSchema.extend({
   nro_afiliado: z.string().optional(),
   token_osep: z.string().optional(),
   firma_paciente: z.boolean().default(false),
+  firma_sello_medico: z.boolean().default(false),
   codigo_practica: z.string().optional(),
   nombre_practica: z.string().optional(),
   diagnostico_cie10: z.string().optional(),

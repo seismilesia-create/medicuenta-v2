@@ -306,6 +306,7 @@ export function NuevaOrdenForm() {
           nro_afiliado: form.get('nro_afiliado') as string,
           token_osep: str('token_osep'),
           firma_paciente: form.get('firma_paciente') === 'on',
+          firma_sello_medico: form.get('firma_sello_medico') === 'on',
           codigo_practica: prestacionSeleccionada?.codigo ?? (form.get('codigo_practica') as string),
           nombre_practica: prestacionSeleccionada?.detalle ?? str('nombre_practica'),
           diagnostico_cie10: str('diagnostico_cie10'),
