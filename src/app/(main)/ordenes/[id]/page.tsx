@@ -257,7 +257,7 @@ export default async function OrdenDetallePage({
                 label="Nro afiliado"
                 value={typedOrden.nro_afiliado ?? '-'}
               />
-              {typedOrden.obra_social === 'OSEP' && (
+              {(typedOrden.codigo_os === 327 || typedOrden.obra_social === 'OSEP') && (
                 <Field
                   label="Token OSEP"
                   value={typedOrden.token_osep ?? '-'}

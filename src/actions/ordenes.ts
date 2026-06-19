@@ -21,7 +21,7 @@ export async function createOrden(formData: OrdenFormData) {
   const data = parsed.data
 
   // OSEP-specific validation
-  if (data.tipo === 'obra_social' && data.obra_social === 'OSEP') {
+  if (data.tipo === 'obra_social' && (data.codigo_os === 327 || data.obra_social === 'OSEP')) {
     // Token opcional: las órdenes electrónicas (Web Service) no traen token de 6 dígitos.
     // Si el médico lo carga, validamos el formato.
     if (data.token_osep && data.token_osep.length !== 6) {
@@ -123,7 +123,7 @@ export async function updateOrden(ordenId: string, formData: OrdenFormData) {
 
   const data = parsed.data
 
-  if (data.tipo === 'obra_social' && data.obra_social === 'OSEP') {
+  if (data.tipo === 'obra_social' && (data.codigo_os === 327 || data.obra_social === 'OSEP')) {
     // Token opcional: las órdenes electrónicas (Web Service) no traen token de 6 dígitos.
     // Si el médico lo carga, validamos el formato.
     if (data.token_osep && data.token_osep.length !== 6) {
