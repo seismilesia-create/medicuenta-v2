@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Search, Filter, Calendar, ChevronDown } from 'lucide-react'
 import type { OrdenFilters as FilterType, TipoAtencion, EstadoOrden } from '../types/ordenes'
-import { TIPOS_ATENCION, ESTADOS_ORDEN, OBRAS_SOCIALES, AGENTES_FACTURADORES, AGENTE_LABELS } from '../types/ordenes'
+import { TIPOS_ATENCION, ESTADOS_ORDEN, AGENTES_FACTURADORES, AGENTE_LABELS } from '../types/ordenes'
+import { getCatalogoOs } from '@/actions/catalogo'
+import type { OsCatalogoItem } from '@/lib/catalogo/obras-sociales'
 
 interface Props {
   onFilterChange: (filters: FilterType) => void
@@ -25,11 +27,14 @@ const ESTADO_LABELS: Record<EstadoOrden, string> = {
 export function OrdenFilters({ onFilterChange, initialFilters = {} }: Props) {
   const [filters, setFilters] = useState<FilterType>(initialFilters)
   const [open, setOpen] = useState(false)
+  const [catalogo, setCatalogo] = useState<OsCatalogoItem[]>([])
+  useEffect(() => { getCatalogoOs().then(setCatalogo) }, [])
 
   const activos = Object.values(filters).filter(Boolean).length
 
   function updateFilter(key: keyof FilterType, value: string) {
-    const updated = { ...filters, [key]: value || undefined }
+    const v = key === 'codigo_os' ? (value ? Number(value) : undefined) : (value || undefined)
+    const updated = { ...filters, [key]: v }
     setFilters(updated)
     onFilterChange(updated)
   }
@@ -81,12 +86,12 @@ export function OrdenFilters({ onFilterChange, initialFilters = {} }: Props) {
             options={TIPOS_ATENCION.map((t) => ({ value: t, label: TIPO_LABELS[t] }))}
           />
 
-          {/* Obra Social */}
+          {/* Obra Social (catálogo) */}
           <FilterSelect
-            value={filters.obra_social ?? ''}
-            onChange={(v) => updateFilter('obra_social', v)}
+            value={filters.codigo_os != null ? String(filters.codigo_os) : ''}
+            onChange={(v) => updateFilter('codigo_os', v)}
             placeholder="Todas las OS"
-            options={OBRAS_SOCIALES.map((os) => ({ value: os, label: os }))}
+            options={catalogo.map((c) => ({ value: String(c.codigo_os), label: c.nombre_os }))}
           />
 
           {/* Estado */}

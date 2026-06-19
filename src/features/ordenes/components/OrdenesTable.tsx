@@ -54,7 +54,7 @@ export function OrdenesTable() {
     let query = supabase.from('ordenes').select('*').order('fecha_atencion', { ascending: false })
 
     if (currentFilters.tipo) query = query.eq('tipo', currentFilters.tipo)
-    if (currentFilters.obra_social) query = query.eq('obra_social', currentFilters.obra_social)
+    if (currentFilters.codigo_os != null) query = query.eq('codigo_os', currentFilters.codigo_os)
     if (currentFilters.estado) query = query.eq('estado', currentFilters.estado)
     if (currentFilters.agente_facturador) query = query.eq('agente_facturador', currentFilters.agente_facturador)
     if (currentFilters.fecha_desde) query = query.gte('fecha_atencion', currentFilters.fecha_desde)
