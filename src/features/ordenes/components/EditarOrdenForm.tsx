@@ -1,9 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { updateOrden } from '@/actions/ordenes'
 import {
-  OBRAS_SOCIALES,
   AGENTES_FACTURADORES,
   AGENTE_LABELS,
   type TipoAtencion,
@@ -13,6 +12,9 @@ import {
   type AgenteFacturador,
 } from '../types/ordenes'
 import { PracticaAutocomplete } from './PracticaAutocomplete'
+import { OsAutocomplete } from '@/features/catalogo/components/OsAutocomplete'
+import { getCatalogoOs, getMisOsSuspendidas } from '@/actions/catalogo'
+import { estaSuspendida, type OsCatalogoItem } from '@/lib/catalogo/obras-sociales'
 
 const inputBase = 'w-full px-4 py-3 rounded-lg text-sm'
 const inputStyle = {
@@ -85,8 +87,16 @@ export function EditarOrdenForm({ orden }: Props) {
         }
       : null
   )
+  const [codigoOs, setCodigoOs] = useState<number | null>(orden.codigo_os ?? null)
+  const [catalogo, setCatalogo] = useState<OsCatalogoItem[]>([])
+  const [suspendidasMedico, setSuspendidasMedico] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    getCatalogoOs().then(setCatalogo)
+    getMisOsSuspendidas().then(setSuspendidasMedico)
+  }, [])
 
   function handlePrestacionSelect(prestacion: Prestacion) {
     setPrestacionSeleccionada(prestacion)
@@ -144,6 +154,7 @@ export function EditarOrdenForm({ orden }: Props) {
           monto_plus: Number(form.get('monto_plus') || 0),
           agente_facturador: agenteFacturador,
           obra_social: obraSocial,
+          codigo_os: codigoOs ?? undefined,
           nro_afiliado: form.get('nro_afiliado') as string,
           token_osep: str('token_osep'),
           firma_paciente: form.get('firma_paciente') === 'on',
@@ -248,10 +259,13 @@ export function EditarOrdenForm({ orden }: Props) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Obra Social *</label>
-                <select value={obraSocial} onChange={(e) => setObraSocial(e.target.value)} required className={inputBase} style={inputStyle}>
-                  <option value="">Seleccionar...</option>
-                  {OBRAS_SOCIALES.map((os) => (<option key={os} value={os}>{os}</option>))}
-                </select>
+                <OsAutocomplete
+                  catalogo={catalogo}
+                  valor={obraSocial}
+                  onSelect={({ nombre_os, codigo_os }) => { setObraSocial(nombre_os); setCodigoOs(codigo_os) }}
+                  inputClassName={inputBase}
+                  inputStyle={inputStyle}
+                />
               </div>
               <Campo name="nro_afiliado" label="Nro. Afiliado *" defaultValue={orden.nro_afiliado ?? ''} placeholder="000000" />
               <Campo name="grupo_afiliado" label="Grupo" mono placeholder="01" defaultValue={orden.grupo_afiliado ?? ''} />
@@ -259,7 +273,7 @@ export function EditarOrdenForm({ orden }: Props) {
               <Campo name="medico_solicitante" label="Prescriptor / médico solicitante" colSpan defaultValue={orden.medico_solicitante ?? ''} />
             </div>
 
-            {obraSocial === 'OSEP' && (
+            {codigoOs === 327 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Campo name="token_osep" label="Token OSEP (6 dígitos)" mono placeholder="123456" defaultValue={orden.token_osep ?? ''} />
               </div>
@@ -281,7 +295,7 @@ export function EditarOrdenForm({ orden }: Props) {
           {/* Práctica */}
           <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
             <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Práctica</h3>
-            <PracticaAutocomplete obraSocial={obraSocial || 'OSEP'} onSelect={handlePrestacionSelect} />
+            <PracticaAutocomplete obraSocial={codigoOs === 327 ? 'OSEP' : (obraSocial || 'OSEP')} onSelect={handlePrestacionSelect} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Campo name="nombre_practica" label="Descripción" colSpan placeholder="Ej: Consulta médica" defaultValue={orden.nombre_practica ?? ''} />
               <Campo name="cantidad" label="Cantidad" type="number" min="0" step="1" mono defaultValue={orden.cantidad ?? 1} />
@@ -374,6 +388,20 @@ export function EditarOrdenForm({ orden }: Props) {
         <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Observaciones</label>
         <textarea name="observaciones" rows={3} placeholder="Notas adicionales (opcional)" defaultValue={orden.observaciones ?? ''} className={`${inputBase} resize-none`} style={inputStyle} />
       </div>
+
+      {/* Suspendida warning */}
+        {(() => {
+          if (tipo !== 'obra_social' || !obraSocial) return null
+          if (!estaSuspendida({ codigoOs, obraSocial, catalogo, suspendidasMedico })) return null
+          return (
+            <div className="rounded-lg px-4 py-3 text-sm" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-warning)' }}>
+              <p className="font-medium" style={{ color: 'var(--color-warning)' }}>⚠️ Obra social suspendida</p>
+              <p className="mt-1" style={{ color: 'var(--color-foreground)' }}>
+                Esta obra social está suspendida este mes. Presentarla puede ser debitada — conviene cobrarla como particular.
+              </p>
+            </div>
+          )
+        })()}
 
       {/* Botones */}
       <div className="flex gap-3 pt-2">
