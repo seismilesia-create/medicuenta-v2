@@ -52,6 +52,7 @@ export interface Orden {
   nombre_paciente: string
   nro_afiliado: string | null
   obra_social: string | null
+  codigo_os: number | null
   token_osep: string | null
   firma_paciente: boolean
   firma_sello_medico: boolean
@@ -143,6 +144,7 @@ export interface Prestacion {
 export interface OrdenFilters {
   tipo?: TipoAtencion
   obra_social?: string
+  codigo_os?: number
   estado?: EstadoOrden
   agente_facturador?: AgenteFacturador
   fecha_desde?: string
@@ -219,6 +221,7 @@ export const ordenBaseSchema = z.object({
 export const ordenObraSocialSchema = ordenBaseSchema.extend({
   tipo: z.literal('obra_social'),
   obra_social: z.string().min(1, 'Obra social requerida'),
+  codigo_os: z.coerce.number().int().optional(),
   nro_afiliado: z.string().optional(),
   token_osep: z.string().optional(),
   firma_paciente: z.boolean().default(false),
