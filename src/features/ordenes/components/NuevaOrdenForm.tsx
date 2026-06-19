@@ -1,12 +1,11 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createOrden } from '@/actions/ordenes'
 import { buscarSugerenciasTurno, getHorariosDelDia } from '@/actions/consultorio-correlacion'
 import { controlQuinceMinutos, type SugerenciaTurno, type ConflictoQuinceMin } from '@/lib/consultorio/correlacion'
 import { createClient } from '@/lib/supabase/client'
 import {
-  OBRAS_SOCIALES,
   AGENTES_FACTURADORES,
   AGENTE_LABELS,
   type TipoAtencion,
@@ -15,6 +14,10 @@ import {
   type AgenteFacturador,
 } from '../types/ordenes'
 import { PracticaAutocomplete } from './PracticaAutocomplete'
+import { OsAutocomplete } from '@/features/catalogo/components/OsAutocomplete'
+import { getCatalogoOs, getMisOsSuspendidas } from '@/actions/catalogo'
+import { estaSuspendida, type OsCatalogoItem } from '@/lib/catalogo/obras-sociales'
+import { normalizarOs } from '@/lib/consultorio/osSuspendidas'
 import { EscanearOrdenButton, type OrdenEscaneada } from './EscanearOrdenButton'
 import { SugerenciaTurnoCard } from './SugerenciaTurnoCard'
 import { evaluarRiesgoOrden, FALTANTE_LABELS } from '@/lib/ordenes/riesgo-debito'
@@ -73,18 +76,6 @@ function Campo({
   )
 }
 
-function matchesOsFromScan(scanned: string | null): string {
-  if (!scanned) return ''
-  const low = scanned.toLowerCase()
-  for (const os of OBRAS_SOCIALES) {
-    if (os.toLowerCase() === low) return os
-  }
-  for (const os of OBRAS_SOCIALES) {
-    if (low.includes(os.toLowerCase()) || os.toLowerCase().includes(low)) return os
-  }
-  return ''
-}
-
 // El código en la orden viene envuelto (ej: "01-420101-01"); el núcleo es el
 // segmento de dígitos más largo (ej: "420101"), que es lo que guarda el nomenclador.
 function nucleoCodigo(raw: string): string {
@@ -139,6 +130,9 @@ async function buscarPrestacionPorCodigo(obraSocial: string, rawCodigo: string):
 export function NuevaOrdenForm() {
   const [tipo, setTipo] = useState<TipoAtencion>('obra_social')
   const [obraSocial, setObraSocial] = useState('')
+  const [codigoOs, setCodigoOs] = useState<number | null>(null)
+  const [catalogo, setCatalogo] = useState<OsCatalogoItem[]>([])
+  const [suspendidasMedico, setSuspendidasMedico] = useState<string[]>([])
   const [agenteFacturador, setAgenteFacturador] = useState<AgenteFacturador>('circulo_medico')
   const [prestacionSeleccionada, setPrestacionSeleccionada] = useState<Prestacion | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -150,6 +144,11 @@ export function NuevaOrdenForm() {
   const [firmaPaciente, setFirmaPaciente] = useState(false)
   const [firmaSelloMedico, setFirmaSelloMedico] = useState(false)
   const [diagnostico, setDiagnostico] = useState('')
+
+  useEffect(() => {
+    getCatalogoOs().then(setCatalogo)
+    getMisOsSuspendidas().then(setSuspendidasMedico)
+  }, [])
 
   // Correlación turno→orden (3C)
   const formRef = useRef<HTMLFormElement>(null)
@@ -195,14 +194,18 @@ export function NuevaOrdenForm() {
     setFirmaPaciente(!!data.firma_paciente)
     setFirmaSelloMedico(!!data.firma_sello_medico)
     setDiagnostico(data.diagnostico ?? '')
-    const matched = matchesOsFromScan(data.obra_social)
-    if (matched) setObraSocial(matched)
+    const scan = normalizarOs(data.obra_social ?? '')
+    const m = scan ? catalogo.find((c) => normalizarOs(c.nombre_os).includes(scan) || scan.includes(normalizarOs(c.nombre_os))) : undefined
+    if (m) { setObraSocial(m.nombre_os); setCodigoOs(m.codigo_os) }
+    else if (data.obra_social) { setObraSocial(data.obra_social); setCodigoOs(null) }
     if (data.agente_facturador) setAgenteFacturador(data.agente_facturador)
 
     // Escanear el código → traer descripción + honorarios desde el nomenclador.
+    // El nomenclador (prestaciones) usa la clave 'OSEP'. OSEP (cód 327) → 'OSEP'; el resto no matchea (igual que hoy).
+    const osNom = m?.codigo_os === 327 ? 'OSEP' : (m?.nombre_os ?? data.obra_social ?? 'OSEP')
     let prestacion: Prestacion | null = null
     if (data.codigo_practica) {
-      prestacion = await buscarPrestacionPorCodigo(matched || 'OSEP', data.codigo_practica)
+      prestacion = await buscarPrestacionPorCodigo(osNom, data.codigo_practica)
     }
     setPrestacionSeleccionada(prestacion)
     // Un solo re-render con OCR + prestación ya resuelta.
@@ -311,6 +314,7 @@ export function NuevaOrdenForm() {
           monto_plus: Number(form.get('monto_plus') || 0),
           agente_facturador: agenteFacturador,
           obra_social: obraSocial,
+          codigo_os: codigoOs ?? undefined,
           nro_afiliado: form.get('nro_afiliado') as string,
           token_osep: str('token_osep'),
           firma_paciente: firmaPaciente,
@@ -496,10 +500,13 @@ export function NuevaOrdenForm() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Obra Social *</label>
-                  <select value={obraSocial} onChange={(e) => setObraSocial(e.target.value)} required className={inputBase} style={inputStyle}>
-                    <option value="">Seleccionar...</option>
-                    {OBRAS_SOCIALES.map((os) => (<option key={os} value={os}>{os}</option>))}
-                  </select>
+                  <OsAutocomplete
+                    catalogo={catalogo}
+                    valor={obraSocial}
+                    onSelect={({ nombre_os, codigo_os }) => { setObraSocial(nombre_os); setCodigoOs(codigo_os) }}
+                    inputClassName={inputBase}
+                    inputStyle={inputStyle}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Nro. Afiliado *</label>
@@ -511,8 +518,8 @@ export function NuevaOrdenForm() {
                 <Campo name="medico_solicitante" label="Prescriptor / médico solicitante" colSpan defaultValue={ocr?.medico_solicitante ?? ''} />
               </div>
 
-              {/* OSEP: token */}
-              {obraSocial === 'OSEP' && (
+              {/* OSEP: token (cód 327) */}
+              {codigoOs === 327 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Campo name="token_osep" label="Token OSEP (6 dígitos)" mono placeholder="123456" defaultValue={ocr?.token_osep ?? ''} dudoso={isDudoso('token_osep')} />
                 </div>
@@ -535,7 +542,7 @@ export function NuevaOrdenForm() {
             <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
               <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Práctica</h3>
               <PracticaAutocomplete
-                obraSocial={obraSocial || 'OSEP'}
+                obraSocial={codigoOs === 327 ? 'OSEP' : (obraSocial || 'OSEP')}
                 onSelect={handlePrestacionSelect}
                 value={prestacionSeleccionada ? `${prestacionSeleccionada.codigo} - ${prestacionSeleccionada.detalle}` : ocr?.codigo_practica ?? ''}
               />
@@ -683,6 +690,19 @@ export function NuevaOrdenForm() {
               <p className="font-medium" style={{ color: 'var(--color-warning)' }}>⚠️ Riesgo de débito</p>
               <p className="mt-1" style={{ color: 'var(--color-foreground)' }}>
                 Falta: {faltantes.map((f) => FALTANTE_LABELS[f]).join(', ')}. Revisá la orden antes de presentarla (podés guardarla igual).
+              </p>
+            </div>
+          )
+        })()}
+
+        {(() => {
+          if (tipo !== 'obra_social' || !obraSocial) return null
+          if (!estaSuspendida({ codigoOs, obraSocial, catalogo, suspendidasMedico })) return null
+          return (
+            <div className="rounded-lg px-4 py-3 text-sm" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-warning)' }}>
+              <p className="font-medium" style={{ color: 'var(--color-warning)' }}>⚠️ Obra social suspendida</p>
+              <p className="mt-1" style={{ color: 'var(--color-foreground)' }}>
+                Esta obra social está suspendida este mes. Presentarla puede ser debitada — conviene cobrarla como particular.
               </p>
             </div>
           )
