@@ -39,6 +39,14 @@ describe('calcularHonorarioConsulta', () => {
     expect(r?.base).toBe(30000)
     expect(r?.columna).toBe('valor_consulta_medica')
   })
+  it('oftalmologica con su columna null → cae a valor_consulta_medica', () => {
+    const r = calcularHonorarioConsulta({ arancel: arancel({ valor_consulta_oftalmologica: null }), categoria: 'oftalmologica', recertificado: false, atiendeInterior: false })
+    expect(r?.columna).toBe('valor_consulta_medica')
+  })
+  it('valor 0 se trata como null (cae al siguiente candidato)', () => {
+    const r = calcularHonorarioConsulta({ arancel: arancel({ valor_especialista: 0 }), categoria: 'especialista', recertificado: false, atiendeInterior: false })
+    expect(r?.columna).toBe('valor_consulta_medica')
+  })
   it('todo null → null (campo manual)', () => {
     const r = calcularHonorarioConsulta({
       arancel: arancel({ valor_consulta_medica: null, valor_especialista: null, valor_consulta_oftalmologica: null, valor_recertificado: null }),

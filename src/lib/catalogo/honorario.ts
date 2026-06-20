@@ -8,6 +8,8 @@ export interface ArancelVigente {
   recargo_interior_pct: number | null
 }
 
+// Categoría arancelaria del médico (espejo de las columnas de `perfiles`).
+// La devuelve la action getMiCategoriaArancel y la consumen los forms de orden.
 export interface MiCategoriaArancel {
   categoria_arancel: CategoriaArancel | null
   recertificado: boolean
@@ -53,11 +55,12 @@ export function calcularHonorarioConsulta(params: {
   const { arancel, categoria, recertificado, atiendeInterior } = params
   if (!arancel || !categoria) return null
 
-  // 1) Elegir columna con cadena de fallback.
+  // 1) Elegir columna con cadena de fallback (el último recurso siempre es consulta médica).
+  const colBase = COLUMNA_BASE[categoria]
   const candidatas: (keyof ArancelVigente)[] = []
   if (recertificado) candidatas.push('valor_recertificado')
-  candidatas.push(COLUMNA_BASE[categoria])
-  candidatas.push('valor_consulta_medica')
+  candidatas.push(colBase)
+  if (colBase !== 'valor_consulta_medica') candidatas.push('valor_consulta_medica')
 
   let columna: keyof ArancelVigente | null = null
   let base = 0
