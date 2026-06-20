@@ -15,7 +15,8 @@ import {
 } from '../types/ordenes'
 import { PracticaAutocomplete } from './PracticaAutocomplete'
 import { OsAutocomplete } from '@/features/catalogo/components/OsAutocomplete'
-import { getCatalogoOs, getMisOsSuspendidas } from '@/actions/catalogo'
+import { getCatalogoOs, getMisOsSuspendidas, getArancelVigente, getMiCategoriaArancel } from '@/actions/catalogo'
+import { calcularHonorarioConsulta, type MiCategoriaArancel } from '@/lib/catalogo/honorario'
 import { estaSuspendida, type OsCatalogoItem } from '@/lib/catalogo/obras-sociales'
 import { normalizarOs } from '@/lib/consultorio/osSuspendidas'
 import { EscanearOrdenButton, type OrdenEscaneada } from './EscanearOrdenButton'
@@ -145,10 +146,36 @@ export function NuevaOrdenForm() {
   const [firmaSelloMedico, setFirmaSelloMedico] = useState(false)
   const [diagnostico, setDiagnostico] = useState('')
 
+  const [miCategoria, setMiCategoria] = useState<MiCategoriaArancel | null>(null)
+  const [honorario, setHonorario] = useState('')
+  const [honorarioMotivo, setHonorarioMotivo] = useState<string | null>(null)
+
   useEffect(() => {
     getCatalogoOs().then(setCatalogo)
     getMisOsSuspendidas().then(setSuspendidasMedico)
+    getMiCategoriaArancel().then(setMiCategoria)
   }, [])
+
+  // Prellenar honorario desde el arancel vigente (consulta nivel 1, sin práctica del nomenclador).
+  useEffect(() => {
+    if (tipo !== 'obra_social' || prestacionSeleccionada || codigoOs == null || !miCategoria?.categoria_arancel) {
+      setHonorarioMotivo(null)
+      return
+    }
+    let cancelado = false
+    getArancelVigente(codigoOs).then((arancel) => {
+      if (cancelado) return
+      const r = calcularHonorarioConsulta({
+        arancel,
+        categoria: miCategoria.categoria_arancel,
+        recertificado: miCategoria.recertificado,
+        atiendeInterior: miCategoria.atiende_interior,
+      })
+      if (r) { setHonorario(String(r.honorario)); setHonorarioMotivo(r.motivo) }
+      else setHonorarioMotivo(null)
+    })
+    return () => { cancelado = true }
+  }, [codigoOs, miCategoria, tipo, prestacionSeleccionada])
 
   // Correlación turno→orden (3C)
   const formRef = useRef<HTMLFormElement>(null)
@@ -188,6 +215,7 @@ export function NuevaOrdenForm() {
 
   async function handleOcrExtracted(data: OrdenEscaneada) {
     setOcr(data)
+    setHonorario(data.importe ? String(data.importe) : '')
     setTipo('obra_social')
     setTurnoAplicado(null)
     setAviso15(null)
@@ -324,7 +352,7 @@ export function NuevaOrdenForm() {
           diagnostico_cie10: diagnostico || undefined,
           honorario_calculado: prestacionSeleccionada?.total
             ? Number(prestacionSeleccionada.total)
-            : Number(form.get('honorario_calculado') || 0),
+            : Number(honorario || 0),
           ...comunes,
         }
       : {
@@ -560,7 +588,22 @@ export function NuevaOrdenForm() {
 
               {/* Importe manual (fallback): si no se eligió práctica del nomenclador */}
               {!prestacionSeleccionada && (
-                <Campo name="honorario_calculado" label="Importe / Honorario" type="number" min="0" step="0.01" mono placeholder="0.00" defaultValue={ocr?.importe || ''} dudoso={isDudoso('importe')} />
+                <div>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Importe / Honorario</label>
+                  <input
+                    type="number" min="0" step="0.01" inputMode="decimal"
+                    value={honorario}
+                    onChange={(e) => { setHonorario(e.target.value); setHonorarioMotivo(null) }}
+                    placeholder="0.00"
+                    className={`${inputBase} font-mono`}
+                    style={{ ...inputStyle, ...(isDudoso('importe') ? { outline: '2px solid var(--color-warning)' } : {}) }}
+                  />
+                  {honorarioMotivo
+                    ? <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>Auto: {honorarioMotivo} — editable</p>
+                    : (codigoOs != null && miCategoria && !miCategoria.categoria_arancel)
+                      ? <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>Configurá la categoría del médico para auto-calcular.</p>
+                      : null}
+                </div>
               )}
 
               {prestacionSeleccionada && (
