@@ -46,7 +46,7 @@ export function FormNuevoMedico() {
       telefono: String(form.get('telefono') ?? ''),
       numeroWhatsapp: String(form.get('numeroWhatsapp') ?? ''),
       slug,
-      categoria_arancel: ((form.get('categoria_arancel') as string) || undefined) as 'comun' | 'especialista' | 'oftalmologica' | undefined,
+      categoria_arancel: (String(form.get('categoria_arancel') ?? '') || undefined) as 'comun' | 'especialista' | 'oftalmologica' | undefined,
       recertificado: form.get('recertificado') === 'on',
       atiende_interior: form.get('atiende_interior') === 'on',
     })

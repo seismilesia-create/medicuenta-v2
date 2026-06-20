@@ -110,7 +110,9 @@ export async function onboardMedico(input: OnboardMedicoInput): Promise<OnboardM
   if (rpc.error) return { error: traducirErrorCableado(rpc.error.message) }
 
   // Categoría arancelaria (admin-only) — se setea al onboardear.
-  await service
+  // No crítico (el cableado ya pasó; se puede corregir desde editar), pero
+  // alimenta el cálculo de honorario → al menos dejar rastro si falla.
+  const { error: eCategoria } = await service
     .from('perfiles')
     .update({
       categoria_arancel: d.categoria_arancel ?? null,
@@ -118,6 +120,7 @@ export async function onboardMedico(input: OnboardMedicoInput): Promise<OnboardM
       atiende_interior: d.atiende_interior,
     })
     .eq('id', medicoId)
+  if (eCategoria) console.error('[onboardMedico] no se pudo guardar la categoría arancelaria:', eCategoria.message)
 
   return { slug: d.slug, link: `${siteUrl()}/c/${d.slug}`, medicoId }
 }

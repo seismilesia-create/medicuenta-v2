@@ -71,7 +71,7 @@ export interface MedicoDetalle {
   telefono: string
   numeroWhatsapp: string
   slug: string | null
-  categoria_arancel: 'comun' | 'especialista' | 'oftalmologica' | ''
+  categoria_arancel: 'comun' | 'especialista' | 'oftalmologica' | '' // '' = sin categoría asignada
   recertificado: boolean
   atiende_interior: boolean
 }

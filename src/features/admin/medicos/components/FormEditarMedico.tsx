@@ -24,7 +24,7 @@ export function FormEditarMedico({ medicoId, inicial }: { medicoId: string; inic
       cuit: String(form.get('cuit') ?? ''),
       telefono: String(form.get('telefono') ?? ''),
       numeroWhatsapp: String(form.get('numeroWhatsapp') ?? ''),
-      categoria_arancel: ((form.get('categoria_arancel') as string) || undefined) as 'comun' | 'especialista' | 'oftalmologica' | undefined,
+      categoria_arancel: (String(form.get('categoria_arancel') ?? '') || undefined) as 'comun' | 'especialista' | 'oftalmologica' | undefined,
       recertificado: form.get('recertificado') === 'on',
       atiende_interior: form.get('atiende_interior') === 'on',
     })
