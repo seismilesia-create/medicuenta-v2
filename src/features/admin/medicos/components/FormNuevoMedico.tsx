@@ -46,6 +46,9 @@ export function FormNuevoMedico() {
       telefono: String(form.get('telefono') ?? ''),
       numeroWhatsapp: String(form.get('numeroWhatsapp') ?? ''),
       slug,
+      categoria_arancel: ((form.get('categoria_arancel') as string) || undefined) as 'comun' | 'especialista' | 'oftalmologica' | undefined,
+      recertificado: form.get('recertificado') === 'on',
+      atiende_interior: form.get('atiende_interior') === 'on',
     })
     setLoading(false)
     if ('error' in r) { setError(r.error); return }
@@ -74,6 +77,16 @@ export function FormNuevoMedico() {
         <input required placeholder="Apellido" value={apellido} onChange={(e) => setApellido(e.target.value)} className={input} />
       </div>
       <input name="especialidad" placeholder="Especialidad" className={input} />
+      <select name="categoria_arancel" defaultValue="" className={input}>
+        <option value="">Categoría arancelaria (definir luego)</option>
+        <option value="comun">Consulta común (médica)</option>
+        <option value="especialista">Especialista</option>
+        <option value="oftalmologica">Oftalmológica</option>
+      </select>
+      <div className="flex gap-4 text-sm">
+        <label className="flex items-center gap-2"><input type="checkbox" name="recertificado" /> Recertificado</label>
+        <label className="flex items-center gap-2"><input type="checkbox" name="atiende_interior" /> Atiende en el interior</label>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <input name="matricula" placeholder="Matrícula" className={input} />
         <input name="cuit" placeholder="CUIT" className={input} />

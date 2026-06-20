@@ -12,6 +12,9 @@ export const onboardMedicoSchema = z.object({
   matricula: z.string().trim().optional().default(''),
   cuit: z.string().trim().optional().default(''),
   telefono: z.string().trim().optional().default(''),
+  categoria_arancel: z.enum(['comun', 'especialista', 'oftalmologica']).optional(),
+  recertificado: z.boolean().optional().default(false),
+  atiende_interior: z.boolean().optional().default(false),
   // Número de WhatsApp del médico, dígitos (puede venir con +, espacios o guiones).
   numeroWhatsapp: z
     .string()
@@ -47,6 +50,9 @@ export const editarMedicoSchema = z.object({
   matricula: z.string().trim().optional().default(''),
   cuit: z.string().trim().optional().default(''),
   telefono: z.string().trim().optional().default(''),
+  categoria_arancel: z.enum(['comun', 'especialista', 'oftalmologica']).optional(),
+  recertificado: z.boolean().optional().default(false),
+  atiende_interior: z.boolean().optional().default(false),
   numeroWhatsapp: z
     .string()
     .trim()
@@ -65,4 +71,7 @@ export interface MedicoDetalle {
   telefono: string
   numeroWhatsapp: string
   slug: string | null
+  categoria_arancel: 'comun' | 'especialista' | 'oftalmologica' | ''
+  recertificado: boolean
+  atiende_interior: boolean
 }

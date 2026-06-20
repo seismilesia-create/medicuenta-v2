@@ -24,6 +24,9 @@ export function FormEditarMedico({ medicoId, inicial }: { medicoId: string; inic
       cuit: String(form.get('cuit') ?? ''),
       telefono: String(form.get('telefono') ?? ''),
       numeroWhatsapp: String(form.get('numeroWhatsapp') ?? ''),
+      categoria_arancel: ((form.get('categoria_arancel') as string) || undefined) as 'comun' | 'especialista' | 'oftalmologica' | undefined,
+      recertificado: form.get('recertificado') === 'on',
+      atiende_interior: form.get('atiende_interior') === 'on',
     })
     setLoading(false)
     if ('error' in r) { setError(r.error); return }
@@ -42,6 +45,16 @@ export function FormEditarMedico({ medicoId, inicial }: { medicoId: string; inic
         <input name="apellido" required defaultValue={inicial.apellido} placeholder="Apellido" className={input} />
       </div>
       <input name="especialidad" defaultValue={inicial.especialidad} placeholder="Especialidad" className={input} />
+      <select name="categoria_arancel" defaultValue={inicial.categoria_arancel} className={input}>
+        <option value="">Categoría arancelaria (definir luego)</option>
+        <option value="comun">Consulta común (médica)</option>
+        <option value="especialista">Especialista</option>
+        <option value="oftalmologica">Oftalmológica</option>
+      </select>
+      <div className="flex gap-4 text-sm">
+        <label className="flex items-center gap-2"><input type="checkbox" name="recertificado" defaultChecked={inicial.recertificado} /> Recertificado</label>
+        <label className="flex items-center gap-2"><input type="checkbox" name="atiende_interior" defaultChecked={inicial.atiende_interior} /> Atiende en el interior</label>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <input name="matricula" defaultValue={inicial.matricula} placeholder="Matrícula" className={input} />
         <input name="cuit" defaultValue={inicial.cuit} placeholder="CUIT" className={input} />

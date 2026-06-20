@@ -109,6 +109,16 @@ export async function onboardMedico(input: OnboardMedicoInput): Promise<OnboardM
   })
   if (rpc.error) return { error: traducirErrorCableado(rpc.error.message) }
 
+  // Categoría arancelaria (admin-only) — se setea al onboardear.
+  await service
+    .from('perfiles')
+    .update({
+      categoria_arancel: d.categoria_arancel ?? null,
+      recertificado: d.recertificado,
+      atiende_interior: d.atiende_interior,
+    })
+    .eq('id', medicoId)
+
   return { slug: d.slug, link: `${siteUrl()}/c/${d.slug}`, medicoId }
 }
 
@@ -120,7 +130,7 @@ export async function getMedicoDetalle(medicoId: string): Promise<{ data: Medico
   const service = createServiceClient()
   const { data: perfil, error } = await service
     .from('perfiles')
-    .select('nombre, apellido, especialidad, matricula, cuit, telefono')
+    .select('nombre, apellido, especialidad, matricula, cuit, telefono, categoria_arancel, recertificado, atiende_interior')
     .eq('id', medicoId)
     .maybeSingle()
   if (error) return { error: error.message }
@@ -142,6 +152,9 @@ export async function getMedicoDetalle(medicoId: string): Promise<{ data: Medico
       telefono: (perfil.telefono as string | null) ?? '',
       numeroWhatsapp: (asig?.numero_personal as string | null) ?? '',
       slug: (asig?.slug_publico as string | null) ?? null,
+      categoria_arancel: (perfil.categoria_arancel as 'comun' | 'especialista' | 'oftalmologica' | null) ?? '',
+      recertificado: (perfil.recertificado as boolean | null) ?? false,
+      atiende_interior: (perfil.atiende_interior as boolean | null) ?? false,
     },
   }
 }
@@ -165,6 +178,9 @@ export async function actualizarMedico(medicoId: string, input: EditarMedicoInpu
       matricula: d.matricula || null,
       cuit: d.cuit || null,
       telefono: d.telefono || null,
+      categoria_arancel: d.categoria_arancel ?? null,
+      recertificado: d.recertificado,
+      atiende_interior: d.atiende_interior,
     })
     .eq('id', medicoId)
   if (e1) return { error: e1.message }
