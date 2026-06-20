@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { updateOrden } from '@/actions/ordenes'
 import {
   AGENTES_FACTURADORES,
@@ -13,8 +13,9 @@ import {
 } from '../types/ordenes'
 import { PracticaAutocomplete } from './PracticaAutocomplete'
 import { OsAutocomplete } from '@/features/catalogo/components/OsAutocomplete'
-import { getCatalogoOs, getMisOsSuspendidas } from '@/actions/catalogo'
+import { getCatalogoOs, getMisOsSuspendidas, getArancelVigente, getMiCategoriaArancel } from '@/actions/catalogo'
 import { estaSuspendida, type OsCatalogoItem } from '@/lib/catalogo/obras-sociales'
+import { calcularHonorarioConsulta, type MiCategoriaArancel } from '@/lib/catalogo/honorario'
 
 const inputBase = 'w-full px-4 py-3 rounded-lg text-sm'
 const inputStyle = {
@@ -92,11 +93,35 @@ export function EditarOrdenForm({ orden }: Props) {
   const [suspendidasMedico, setSuspendidasMedico] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [miCategoria, setMiCategoria] = useState<MiCategoriaArancel | null>(null)
+  const [honorario, setHonorario] = useState(orden.honorario_calculado ? String(orden.honorario_calculado) : '')
+  const [honorarioMotivo, setHonorarioMotivo] = useState<string | null>(null)
+  const osCambiada = useRef(false)
 
   useEffect(() => {
     getCatalogoOs().then(setCatalogo)
     getMisOsSuspendidas().then(setSuspendidasMedico)
+    getMiCategoriaArancel().then(setMiCategoria)
   }, [])
+
+  useEffect(() => {
+    if (!osCambiada.current || tipo !== 'obra_social' || prestacionSeleccionada || codigoOs == null || !miCategoria?.categoria_arancel) {
+      return
+    }
+    let cancelado = false
+    getArancelVigente(codigoOs).then((arancel) => {
+      if (cancelado) return
+      const r = calcularHonorarioConsulta({
+        arancel,
+        categoria: miCategoria.categoria_arancel,
+        recertificado: miCategoria.recertificado,
+        atiendeInterior: miCategoria.atiende_interior,
+      })
+      if (r) { setHonorario(String(r.honorario)); setHonorarioMotivo(r.motivo) }
+      else setHonorarioMotivo(null)
+    })
+    return () => { cancelado = true }
+  }, [codigoOs, miCategoria, tipo, prestacionSeleccionada])
 
   function handlePrestacionSelect(prestacion: Prestacion) {
     setPrestacionSeleccionada(prestacion)
@@ -164,7 +189,7 @@ export function EditarOrdenForm({ orden }: Props) {
           diagnostico_cie10: str('diagnostico_cie10'),
           honorario_calculado: prestacionSeleccionada?.total
             ? Number(prestacionSeleccionada.total)
-            : Number(form.get('honorario_calculado') || 0),
+            : Number(honorario || 0),
           ...comunes,
         }
       : {
@@ -262,7 +287,7 @@ export function EditarOrdenForm({ orden }: Props) {
                 <OsAutocomplete
                   catalogo={catalogo}
                   valor={obraSocial}
-                  onSelect={({ nombre_os, codigo_os }) => { setObraSocial(nombre_os); setCodigoOs(codigo_os) }}
+                  onSelect={({ nombre_os, codigo_os }) => { setObraSocial(nombre_os); setCodigoOs(codigo_os); osCambiada.current = true }}
                   inputClassName={inputBase}
                   inputStyle={inputStyle}
                 />
@@ -305,7 +330,20 @@ export function EditarOrdenForm({ orden }: Props) {
             </div>
 
             {!prestacionSeleccionada && (
-              <Campo name="honorario_calculado" label="Importe / Honorario" type="number" min="0" step="0.01" mono placeholder="0.00" defaultValue={orden.honorario_calculado || ''} />
+              <div>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Importe / Honorario</label>
+                <input
+                  type="number" min="0" step="0.01" inputMode="decimal"
+                  value={honorario}
+                  onChange={(e) => { setHonorario(e.target.value); setHonorarioMotivo(null) }}
+                  placeholder="0.00"
+                  className={`${inputBase} font-mono`}
+                  style={inputStyle}
+                />
+                {honorarioMotivo && (
+                  <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>Auto: {honorarioMotivo} — editable</p>
+                )}
+              </div>
             )}
 
             {prestacionSeleccionada && (
