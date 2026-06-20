@@ -66,6 +66,7 @@ export function calcularHonorarioConsulta(params: {
   let base = 0
   for (const c of candidatas) {
     const v = arancel[c]
+    // > 0: una columna en 0 (o null) se trata como "sin valor" → cae al siguiente candidato.
     if (typeof v === 'number' && v > 0) { columna = c; base = v; break }
   }
   if (columna === null) return null
