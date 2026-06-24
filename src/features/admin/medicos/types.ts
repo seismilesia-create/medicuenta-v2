@@ -12,8 +12,7 @@ export const onboardMedicoSchema = z.object({
   matricula: z.string().trim().optional().default(''),
   cuit: z.string().trim().optional().default(''),
   telefono: z.string().trim().optional().default(''),
-  categoria_arancel: z.enum(['comun', 'especialista', 'oftalmologica']).optional(),
-  recertificado: z.boolean().optional().default(false),
+  categoria_arancel: z.enum(['medica', 'especialista', 'oftalmologica', 'oftalmologica_recertificado']).optional(),
   atiende_interior: z.boolean().optional().default(false),
   // Número de WhatsApp del médico, dígitos (puede venir con +, espacios o guiones).
   numeroWhatsapp: z
@@ -50,8 +49,7 @@ export const editarMedicoSchema = z.object({
   matricula: z.string().trim().optional().default(''),
   cuit: z.string().trim().optional().default(''),
   telefono: z.string().trim().optional().default(''),
-  categoria_arancel: z.enum(['comun', 'especialista', 'oftalmologica']).optional(),
-  recertificado: z.boolean().optional().default(false),
+  categoria_arancel: z.enum(['medica', 'especialista', 'oftalmologica', 'oftalmologica_recertificado']).optional(),
   atiende_interior: z.boolean().optional().default(false),
   numeroWhatsapp: z
     .string()
@@ -71,7 +69,6 @@ export interface MedicoDetalle {
   telefono: string
   numeroWhatsapp: string
   slug: string | null
-  categoria_arancel: 'comun' | 'especialista' | 'oftalmologica' | '' // '' = sin categoría asignada
-  recertificado: boolean
+  categoria_arancel: 'medica' | 'especialista' | 'oftalmologica' | 'oftalmologica_recertificado' | '' // '' = sin categoría asignada
   atiende_interior: boolean
 }

@@ -116,7 +116,6 @@ export async function onboardMedico(input: OnboardMedicoInput): Promise<OnboardM
     .from('perfiles')
     .update({
       categoria_arancel: d.categoria_arancel ?? null,
-      recertificado: d.recertificado,
       atiende_interior: d.atiende_interior,
     })
     .eq('id', medicoId)
@@ -133,7 +132,7 @@ export async function getMedicoDetalle(medicoId: string): Promise<{ data: Medico
   const service = createServiceClient()
   const { data: perfil, error } = await service
     .from('perfiles')
-    .select('nombre, apellido, especialidad, matricula, cuit, telefono, categoria_arancel, recertificado, atiende_interior')
+    .select('nombre, apellido, especialidad, matricula, cuit, telefono, categoria_arancel, atiende_interior')
     .eq('id', medicoId)
     .maybeSingle()
   if (error) return { error: error.message }
@@ -155,8 +154,7 @@ export async function getMedicoDetalle(medicoId: string): Promise<{ data: Medico
       telefono: (perfil.telefono as string | null) ?? '',
       numeroWhatsapp: (asig?.numero_personal as string | null) ?? '',
       slug: (asig?.slug_publico as string | null) ?? null,
-      categoria_arancel: (perfil.categoria_arancel as 'comun' | 'especialista' | 'oftalmologica' | null) ?? '',
-      recertificado: (perfil.recertificado as boolean | null) ?? false,
+      categoria_arancel: (perfil.categoria_arancel as 'medica' | 'especialista' | 'oftalmologica' | 'oftalmologica_recertificado' | null) ?? '',
       atiende_interior: (perfil.atiende_interior as boolean | null) ?? false,
     },
   }
@@ -182,7 +180,6 @@ export async function actualizarMedico(medicoId: string, input: EditarMedicoInpu
       cuit: d.cuit || null,
       telefono: d.telefono || null,
       categoria_arancel: d.categoria_arancel ?? null,
-      recertificado: d.recertificado,
       atiende_interior: d.atiende_interior,
     })
     .eq('id', medicoId)

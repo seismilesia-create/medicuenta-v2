@@ -46,8 +46,7 @@ export function FormNuevoMedico() {
       telefono: String(form.get('telefono') ?? ''),
       numeroWhatsapp: String(form.get('numeroWhatsapp') ?? ''),
       slug,
-      categoria_arancel: (String(form.get('categoria_arancel') ?? '') || undefined) as 'comun' | 'especialista' | 'oftalmologica' | undefined,
-      recertificado: form.get('recertificado') === 'on',
+      categoria_arancel: (String(form.get('categoria_arancel') ?? '') || undefined) as 'medica' | 'especialista' | 'oftalmologica' | 'oftalmologica_recertificado' | undefined,
       atiende_interior: form.get('atiende_interior') === 'on',
     })
     setLoading(false)
@@ -79,12 +78,12 @@ export function FormNuevoMedico() {
       <input name="especialidad" placeholder="Especialidad" className={input} />
       <select name="categoria_arancel" defaultValue="" className={input}>
         <option value="">Categoría arancelaria (definir luego)</option>
-        <option value="comun">Consulta común (médica)</option>
-        <option value="especialista">Especialista</option>
+        <option value="medica">Consulta médica</option>
+        <option value="especialista">Especialista (recertificado)</option>
         <option value="oftalmologica">Oftalmológica</option>
+        <option value="oftalmologica_recertificado">Oftalmológica recertificado</option>
       </select>
       <div className="flex gap-4 text-sm">
-        <label className="flex items-center gap-2"><input type="checkbox" name="recertificado" /> Recertificado</label>
         <label className="flex items-center gap-2"><input type="checkbox" name="atiende_interior" /> Atiende en el interior</label>
       </div>
       <div className="grid grid-cols-2 gap-3">

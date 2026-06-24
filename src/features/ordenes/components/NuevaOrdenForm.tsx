@@ -168,7 +168,6 @@ export function NuevaOrdenForm() {
       const r = calcularHonorarioConsulta({
         arancel,
         categoria: miCategoria.categoria_arancel,
-        recertificado: miCategoria.recertificado,
         atiendeInterior: miCategoria.atiende_interior,
       })
       if (r) { setHonorario(String(r.honorario)); setHonorarioMotivo(r.motivo) }

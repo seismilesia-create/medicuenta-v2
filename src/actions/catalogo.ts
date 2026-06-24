@@ -50,19 +50,18 @@ export async function getArancelVigente(codigoOs: number): Promise<ArancelVigent
 
 /** Categoría arancelaria del médico logueado (para auto-calcular el honorario). */
 export async function getMiCategoriaArancel(): Promise<MiCategoriaArancel> {
-  const vacio: MiCategoriaArancel = { categoria_arancel: null, recertificado: false, atiende_interior: false }
+  const vacio: MiCategoriaArancel = { categoria_arancel: null, atiende_interior: false }
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return vacio
   const { data } = await supabase
     .from('perfiles')
-    .select('categoria_arancel, recertificado, atiende_interior')
+    .select('categoria_arancel, atiende_interior')
     .eq('id', user.id)
     .maybeSingle()
   if (!data) return vacio
   return {
     categoria_arancel: (data.categoria_arancel as CategoriaArancel | null) ?? null,
-    recertificado: (data.recertificado as boolean | null) ?? false,
     atiende_interior: (data.atiende_interior as boolean | null) ?? false,
   }
 }

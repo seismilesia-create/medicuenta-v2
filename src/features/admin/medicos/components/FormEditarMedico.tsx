@@ -24,8 +24,7 @@ export function FormEditarMedico({ medicoId, inicial }: { medicoId: string; inic
       cuit: String(form.get('cuit') ?? ''),
       telefono: String(form.get('telefono') ?? ''),
       numeroWhatsapp: String(form.get('numeroWhatsapp') ?? ''),
-      categoria_arancel: (String(form.get('categoria_arancel') ?? '') || undefined) as 'comun' | 'especialista' | 'oftalmologica' | undefined,
-      recertificado: form.get('recertificado') === 'on',
+      categoria_arancel: (String(form.get('categoria_arancel') ?? '') || undefined) as 'medica' | 'especialista' | 'oftalmologica' | 'oftalmologica_recertificado' | undefined,
       atiende_interior: form.get('atiende_interior') === 'on',
     })
     setLoading(false)
@@ -47,12 +46,12 @@ export function FormEditarMedico({ medicoId, inicial }: { medicoId: string; inic
       <input name="especialidad" defaultValue={inicial.especialidad} placeholder="Especialidad" className={input} />
       <select name="categoria_arancel" defaultValue={inicial.categoria_arancel} className={input}>
         <option value="">Categoría arancelaria (definir luego)</option>
-        <option value="comun">Consulta común (médica)</option>
-        <option value="especialista">Especialista</option>
+        <option value="medica">Consulta médica</option>
+        <option value="especialista">Especialista (recertificado)</option>
         <option value="oftalmologica">Oftalmológica</option>
+        <option value="oftalmologica_recertificado">Oftalmológica recertificado</option>
       </select>
       <div className="flex gap-4 text-sm">
-        <label className="flex items-center gap-2"><input type="checkbox" name="recertificado" defaultChecked={inicial.recertificado} /> Recertificado</label>
         <label className="flex items-center gap-2"><input type="checkbox" name="atiende_interior" defaultChecked={inicial.atiende_interior} /> Atiende en el interior</label>
       </div>
       <div className="grid grid-cols-2 gap-3">
