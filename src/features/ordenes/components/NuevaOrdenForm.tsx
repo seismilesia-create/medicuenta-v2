@@ -149,6 +149,7 @@ export function NuevaOrdenForm() {
   const [miCategoria, setMiCategoria] = useState<MiCategoriaArancel | null>(null)
   const [honorario, setHonorario] = useState('')
   const [honorarioMotivo, setHonorarioMotivo] = useState<string | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
     getCatalogoOs().then(setCatalogo)
@@ -163,7 +164,10 @@ export function NuevaOrdenForm() {
       return
     }
     let cancelado = false
-    getArancelVigente(codigoOs).then((arancel) => {
+    // Arancel vigente a la fecha de atención cargada en el form (no el último cargado).
+    const fechaInput = formRef.current?.elements.namedItem('fecha_atencion') as HTMLInputElement | null
+    const fecha = fechaInput?.value || new Date().toISOString().split('T')[0]
+    getArancelVigente(codigoOs, fecha).then((arancel) => {
       if (cancelado) return
       const r = calcularHonorarioConsulta({
         arancel,
@@ -177,7 +181,6 @@ export function NuevaOrdenForm() {
   }, [codigoOs, miCategoria, tipo, prestacionSeleccionada])
 
   // Correlación turno→orden (3C)
-  const formRef = useRef<HTMLFormElement>(null)
   const [sugerencias, setSugerencias] = useState<SugerenciaTurno[]>([])
   const [turnoAplicado, setTurnoAplicado] = useState<SugerenciaTurno | null>(null)
   const [aviso15, setAviso15] = useState<ConflictoQuinceMin[] | null>(null)

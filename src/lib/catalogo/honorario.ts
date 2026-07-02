@@ -19,6 +19,26 @@ export interface ArancelVigente {
   recargo_interior_pct: number | null // +% si el médico atiende en el interior (hoy: solo OSEP = 20)
 }
 
+/**
+ * Entre todas las vigencias cargadas de una OS, elige la más reciente que NO sea
+ * futura respecto de la fecha de atención de la orden. Así una orden retroactiva
+ * (se factura a mes vencido) usa el arancel del mes que le corresponde, y cargar
+ * la vigencia del mes siguiente por adelantado no contamina las órdenes en curso.
+ * Devuelve null si no hay ninguna vigencia en/antes de esa fecha.
+ */
+export function elegirArancelVigente<T extends { vigencia: string }>(
+  rows: T[],
+  fechaHasta: string,
+): T | null {
+  let mejor: T | null = null
+  for (const r of rows) {
+    if (r.vigencia <= fechaHasta && (mejor === null || r.vigencia > mejor.vigencia)) {
+      mejor = r
+    }
+  }
+  return mejor
+}
+
 // Categoría arancelaria del médico (de `perfiles`). La devuelve getMiCategoriaArancel
 // y la consumen los forms de orden.
 export interface MiCategoriaArancel {

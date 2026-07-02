@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calcularHonorarioConsulta, type ArancelVigente } from './honorario'
+import { calcularHonorarioConsulta, elegirArancelVigente, type ArancelVigente } from './honorario'
 
 // Fixture con los 4 tiers en orden creciente realista (médica < especialista < oftalmo < oftalmo-recert).
 const arancel = (over: Partial<ArancelVigente> = {}): ArancelVigente => ({
@@ -75,5 +75,31 @@ describe('calcularHonorarioConsulta', () => {
   it('redondeo a 2 decimales', () => {
     const r = calcularHonorarioConsulta({ arancel: arancel({ valor_especialista: 25316.62, recargo_interior_pct: 20 }), categoria: 'especialista', atiendeInterior: true })
     expect(r?.honorario).toBe(30379.94) // 25316.62 * 1.20 = 30379.944
+  })
+})
+
+describe('elegirArancelVigente', () => {
+  const v = (vigencia: string, valor: number) => ({ vigencia, valor })
+  const filas = [v('2026-05-01', 100), v('2026-06-01', 200), v('2026-07-01', 300)]
+
+  it('elige la vigencia más reciente que no es futura respecto de la fecha', () => {
+    // orden del 15/06: debe tomar la vigencia de junio, NO la de julio ya cargada (el bug).
+    expect(elegirArancelVigente(filas, '2026-06-15')?.valor).toBe(200)
+  })
+  it('fecha exactamente en una vigencia la incluye (<=)', () => {
+    expect(elegirArancelVigente(filas, '2026-07-01')?.valor).toBe(300)
+  })
+  it('orden del mes en curso toma la última vigencia', () => {
+    expect(elegirArancelVigente(filas, '2026-08-10')?.valor).toBe(300)
+  })
+  it('si todas las vigencias son futuras → null (form manual)', () => {
+    expect(elegirArancelVigente(filas, '2026-04-01')).toBeNull()
+  })
+  it('lista vacía → null', () => {
+    expect(elegirArancelVigente([], '2026-06-15')).toBeNull()
+  })
+  it('no depende del orden de las filas', () => {
+    const desordenadas = [v('2026-07-01', 300), v('2026-05-01', 100), v('2026-06-01', 200)]
+    expect(elegirArancelVigente(desordenadas, '2026-06-30')?.valor).toBe(200)
   })
 })

@@ -109,7 +109,8 @@ export function EditarOrdenForm({ orden }: Props) {
       return
     }
     let cancelado = false
-    getArancelVigente(codigoOs).then((arancel) => {
+    // Arancel vigente a la fecha de atención de la orden (no el último cargado).
+    getArancelVigente(codigoOs, orden.fecha_atencion).then((arancel) => {
       if (cancelado) return
       const r = calcularHonorarioConsulta({
         arancel,

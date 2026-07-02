@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { catalogoVigente, type OsCatalogoItem, type ArancelOsRow } from '@/lib/catalogo/obras-sociales'
-import type { ArancelVigente, MiCategoriaArancel, CategoriaArancel } from '@/lib/catalogo/honorario'
+import { elegirArancelVigente, type ArancelVigente, type MiCategoriaArancel, type CategoriaArancel } from '@/lib/catalogo/honorario'
 
 /** Catálogo de OS de la vigencia más reciente (lectura global). */
 export async function getCatalogoOs(): Promise<OsCatalogoItem[]> {
@@ -27,24 +27,40 @@ export async function getMisOsSuspendidas(): Promise<string[]> {
   return data.map((r) => r.nombre_os as string)
 }
 
-/** Arancel de la vigencia más reciente de una OS, por codigo_os (lectura global). */
-export async function getArancelVigente(codigoOs: number): Promise<ArancelVigente | null> {
+type ArancelOsValoresRow = {
+  valor_consulta_medica: number | null
+  valor_especialista: number | null
+  valor_consulta_oftalmologica: number | null
+  valor_recertificado: number | null
+  recargo_interior_pct: number | null
+  vigencia: string
+}
+
+/**
+ * Arancel de una OS vigente A LA FECHA DE ATENCIÓN de la orden (por codigo_os).
+ * `fechaAtencion` en formato 'YYYY-MM-DD'. Elige la vigencia más reciente que no
+ * sea posterior a esa fecha: una orden de junio no toma el arancel de julio aunque
+ * ya esté cargado. Devuelve null si no hay vigencia aplicable (el form queda manual).
+ */
+export async function getArancelVigente(
+  codigoOs: number,
+  fechaAtencion: string,
+): Promise<ArancelVigente | null> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('aranceles_os')
     .select('valor_consulta_medica, valor_especialista, valor_consulta_oftalmologica, valor_recertificado, recargo_interior_pct, vigencia')
     .eq('codigo_os', codigoOs)
-    .order('vigencia', { ascending: false })
-    .limit(1)
-    .maybeSingle()
   if (error || !data) return null
+  const row = elegirArancelVigente(data as ArancelOsValoresRow[], fechaAtencion)
+  if (!row) return null
   const num = (v: unknown): number | null => (v == null ? null : Number(v))
   return {
-    valor_consulta_medica: num(data.valor_consulta_medica),
-    valor_especialista: num(data.valor_especialista),
-    valor_consulta_oftalmologica: num(data.valor_consulta_oftalmologica),
-    valor_recertificado: num(data.valor_recertificado),
-    recargo_interior_pct: num(data.recargo_interior_pct),
+    valor_consulta_medica: num(row.valor_consulta_medica),
+    valor_especialista: num(row.valor_especialista),
+    valor_consulta_oftalmologica: num(row.valor_consulta_oftalmologica),
+    valor_recertificado: num(row.valor_recertificado),
+    recargo_interior_pct: num(row.recargo_interior_pct),
   }
 }
 
