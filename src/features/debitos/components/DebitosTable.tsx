@@ -32,6 +32,7 @@ export function DebitosTable() {
   const [debitos, setDebitos] = useState<Debito[]>([])
   const [loading, setLoading] = useState(true)
   const [motivoFilter, setMotivoFilter] = useState<MotivoDebito | ''>('')
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchDebitos()
@@ -42,19 +43,30 @@ export function DebitosTable() {
     setLoading(true)
     const supabase = createClient()
 
-    let query = supabase.from('debitos').select('*').order('fecha', { ascending: false })
+    let query = supabase.from('debitos').select('*').order('fecha', { ascending: false }).limit(500)
 
     if (motivoFilter) {
       query = query.eq('motivo', motivoFilter)
     }
 
-    const { data } = await query
-    setDebitos(data ?? [])
+    const { data, error } = await query
+    if (error) {
+      setLoadError('No se pudieron cargar los débitos. Reintentá en unos segundos.')
+      setDebitos([])
+    } else {
+      setLoadError(null)
+      setDebitos(data ?? [])
+    }
     setLoading(false)
   }
 
   return (
     <div className="space-y-6">
+      {loadError && (
+        <div className="px-4 py-3 rounded-xl border text-sm font-medium bg-red-500/10 border-red-500/20 text-red-500">
+          {loadError}
+        </div>
+      )}
       {/* Filter */}
       <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6">
         <div className="absolute -top-12 -right-12 w-32 h-32 bg-primary/5 rounded-full blur-2xl pointer-events-none" />

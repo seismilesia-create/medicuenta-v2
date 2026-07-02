@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { hoyArgentina } from '@/shared/lib/fechas'
 import Link from 'next/link'
@@ -36,6 +36,8 @@ function getMontoTotal(orden: Orden): number {
   return Number(orden.honorario_calculado) + Number(orden.monto_particular) + Number(orden.monto_plus)
 }
 
+const ORDENES_LIMIT = 500
+
 export function OrdenesTable() {
   const router = useRouter()
   const [ordenes, setOrdenes] = useState<Orden[]>([])
@@ -44,15 +46,19 @@ export function OrdenesTable() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [showPlanilla, setShowPlanilla] = useState(false)
   const [batchResult, setBatchResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [truncado, setTruncado] = useState(false)
+  const reqId = useRef(0)
 
   const borradores = ordenes.filter((o) => o.estado === 'borrador')
   const selectedBorradores = borradores.filter((o) => selected.has(o.id))
 
   const fetchOrdenes = useCallback(async (currentFilters: FilterType) => {
+    const myId = ++reqId.current
     setLoading(true)
     const supabase = createClient()
 
-    let query = supabase.from('ordenes').select('*').order('fecha_atencion', { ascending: false })
+    let query = supabase.from('ordenes').select('*').order('fecha_atencion', { ascending: false }).limit(ORDENES_LIMIT)
 
     if (currentFilters.tipo) query = query.eq('tipo', currentFilters.tipo)
     if (currentFilters.codigo_os != null) query = query.eq('codigo_os', currentFilters.codigo_os)
@@ -62,8 +68,16 @@ export function OrdenesTable() {
     if (currentFilters.fecha_hasta) query = query.lte('fecha_atencion', currentFilters.fecha_hasta)
     if (currentFilters.busqueda) query = query.ilike('nombre_paciente', `%${currentFilters.busqueda}%`)
 
-    const { data } = await query
-    setOrdenes(data ?? [])
+    const { data, error } = await query
+    if (myId !== reqId.current) return // llegó una request más nueva: descartamos esta respuesta vieja
+    if (error) {
+      setLoadError('No se pudieron cargar las órdenes. Reintentá en unos segundos.')
+      setOrdenes([])
+    } else {
+      setLoadError(null)
+      setOrdenes(data ?? [])
+      setTruncado((data?.length ?? 0) >= ORDENES_LIMIT)
+    }
     setLoading(false)
   }, [])
 
@@ -187,6 +201,19 @@ export function OrdenesTable() {
       <div className="px-4 md:px-8 pb-8 md:pb-12 space-y-6">
         {/* Filters */}
         <OrdenFilters onFilterChange={handleFilterChange} />
+
+        {loadError && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium bg-red-500/10 border-red-500/20 text-red-500">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {loadError}
+          </div>
+        )}
+        {truncado && !loadError && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl border text-sm bg-amber-500/10 border-amber-500/20 text-amber-600">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            Mostrando las primeras {ORDENES_LIMIT} órdenes. Usá los filtros (fecha, OS, estado) para acotar la búsqueda.
+          </div>
+        )}
 
         {/* Batch result feedback */}
         {batchResult && (

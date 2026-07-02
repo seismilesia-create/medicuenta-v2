@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { hoyArgentina } from '@/shared/lib/fechas'
 import Link from 'next/link'
@@ -31,6 +31,8 @@ function formatFecha(fecha: string): string {
   })
 }
 
+const CIRUGIAS_LIMIT = 500
+
 export function CirugiasTable() {
   const router = useRouter()
   const [cirugias, setCirugias] = useState<Cirugia[]>([])
@@ -39,6 +41,9 @@ export function CirugiasTable() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [batchLoading, setBatchLoading] = useState(false)
   const [batchResult, setBatchResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [truncado, setTruncado] = useState(false)
+  const reqId = useRef(0)
 
   const borradores = cirugias.filter((c) => c.estado === 'borrador')
   const selectedBorradores = borradores.filter((c) => selected.has(c.id))
@@ -47,7 +52,7 @@ export function CirugiasTable() {
     setLoading(true)
     const supabase = createClient()
 
-    let query = supabase.from('cirugias').select('*').order('fecha', { ascending: false })
+    let query = supabase.from('cirugias').select('*').order('fecha', { ascending: false }).limit(CIRUGIAS_LIMIT)
 
     if (currentFilters.obra_social) query = query.eq('obra_social', currentFilters.obra_social)
     if (currentFilters.estado) query = query.eq('estado', currentFilters.estado)
@@ -58,8 +63,17 @@ export function CirugiasTable() {
     if (currentFilters.fecha_hasta) query = query.lte('fecha', currentFilters.fecha_hasta)
     if (currentFilters.busqueda) query = query.ilike('nombre_paciente', `%${currentFilters.busqueda}%`)
 
-    const { data } = await query
-    setCirugias(data ?? [])
+    const myId = ++reqId.current
+    const { data, error } = await query
+    if (myId !== reqId.current) return
+    if (error) {
+      setLoadError('No se pudieron cargar las cirugías. Reintentá en unos segundos.')
+      setCirugias([])
+    } else {
+      setLoadError(null)
+      setCirugias(data ?? [])
+      setTruncado((data?.length ?? 0) >= CIRUGIAS_LIMIT)
+    }
     setLoading(false)
   }, [])
 
@@ -206,6 +220,17 @@ export function CirugiasTable() {
 
       <div className="px-4 md:px-8 pb-8 md:pb-12 space-y-6">
         <CirugiaFilters onFilterChange={handleFilterChange} />
+
+        {loadError && (
+          <div className="px-4 py-3 rounded-xl border text-sm font-medium bg-red-500/10 border-red-500/20 text-red-500">
+            {loadError}
+          </div>
+        )}
+        {truncado && !loadError && (
+          <div className="px-4 py-3 rounded-xl border text-sm bg-amber-500/10 border-amber-500/20 text-amber-600">
+            Mostrando las primeras {CIRUGIAS_LIMIT} cirugías. Usá los filtros para acotar la búsqueda.
+          </div>
+        )}
 
         {batchResult && (
           <div

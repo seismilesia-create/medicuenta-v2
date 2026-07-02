@@ -34,6 +34,7 @@ export function LiquidacionesTable() {
   const [liquidaciones, setLiquidaciones] = useState<Liquidacion[]>([])
   const [loading, setLoading] = useState(true)
   const [estadoFilter, setEstadoFilter] = useState<EstadoLiquidacion | ''>('')
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchLiquidaciones()
@@ -44,14 +45,20 @@ export function LiquidacionesTable() {
     setLoading(true)
     const supabase = createClient()
 
-    let query = supabase.from('liquidaciones').select('*').order('periodo_inicio', { ascending: false })
+    let query = supabase.from('liquidaciones').select('*').order('periodo_inicio', { ascending: false }).limit(500)
 
     if (estadoFilter) {
       query = query.eq('estado', estadoFilter)
     }
 
-    const { data } = await query
-    setLiquidaciones(data ?? [])
+    const { data, error } = await query
+    if (error) {
+      setLoadError('No se pudieron cargar las liquidaciones. Reintentá en unos segundos.')
+      setLiquidaciones([])
+    } else {
+      setLoadError(null)
+      setLiquidaciones(data ?? [])
+    }
     setLoading(false)
   }
 
@@ -116,6 +123,12 @@ export function LiquidacionesTable() {
             </select>
           </div>
         </div>
+
+        {loadError && (
+          <div className="mb-4 px-4 py-3 rounded-xl border text-sm font-medium bg-red-500/10 border-red-500/20 text-red-500">
+            {loadError}
+          </div>
+        )}
 
         {/* Loading / Empty / Table */}
         {loading ? (
