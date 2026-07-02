@@ -1,5 +1,6 @@
 export interface OrdenPlanilla {
   id: string
+  codigo_os: number | null
   obra_social: string | null
   agente_facturador: string
   fecha_atencion: string
@@ -8,6 +9,7 @@ export interface OrdenPlanilla {
 }
 
 export interface GrupoPlanilla {
+  codigo_os: number | null
   obra_social: string
   agente_facturador: string
   periodo_mes: string // YYYY-MM-01
@@ -25,17 +27,27 @@ export function totalHonorarios(ordenes: OrdenPlanilla[]): number {
   return ordenes.reduce((acc, o) => acc + Number(o.honorario_calculado), 0)
 }
 
-/** Agrupa órdenes en planillas por (obra social, período mensual, agente facturador). */
+/**
+ * Clave de OS para agrupar: el codigo_os si la orden lo tiene; si no (órdenes
+ * viejas de texto libre), un slug del nombre que tolera "OSEP" ↔ "O.S.E.P.".
+ */
+function claveOs(o: OrdenPlanilla): string {
+  if (o.codigo_os != null) return `c:${o.codigo_os}`
+  const slug = (o.obra_social ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  return `t:${slug || 'otra'}`
+}
+
+/** Agrupa órdenes en planillas por (OS canónica, período mensual, agente facturador). */
 export function agruparParaPlanilla(ordenes: OrdenPlanilla[]): GrupoPlanilla[] {
   const mapa = new Map<string, OrdenPlanilla[]>()
   for (const o of ordenes) {
-    const os = o.obra_social ?? 'Otra'
-    const key = `${os}|||${periodoMesDe(o.fecha_atencion)}|||${o.agente_facturador}`
+    const key = `${claveOs(o)}|||${periodoMesDe(o.fecha_atencion)}|||${o.agente_facturador}`
     const arr = mapa.get(key) ?? []
     arr.push(o)
     mapa.set(key, arr)
   }
   return Array.from(mapa.values()).map((ords) => ({
+    codigo_os: ords[0].codigo_os ?? null,
     obra_social: ords[0].obra_social ?? 'Otra',
     agente_facturador: ords[0].agente_facturador,
     periodo_mes: periodoMesDe(ords[0].fecha_atencion),

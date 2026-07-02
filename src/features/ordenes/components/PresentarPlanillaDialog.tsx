@@ -25,6 +25,7 @@ export function PresentarPlanillaDialog({ ordenes, onClose }: { ordenes: Orden[]
     setError(null)
     const grupos = agruparParaPlanilla(aPresentar.map((o) => ({
       id: o.id,
+      codigo_os: o.codigo_os ?? null,
       obra_social: o.obra_social,
       agente_facturador: o.agente_facturador,
       fecha_atencion: o.fecha_atencion,
@@ -33,6 +34,7 @@ export function PresentarPlanillaDialog({ ordenes, onClose }: { ordenes: Orden[]
     })))
     for (const g of grupos) {
       const res = await emitirPlanilla({
+        codigo_os: g.codigo_os,
         obra_social: g.obra_social,
         agente_facturador: g.agente_facturador,
         orden_ids: g.ordenes.map((o) => o.id),

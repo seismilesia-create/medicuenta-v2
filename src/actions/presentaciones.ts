@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { totalHonorarios, periodoMesDe } from '@/lib/ordenes/planilla'
 
 export interface EmitirPlanillaInput {
+  codigo_os: number | null
   obra_social: string
   agente_facturador: string
   orden_ids: string[]
@@ -16,15 +17,18 @@ export async function emitirPlanilla(input: EmitirPlanillaInput) {
   if (!user) return { error: 'No autenticado' }
   if (input.orden_ids.length === 0) return { error: 'No hay órdenes para presentar' }
 
-  const { data: ordenes, error: qErr } = await supabase
+  let query = supabase
     .from('ordenes')
-    .select('id, obra_social, agente_facturador, fecha_atencion, honorario_calculado, monto_plus, estado')
+    .select('id, codigo_os, obra_social, agente_facturador, fecha_atencion, honorario_calculado, monto_plus, estado')
     .in('id', input.orden_ids)
     .eq('medico_id', user.id)
     .eq('estado', 'borrador')
-    .eq('obra_social', input.obra_social)
     .eq('tipo', 'obra_social')
     .eq('nivel', 1)
+  // Identidad canónica por codigo_os; las órdenes viejas sin código se identifican
+  // por los ids del grupo (ya agrupados por slug de texto en el diálogo).
+  query = input.codigo_os != null ? query.eq('codigo_os', input.codigo_os) : query.is('codigo_os', null)
+  const { data: ordenes, error: qErr } = await query
   if (qErr) return { error: qErr.message }
   const validas = ordenes ?? []
   if (validas.length === 0) return { error: 'No hay órdenes válidas (borrador, de esa obra social)' }
@@ -39,6 +43,7 @@ export async function emitirPlanilla(input: EmitirPlanillaInput) {
     .insert({
       medico_id: user.id,
       periodo_mes,
+      codigo_os: input.codigo_os,
       obra_social: input.obra_social,
       agente_facturador: input.agente_facturador,
       cantidad_ordenes: validas.length,
