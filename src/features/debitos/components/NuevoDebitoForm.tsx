@@ -1,13 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createDebito } from '@/actions/debitos'
+import { getCatalogoOs } from '@/actions/catalogo'
+import { OsAutocomplete } from '@/features/catalogo/components/OsAutocomplete'
+import type { OsCatalogoItem } from '@/lib/catalogo/obras-sociales'
 import { hoyArgentina } from '@/shared/lib/fechas'
 import { MOTIVOS_DEBITO, MOTIVO_LABELS, type DebitoFormData } from '../types/debitos'
 
 export function NuevoDebitoForm() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [catalogo, setCatalogo] = useState<OsCatalogoItem[]>([])
+  const [obraSocial, setObraSocial] = useState('')
+  const [codigoOs, setCodigoOs] = useState<number | null>(null)
+
+  useEffect(() => { getCatalogoOs().then(setCatalogo) }, [])
 
   const today = hoyArgentina()
 
@@ -24,6 +32,8 @@ export function NuevoDebitoForm() {
       monto: Number(form.get('monto') || 0),
       refacturable: form.get('refacturable') === 'on',
       fecha: form.get('fecha') as string,
+      obra_social: obraSocial || undefined,
+      codigo_os: codigoOs,
     }
 
     const result = await createDebito(formData)
@@ -66,6 +76,23 @@ export function NuevoDebitoForm() {
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Obra social (opcional) */}
+      <div>
+        <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+          Obra social
+        </label>
+        <OsAutocomplete
+          catalogo={catalogo}
+          valor={obraSocial}
+          onSelect={(sel) => { setObraSocial(sel.nombre_os); setCodigoOs(sel.codigo_os) }}
+          inputClassName="w-full px-4 py-3 rounded-lg text-sm"
+          inputStyle={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+        />
+        <p className="text-xs mt-1.5" style={{ color: 'var(--color-muted-foreground)' }}>
+          Opcional. Permite filtrar los débitos por obra social en Reportes.
+        </p>
       </div>
 
       {/* Detalle */}

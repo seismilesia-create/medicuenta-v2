@@ -21,7 +21,7 @@ export async function fetchReportesData(filters: ReportesFilters): Promise<Repor
       .select('estado, total_calculado, honorarios, gastos, fecha, fecha_alta_paciente, obra_social, nivel, agente_facturador, institucion'),
     supabase
       .from('debitos')
-      .select('monto, fecha, motivo, aplicado_por'),
+      .select('monto, fecha, motivo, aplicado_por, obra_social'),
   ])
 
   const ordenes = (ordenesRes.data ?? []) as OrdenRow[]

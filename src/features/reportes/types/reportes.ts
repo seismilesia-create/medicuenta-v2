@@ -158,4 +158,5 @@ export interface DebitoRow {
   fecha: string
   motivo: MotivoDebito
   aplicado_por: string | null
+  obra_social: string | null
 }

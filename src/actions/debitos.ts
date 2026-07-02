@@ -32,6 +32,8 @@ export async function createDebito(formData: DebitoFormData) {
     refacturable,
     refacturado: false,
     fecha: data.fecha,
+    obra_social: data.obra_social || null,
+    codigo_os: data.codigo_os ?? null,
     orden_id: null,
     liquidacion_id: null,
   }
@@ -73,6 +75,8 @@ export async function updateDebito(debitoId: string, formData: DebitoFormData) {
       monto: data.monto,
       refacturable,
       fecha: data.fecha,
+      obra_social: data.obra_social || null,
+      codigo_os: data.codigo_os ?? null,
     })
     .eq('id', debitoId)
     .eq('medico_id', user.id)

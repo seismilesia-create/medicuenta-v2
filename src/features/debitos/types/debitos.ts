@@ -19,6 +19,8 @@ export interface Debito {
   medico_id: string
   orden_id: string | null
   liquidacion_id: string | null
+  codigo_os: number | null
+  obra_social: string | null
   motivo: MotivoDebito
   motivo_detalle: string | null
   monto: number
@@ -47,6 +49,8 @@ export const debitoSchema = z.object({
   monto: z.coerce.number().min(0, 'Monto debe ser mayor o igual a 0'),
   refacturable: z.boolean().default(false),
   fecha: z.string().min(1, 'Fecha requerida'),
+  obra_social: z.string().optional(),
+  codigo_os: z.number().int().nullable().optional(),
 })
 
 export type DebitoFormData = z.infer<typeof debitoSchema>

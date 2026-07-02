@@ -1,7 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { updateDebito } from '@/actions/debitos'
+import { getCatalogoOs } from '@/actions/catalogo'
+import { OsAutocomplete } from '@/features/catalogo/components/OsAutocomplete'
+import type { OsCatalogoItem } from '@/lib/catalogo/obras-sociales'
 import { MOTIVOS_DEBITO, MOTIVO_LABELS, type DebitoFormData } from '../types/debitos'
 import type { Debito } from '../types/debitos'
 
@@ -12,6 +15,11 @@ interface Props {
 export function EditarDebitoForm({ debito }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [catalogo, setCatalogo] = useState<OsCatalogoItem[]>([])
+  const [obraSocial, setObraSocial] = useState(debito.obra_social ?? '')
+  const [codigoOs, setCodigoOs] = useState<number | null>(debito.codigo_os ?? null)
+
+  useEffect(() => { getCatalogoOs().then(setCatalogo) }, [])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -26,6 +34,8 @@ export function EditarDebitoForm({ debito }: Props) {
       monto: Number(form.get('monto') || 0),
       refacturable: form.get('refacturable') === 'on',
       fecha: form.get('fecha') as string,
+      obra_social: obraSocial || undefined,
+      codigo_os: codigoOs,
     }
 
     const result = await updateDebito(debito.id, formData)
@@ -58,6 +68,20 @@ export function EditarDebitoForm({ debito }: Props) {
             <option key={motivo} value={motivo}>{MOTIVO_LABELS[motivo]}</option>
           ))}
         </select>
+      </div>
+
+      {/* Obra social (opcional) */}
+      <div>
+        <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
+          Obra social
+        </label>
+        <OsAutocomplete
+          catalogo={catalogo}
+          valor={obraSocial}
+          onSelect={(sel) => { setObraSocial(sel.nombre_os); setCodigoOs(sel.codigo_os) }}
+          inputClassName="w-full px-4 py-3 rounded-lg text-sm"
+          inputStyle={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+        />
       </div>
 
       {/* Detalle */}

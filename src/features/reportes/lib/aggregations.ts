@@ -66,8 +66,11 @@ function applyCirugiaFilters(c: CirugiaRow, filters: ReportesFilters, desde: str
   return true
 }
 
-function applyDebitoFilters(d: DebitoRow, _filters: ReportesFilters, desde: string, hasta: string): boolean {
-  return inRange(d.fecha, desde, hasta)
+function applyDebitoFilters(d: DebitoRow, filters: ReportesFilters, desde: string, hasta: string): boolean {
+  if (!inRange(d.fecha, desde, hasta)) return false
+  // Al filtrar por una OS, los débitos de otras (y los viejos sin OS) quedan afuera.
+  if (filters.obra_social && d.obra_social !== filters.obra_social) return false
+  return true
 }
 
 export function computeKPIs(
