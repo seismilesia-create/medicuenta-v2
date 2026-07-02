@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { hoyArgentina } from '@/shared/lib/fechas'
 import Link from 'next/link'
 import * as XLSX from 'xlsx'
 import { FileText, Download, Plus, CheckCircle2, AlertCircle, Check, X, Loader2 } from 'lucide-react'
@@ -130,7 +131,7 @@ export function OrdenesTable() {
     ws['!cols'] = colWidths
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Ordenes')
-    const today = new Date().toISOString().split('T')[0]
+    const today = hoyArgentina()
     XLSX.writeFile(wb, `ordenes-${today}.xlsx`)
   }
 

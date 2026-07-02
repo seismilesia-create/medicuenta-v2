@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { hoyArgentina } from '@/shared/lib/fechas'
 import { Mic, MicOff, Loader2, Check, Pencil, RotateCcw } from 'lucide-react'
 import { createOrden } from '@/actions/ordenes'
 import { createClient } from '@/lib/supabase/client'
@@ -201,7 +202,7 @@ export function NuevaFojaForm() {
     const formData: OrdenFormData = {
       tipo: 'obra_social',
       nombre_paciente: paciente,
-      fecha_atencion: new Date().toISOString().split('T')[0],
+      fecha_atencion: hoyArgentina(),
       monto_plus: 0,
       agente_facturador: 'circulo_medico',
       obra_social: obraSocial || 'OSEP',

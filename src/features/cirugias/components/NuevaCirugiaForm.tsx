@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createCirugia } from '@/actions/cirugias'
+import { hoyArgentina } from '@/shared/lib/fechas'
 import {
   OBRAS_SOCIALES,
   TIPOS_ANESTESIA,
@@ -28,7 +29,7 @@ export function NuevaCirugiaForm() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = hoyArgentina()
 
   function handlePrestacionSelect(p: Prestacion) {
     setPrestacion(p)

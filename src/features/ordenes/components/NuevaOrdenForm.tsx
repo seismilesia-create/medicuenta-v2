@@ -5,6 +5,7 @@ import { createOrden } from '@/actions/ordenes'
 import { buscarSugerenciasTurno, getHorariosDelDia } from '@/actions/consultorio-correlacion'
 import { controlQuinceMinutos, type SugerenciaTurno, type ConflictoQuinceMin } from '@/lib/consultorio/correlacion'
 import { createClient } from '@/lib/supabase/client'
+import { hoyArgentina } from '@/shared/lib/fechas'
 import {
   AGENTES_FACTURADORES,
   AGENTE_LABELS,
@@ -166,7 +167,7 @@ export function NuevaOrdenForm() {
     let cancelado = false
     // Arancel vigente a la fecha de atención cargada en el form (no el último cargado).
     const fechaInput = formRef.current?.elements.namedItem('fecha_atencion') as HTMLInputElement | null
-    const fecha = fechaInput?.value || new Date().toISOString().split('T')[0]
+    const fecha = fechaInput?.value || hoyArgentina()
     getArancelVigente(codigoOs, fecha).then((arancel) => {
       if (cancelado) return
       const r = calcularHonorarioConsulta({
@@ -378,7 +379,7 @@ export function NuevaOrdenForm() {
     // If success, createOrden redirects to /ordenes
   }
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = hoyArgentina()
 
   return (
     <div className="max-w-2xl">

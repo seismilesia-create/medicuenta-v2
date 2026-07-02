@@ -2,14 +2,14 @@
 
 import { useState } from 'react'
 import { createDebito } from '@/actions/debitos'
+import { hoyArgentina } from '@/shared/lib/fechas'
 import { MOTIVOS_DEBITO, MOTIVO_LABELS, type DebitoFormData } from '../types/debitos'
 
 export function NuevoDebitoForm() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // Get today's date in YYYY-MM-DD format
-  const today = new Date().toISOString().split('T')[0]
+  const today = hoyArgentina()
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
