@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { hoyArgentina } from '@/shared/lib/fechas'
 import { Activity, FileText, CheckCircle2, Clock, AlertTriangle } from 'lucide-react'
 import {
   DashboardTrendChart,
@@ -39,9 +40,14 @@ export default async function DashboardPage() {
   const liquidaciones = liquidacionesRes.data ?? []
   const cirugias = cirugiasRes.data ?? []
 
+  // Las tarjetas dicen "este mes": filtramos por fecha_atencion del mes en curso (ART).
+  // El plus es privado (efectivo en mano, no va a la OS) → se excluye de la cobranza,
+  // igual que en Reportes (ordenFacturado = honorario + particular).
+  const mesActual = hoyArgentina().slice(0, 7) // YYYY-MM
   const stats = { facturado: 0, cobrado: 0, pendiente: 0, perdido: 0 }
   for (const orden of ordenes) {
-    const monto = Number(orden.honorario_calculado) + Number(orden.monto_particular) + Number(orden.monto_plus)
+    if (!String(orden.fecha_atencion ?? '').startsWith(mesActual)) continue
+    const monto = Number(orden.honorario_calculado) + Number(orden.monto_particular)
     stats.facturado += monto
     switch (orden.estado) {
       case 'aprobada':
