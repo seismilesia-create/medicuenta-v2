@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { updateOrdenEstado, deleteOrden } from '@/actions/ordenes'
-import { ESTADOS_ORDEN } from '@/features/ordenes/types/ordenes'
+import { TRANSICIONES_ORDEN } from '@/features/ordenes/types/ordenes'
 import type { EstadoOrden } from '@/features/ordenes/types/ordenes'
 
 // ---------------------------------------------------------------------------
@@ -93,6 +93,9 @@ export function EstadoSelector({
     }
   }
 
+  // Solo ofrecemos las transiciones válidas desde el estado actual (+ el actual).
+  const opciones: EstadoOrden[] = [estadoActual, ...TRANSICIONES_ORDEN[estadoActual]]
+
   return (
     <div className="flex flex-wrap items-center gap-3">
       <select
@@ -110,7 +113,7 @@ export function EstadoSelector({
         }}
         aria-label="Seleccionar nuevo estado"
       >
-        {ESTADOS_ORDEN.map((estado) => (
+        {opciones.map((estado) => (
           <option key={estado} value={estado}>
             {ESTADO_LABELS[estado]}
           </option>

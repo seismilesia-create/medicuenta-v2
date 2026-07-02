@@ -8,6 +8,29 @@ export type TipoAtencion = (typeof TIPOS_ATENCION)[number]
 export const ESTADOS_ORDEN = ['borrador', 'presentada', 'aprobada', 'debitada'] as const
 export type EstadoOrden = (typeof ESTADOS_ORDEN)[number]
 
+export function esEstadoOrden(v: string): v is EstadoOrden {
+  return (ESTADOS_ORDEN as readonly string[]).includes(v)
+}
+
+/**
+ * Transiciones de estado permitidas. Desde borrador se presenta (manual o vía
+ * emitirPlanilla); una vez presentada cicla entre presentada/aprobada/debitada
+ * según responda la OS. NO se vuelve a borrador desde un estado presentado: la
+ * presentación es un snapshot de lo entregado físicamente al Círculo y volver
+ * atrás lo desincronizaría (des-presentar sería un flujo dedicado aparte).
+ */
+export const TRANSICIONES_ORDEN: Record<EstadoOrden, EstadoOrden[]> = {
+  borrador: ['presentada'],
+  presentada: ['aprobada', 'debitada'],
+  aprobada: ['presentada', 'debitada'],
+  debitada: ['presentada', 'aprobada'],
+}
+
+/** ¿Se puede pasar de `desde` a `hasta`? (misma → misma = no-op permitido). */
+export function transicionOrdenPermitida(desde: EstadoOrden, hasta: EstadoOrden): boolean {
+  return desde === hasta || TRANSICIONES_ORDEN[desde].includes(hasta)
+}
+
 export const AGENTES_FACTURADORES = ['circulo_medico', 'medical_group', 'comunidad'] as const
 export type AgenteFacturador = (typeof AGENTES_FACTURADORES)[number]
 

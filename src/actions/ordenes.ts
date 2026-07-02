@@ -2,7 +2,13 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { ordenSchema, type OrdenFormData } from '@/features/ordenes/types/ordenes'
+import {
+  ordenSchema,
+  esEstadoOrden,
+  transicionOrdenPermitida,
+  type OrdenFormData,
+  type EstadoOrden,
+} from '@/features/ordenes/types/ordenes'
 
 export async function createOrden(formData: OrdenFormData) {
   const supabase = await createClient()
@@ -131,6 +137,19 @@ export async function updateOrden(ordenId: string, formData: OrdenFormData) {
     }
   }
 
+  // Solo se editan órdenes en borrador: una vez presentada, sus datos ya fueron
+  // a la planilla física del Círculo y editarlos desincroniza la presentación.
+  const { data: ordenActual } = await supabase
+    .from('ordenes')
+    .select('estado')
+    .eq('id', ordenId)
+    .eq('medico_id', user.id)
+    .maybeSingle()
+  if (!ordenActual) return { error: 'Orden no encontrada' }
+  if (ordenActual.estado !== 'borrador') {
+    return { error: 'Solo se pueden editar órdenes en borrador. Esta orden ya fue presentada.' }
+  }
+
   const updateData = {
     tipo: data.tipo,
     nombre_paciente: data.nombre_paciente,
@@ -212,6 +231,21 @@ export async function updateOrdenEstado(ordenId: string, estado: string) {
     return { error: 'No autenticado' }
   }
 
+  if (!esEstadoOrden(estado)) {
+    return { error: 'Estado inválido' }
+  }
+
+  const { data: ordenActual } = await supabase
+    .from('ordenes')
+    .select('estado')
+    .eq('id', ordenId)
+    .eq('medico_id', user.id)
+    .maybeSingle()
+  if (!ordenActual) return { error: 'Orden no encontrada' }
+  if (!transicionOrdenPermitida(ordenActual.estado as EstadoOrden, estado)) {
+    return { error: `No se puede pasar de "${ordenActual.estado}" a "${estado}".` }
+  }
+
   const { error } = await supabase
     .from('ordenes')
     .update({ estado, updated_at: new Date().toISOString() })
@@ -237,6 +271,11 @@ export async function batchUpdateOrdenesEstado(ordenIds: string[], estado: strin
     return { error: 'No se seleccionaron ordenes' }
   }
 
+  // La presentación masiva solo lleva de borrador → presentada.
+  if (!esEstadoOrden(estado) || !transicionOrdenPermitida('borrador', estado)) {
+    return { error: 'Estado inválido para presentación masiva' }
+  }
+
   const { error, count } = await supabase
     .from('ordenes')
     .update({ estado, updated_at: new Date().toISOString() })
@@ -257,6 +296,18 @@ export async function deleteOrden(ordenId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     return { error: 'No autenticado' }
+  }
+
+  // Una orden ya presentada no se borra: quedaría un hueco en la planilla presentada.
+  const { data: ordenActual } = await supabase
+    .from('ordenes')
+    .select('estado')
+    .eq('id', ordenId)
+    .eq('medico_id', user.id)
+    .maybeSingle()
+  if (!ordenActual) return { error: 'Orden no encontrada' }
+  if (ordenActual.estado !== 'borrador') {
+    return { error: 'Solo se pueden eliminar órdenes en borrador. Esta orden ya fue presentada.' }
   }
 
   const { error } = await supabase
