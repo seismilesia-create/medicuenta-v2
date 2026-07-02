@@ -90,11 +90,17 @@ export function buildPacienteTools(ctx: PacienteToolsCtx) {
         )
         const pref = await crearPreferencia(conexion.accessToken, body)
         if (!pref) return { error: 'No pude generar el link de pago. Pedile que intente de nuevo en unos minutos.' }
-        await vincularPago(ctx.db, ctx.medicoId, receta.id, {
+        const vinculado = await vincularPago(ctx.db, ctx.medicoId, receta.id, {
           mpPreferenceId: pref.id,
           pacienteTelefono: normalizeRecipient(ctx.telefonoPaciente),
           contactoId: ctx.contactoId,
         })
+        if (!vinculado) {
+          return {
+            error:
+              'Esa receta ya está siendo gestionada desde otro número de WhatsApp. Si sos el paciente, avisale a tu médico para que lo verifique.',
+          }
+        }
         return { link: pref.initPoint, monto: Number(receta.monto) }
       },
     }),

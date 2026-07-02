@@ -132,8 +132,8 @@ export async function vincularPago(
   medicoId: string,
   recetaId: string,
   args: { mpPreferenceId: string; pacienteTelefono: string; contactoId: string | null },
-): Promise<void> {
-  await db
+): Promise<boolean> {
+  const { data } = await db
     .from('recetas')
     .update({
       mp_preference_id: args.mpPreferenceId,
@@ -144,6 +144,10 @@ export async function vincularPago(
     .eq('medico_id', medicoId)
     .eq('id', recetaId)
     .or(`paciente_telefono.is.null,paciente_telefono.eq.${args.pacienteTelefono}`)
+    .select('id')
+  // true solo si el UPDATE condicional afectó la fila: el que pierde la carrera
+  // (otro teléfono ya gestionando la receta) recibe false y NO un link válido.
+  return (data?.length ?? 0) > 0
 }
 
 /** Condicional por estado: reduce la ventana de carrera entre webhooks concurrentes. */

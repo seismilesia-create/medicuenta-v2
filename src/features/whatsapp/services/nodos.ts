@@ -123,6 +123,22 @@ export async function esMedicoDelNodo(
   return (await getMedicoIdPorNumeroEnNodo(db, phoneNumberId, telefono)) !== null
 }
 
+/** Cuántos médicos ACTIVOS tiene asignados el nodo de este phone_number_id. */
+async function contarAsignacionesActivas(db: SupabaseClient, phoneNumberId: string): Promise<number> {
+  const { data: nodo } = await db
+    .from('wa_nodos')
+    .select('id')
+    .eq('phone_number_id', phoneNumberId)
+    .maybeSingle()
+  if (!nodo) return 0
+  const { count } = await db
+    .from('wa_asignaciones')
+    .select('*', { count: 'exact', head: true })
+    .eq('nodo_id', (nodo as { id: string }).id)
+    .eq('activo', true)
+  return count ?? 0
+}
+
 /** Nodo del médico para salientes (entrega receta, webhook MP, toma humana). Drop-in de getCanalByMedicoId (Fase 4). */
 export async function getNodoByMedicoId(db: SupabaseClient, medicoId: string): Promise<CanalResuelto | null> {
   const { data: asig } = await db
@@ -205,10 +221,15 @@ export async function resolverIngreso(
     if (canal) return { canal }
   }
 
-  // (c) Fallback legacy (wa_canales 1:1; en el piloto el nodo reusa el canal). El médico original
-  // del bot (sin fila en wa_asignaciones) se resuelve acá; los onboardeados, en (a.5).
-  const legacy = await getCanalByPhoneNumberId(db, phoneNumberId)
-  if (legacy) return { canal: legacy }
+  // (c) Fallback legacy SOLO si el nodo tiene a lo sumo 1 médico asignado (wa_canales 1:1;
+  // en el piloto el nodo reusa el canal). En un nodo multi-médico, un paciente sin marcador
+  // es ambiguo: caer al canal legacy lo mandaría al médico original del número (mezcla de
+  // tenants). Ahí preferimos el aviso de ruteo fallido (d) para que reingrese por su link.
+  const asignados = await contarAsignacionesActivas(db, phoneNumberId)
+  if (asignados <= 1) {
+    const legacy = await getCanalByPhoneNumberId(db, phoneNumberId)
+    if (legacy) return { canal: legacy }
+  }
 
   // (d) Nada resolvió (paciente nuevo sin marcador en un nodo multi-médico): no rompemos.
   return null

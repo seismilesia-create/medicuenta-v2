@@ -312,6 +312,8 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
       detalle: { error: String(e) },
       conversacionId,
     })
+    // No dejar al paciente en silencio: un fallo del modelo/tool antes se tragaba sin respuesta.
+    await responder(canal, incoming.from, 'Perdoná, tuve un problema para procesar tu mensaje 🙏 Probá de nuevo en un ratito.')
     return
   }
   if (!reply) return
