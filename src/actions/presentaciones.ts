@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { totalHonorarios, periodoMesDe } from '@/lib/ordenes/planilla'
+import { evaluarCompletitud } from '@/lib/ordenes/completitud'
 
 export interface EmitirPlanillaInput {
   codigo_os: number | null
@@ -19,7 +20,7 @@ export async function emitirPlanilla(input: EmitirPlanillaInput) {
 
   let query = supabase
     .from('ordenes')
-    .select('id, codigo_os, obra_social, agente_facturador, fecha_atencion, honorario_calculado, monto_plus, estado')
+    .select('id, codigo_os, obra_social, agente_facturador, fecha_atencion, honorario_calculado, monto_plus, estado, tipo, nro_comprobante, token_osep, fecha_emision, nro_afiliado, nro_documento, nombre_practica')
     .in('id', input.orden_ids)
     .eq('medico_id', user.id)
     .eq('estado', 'borrador')
@@ -32,6 +33,11 @@ export async function emitirPlanilla(input: EmitirPlanillaInput) {
   if (qErr) return { error: qErr.message }
   const validas = ordenes ?? []
   if (validas.length === 0) return { error: 'No hay órdenes válidas (borrador, de esa obra social)' }
+
+  const incompletas = validas.filter((o) => !evaluarCompletitud(o).completa)
+  if (incompletas.length > 0) {
+    return { error: `${incompletas.length} orden(es) incompletas no se pueden presentar. Completá los datos que faltan y volvé a intentar.` }
+  }
 
   const periodo_mes = periodoMesDe(
     [...validas].sort((a, b) => a.fecha_atencion.localeCompare(b.fecha_atencion))[0].fecha_atencion,

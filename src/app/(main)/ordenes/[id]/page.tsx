@@ -160,7 +160,7 @@ export default async function OrdenDetallePage({
       {/* ------------------------------------------------------------------
           Incompleta (faltan datos para presentar)
       ------------------------------------------------------------------ */}
-      {!completa && (
+      {typedOrden.estado === 'borrador' && !completa && (
         <div
           className="rounded-lg px-4 py-3 text-sm"
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-warning)' }}

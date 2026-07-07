@@ -359,7 +359,7 @@ export function OrdenesTable() {
                         <td className="px-3 md:px-5 py-4">
                           <span className="inline-flex items-center gap-2">
                             <OrdenStatusBadge estado={orden.estado} />
-                            {!evaluarCompletitud(orden).completa && (
+                            {orden.estado === 'borrador' && !evaluarCompletitud(orden).completa && (
                               <span
                                 className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-500/10 text-amber-600"
                                 title="Faltan datos para presentar esta orden"
