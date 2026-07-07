@@ -16,7 +16,7 @@ export interface PacienteToolsCtx {
   medicoId: string
   telefonoPaciente: string
   contactoId: string | null
-  conversacionId: string | null
+  conversacionId: string
   secretariaDisponible: boolean
 }
 
