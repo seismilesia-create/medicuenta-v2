@@ -6,6 +6,7 @@ import {
   pickException,
   resolveDayHours,
   esSlotOfrecido,
+  estaDentroDelHorario,
   type ScheduleExceptionLite,
   type DayAvailability,
 } from './slots'
@@ -174,5 +175,45 @@ describe('esSlotOfrecido', () => {
 
   it('rechaza strings que no son fechas', () => {
     expect(esSlotOfrecido(dias, 'mañana a la tarde')).toBe(false)
+  })
+})
+
+describe('estaDentroDelHorario', () => {
+  // Derivamos el weekday del instante para no hardcodear qué día cae cada fecha.
+  const bloque = (ahoraMs: number, open: string, close: string) => [{
+    weekday: weekdayOf(arDateString(ahoraMs)), open_time: open, close_time: close,
+  }]
+
+  it('dentro del bloque → true', () => {
+    const ahoraMs = new Date('2026-07-06T13:00:00Z').getTime() // 10:00 AR
+    expect(estaDentroDelHorario({ ahoraMs, weekly: bloque(ahoraMs, '09:00', '13:00'), exceptions: [] })).toBe(true)
+  })
+
+  it('límite de apertura es inclusivo, el de cierre exclusivo', () => {
+    const apertura = new Date('2026-07-06T12:00:00Z').getTime() // 09:00 AR exacto
+    expect(estaDentroDelHorario({ ahoraMs: apertura, weekly: bloque(apertura, '09:00', '13:00'), exceptions: [] })).toBe(true)
+    const cierre = new Date('2026-07-06T16:00:00Z').getTime() // 13:00 AR exacto
+    expect(estaDentroDelHorario({ ahoraMs: cierre, weekly: bloque(cierre, '09:00', '13:00'), exceptions: [] })).toBe(false)
+  })
+
+  it('fuera del bloque → false', () => {
+    const ahoraMs = new Date('2026-07-06T22:00:00Z').getTime() // 19:00 AR
+    expect(estaDentroDelHorario({ ahoraMs, weekly: bloque(ahoraMs, '09:00', '13:00'), exceptions: [] })).toBe(false)
+  })
+
+  it('sin horario cargado ese día → false', () => {
+    const ahoraMs = new Date('2026-07-06T13:00:00Z').getTime()
+    const otroDia = (weekdayOf(arDateString(ahoraMs)) + 1) % 7
+    expect(estaDentroDelHorario({ ahoraMs, weekly: [{ weekday: otroDia, open_time: '09:00', close_time: '13:00' }], exceptions: [] })).toBe(false)
+  })
+
+  it('excepción "closed" ese día → false aunque haya horario semanal', () => {
+    const ahoraMs = new Date('2026-07-06T13:00:00Z').getTime()
+    const date = arDateString(ahoraMs)
+    expect(estaDentroDelHorario({
+      ahoraMs,
+      weekly: bloque(ahoraMs, '09:00', '13:00'),
+      exceptions: [{ start_date: date, end_date: date, kind: 'closed', ranges: [] }],
+    })).toBe(false)
   })
 })

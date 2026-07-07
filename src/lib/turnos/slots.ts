@@ -169,3 +169,24 @@ export function esSlotOfrecido(dias: DayAvailability[], startsAt: string): boole
   if (!Number.isFinite(t)) return false
   return dias.some((d) => d.slots.some((s) => new Date(s.startsAt).getTime() === t))
 }
+
+/**
+ * ¿El instante `ahoraMs` cae dentro del horario de atención (hora AR)?
+ * Reusa la resolución de bloques del día (semanal + excepciones) del motor de turnos.
+ * Apertura inclusiva, cierre exclusivo.
+ */
+export function estaDentroDelHorario(params: {
+  ahoraMs: number
+  weekly: { weekday: number; open_time: string; close_time: string }[]
+  exceptions: ScheduleExceptionLite[]
+}): boolean {
+  const date = arDateString(params.ahoraMs)
+  const weekday = weekdayOf(date)
+  const { closed, hours } = resolveDayHours({ date, weekday, weekly: params.weekly, exceptions: params.exceptions })
+  if (closed) return false
+  return hours.some((h) => {
+    const open = toDateMs(date, h.open_time)
+    const close = toDateMs(date, h.close_time)
+    return params.ahoraMs >= open && params.ahoraMs < close
+  })
+}
