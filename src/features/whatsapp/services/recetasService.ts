@@ -2,8 +2,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { RecetaExtraida } from '@/lib/ai/ocr-receta'
 import { normalizarDni, nombresCoinciden } from '@/lib/recetas/normalizar'
 
-/** Vigencia de la receta en días: pasado el plazo se marca 'vencida' (lazy, al buscar). */
-const RECETA_VIGENCIA_DIAS = 30
+/** Vigencia de la receta en días: pasado el plazo se marca 'vencida' (lazy, al buscar).
+ *  45 días, alineado con la validez de las órdenes de consulta/práctica. */
+const RECETA_VIGENCIA_DIAS = 45
 
 export interface RecetaRow {
   id: string
