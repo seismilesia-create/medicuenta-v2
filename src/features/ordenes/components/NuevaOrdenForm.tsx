@@ -552,7 +552,6 @@ export function NuevaOrdenForm() {
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Comprobante</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Campo name="delegacion" label="Delegación" defaultValue={ocr?.delegacion ?? ''} />
-                  <Campo name="nro_comprobante" label="N° Comprobante" mono defaultValue={ocr?.nro_comprobante ?? ''} estado={estadoCampo('nro_comprobante')} />
                   <Campo name="titulo_autorizacion" label="Título de autorización" defaultValue={ocr?.titulo_autorizacion ?? ''} />
                 </div>
               </section>
@@ -562,6 +561,7 @@ export function NuevaOrdenForm() {
             <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
               <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Fechas</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Campo name="nro_comprobante" label="N° Comprobante" mono defaultValue={ocr?.nro_comprobante ?? ''} estado={estadoCampo('nro_comprobante')} />
                 <Campo name="fecha_solicitud" label="Fecha de solicitud" type="date" defaultValue={ocr?.fecha_solicitud ?? ''} />
                 <Campo name="fecha_vencimiento" label="Fecha de vencimiento" type="date" defaultValue={ocr?.fecha_vencimiento ?? ''} />
                 <Campo name="fecha_emision" label="Fecha de emisión" type="date" defaultValue={ocr?.fecha_emision ?? ''} estado={estadoCampo('fecha_emision')} />
