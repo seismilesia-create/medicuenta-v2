@@ -86,13 +86,54 @@ export const ordenExtraidaSchema = z.object({
   firma_sello_medico: z.boolean().describe('true si hay firma Y sello del médico en la orden, false si no.'),
 
   observaciones: z.string().describe('Notas adicionales relevantes, o "".'),
+  no_encontrados: z
+    .array(z.string())
+    .describe('Claves del núcleo (nro_comprobante, fecha_emision, fecha_realizacion, paciente, nro_documento, nro_afiliado, cobertura, obra_social, nombre_practica, codigo_practica, diagnostico) que NO pudiste encontrar/leer en la imagen. Solo texto/número; NO incluyas firmas.'),
   confianza: z.enum(['alta', 'media', 'baja']),
   campos_dudosos: z.array(z.string()).describe('Lista de campos con baja confianza'),
 })
 
 export type OrdenExtraida = z.infer<typeof ordenExtraidaSchema>
 
-export const OCR_ORDEN_PROMPT = `Analizá esta imagen de una orden médica de OSEP (Catamarca, Argentina) y extraé TODOS los campos.
+/** Versión del prompt/schema OCR — se guarda con el crudo para reproceso. */
+export const OCR_ORDEN_PROMPT_VERSION = 'v2-generico-2026-07'
+
+/**
+ * Núcleo común de facturación: los campos de texto/número que se extraen de
+ * CUALQUIER obra social (no solo OSEP). Las claves son las del schema OCR.
+ * Las firmas (booleanos) NO forman parte de esta lista (ver completitud).
+ */
+export const CAMPOS_NUCLEO = [
+  'nro_comprobante',
+  'fecha_emision',
+  'fecha_realizacion',
+  'paciente',
+  'nro_documento',
+  'nro_afiliado',
+  'cobertura',
+  'obra_social',
+  'nombre_practica',
+  'codigo_practica',
+  'diagnostico',
+] as const
+
+export type CampoNucleo = (typeof CAMPOS_NUCLEO)[number]
+
+export const NUCLEO_LABELS: Record<CampoNucleo, string> = {
+  nro_comprobante: 'N° de orden',
+  fecha_emision: 'Fecha de emisión',
+  fecha_realizacion: 'Fecha de práctica',
+  paciente: 'Apellido y nombre',
+  nro_documento: 'DNI',
+  nro_afiliado: 'N° de afiliado',
+  cobertura: 'Plan / cobertura',
+  obra_social: 'Obra social',
+  nombre_practica: 'Tipo de práctica',
+  codigo_practica: 'Codificación',
+  diagnostico: 'Diagnóstico',
+}
+
+export const OCR_ORDEN_PROMPT = `Analizá esta imagen de una orden médica de CUALQUIER obra social argentina (puede ser OSEP, PAMI, Swiss Medical, OSDE u otra) y extraé TODOS los campos que reconozcas. Cada obra social tiene un formato distinto: leé por SIGNIFICADO, no por posición fija. Si un campo propio de OSEP (delegación, arancelista, cajero, token, cara/pieza) no existe en esta orden, dejalo vacío.
 
 Valores vacíos: texto que no se lee/no figura → "". Numéricos sin valor → 0. agente_facturador sin dato → "". NUNCA inventes datos.
 
@@ -112,5 +153,6 @@ Lectura campo por campo:
 - **Token OSEP** = 6 dígitos. Las órdenes electrónicas ("Web Service") NO suelen tenerlo → token_osep="" y usá el N° de Comprobante como identificador.
 - **Firmas**: firma_paciente = ¿hay firma manuscrita del AFILIADO? firma_sello_medico = ¿hay firma Y sello del MÉDICO? Son dos cosas distintas; evaluá cada una por separado.
 - Intentá leer letra manuscrita. Lo que no estés seguro → agregalo a campos_dudosos.
+- **no_encontrados**: además de dejar en "" lo que no está, listá en \`no_encontrados\` las claves del NÚCLEO que no pudiste encontrar/leer: nro_comprobante, fecha_emision, fecha_realizacion, paciente, nro_documento, nro_afiliado, cobertura, obra_social, nombre_practica, codigo_practica, diagnostico. NO incluyas firmas. Si encontraste todo el núcleo, no_encontrados=[].
 - confianza: "alta" = casi todo claro; "media" = algunos a verificar; "baja" = mucha incertidumbre.
 - Si NO es una orden médica: es_orden_medica=false + motivo_rechazo breve.`
