@@ -20,10 +20,14 @@ export interface RecetaRow {
   mp_payment_id: string | null
   datos_ocr: Record<string, unknown>
   created_at: string
+  forma_pago: string | null
+  nro_orden_consulta: string | null
+  liberada_por: string | null
+  liberada_at: string | null
 }
 
 const COLS =
-  'id, medico_id, contacto_id, paciente_nombre, paciente_dni, paciente_telefono, pdf_path, nro_receta, monto, estado, mp_preference_id, mp_payment_id, datos_ocr, created_at'
+  'id, medico_id, contacto_id, paciente_nombre, paciente_dni, paciente_telefono, pdf_path, nro_receta, monto, estado, mp_preference_id, mp_payment_id, datos_ocr, created_at, forma_pago, nro_orden_consulta, liberada_por, liberada_at'
 
 export async function crearRecetaDesdeOcr(
   db: SupabaseClient,
