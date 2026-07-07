@@ -21,10 +21,14 @@ export interface RecetaRow {
   mp_payment_id: string | null
   datos_ocr: Record<string, unknown>
   created_at: string
+  forma_pago: string | null
+  nro_orden_consulta: string | null
+  liberada_por: string | null
+  liberada_at: string | null
 }
 
 const COLS =
-  'id, medico_id, contacto_id, paciente_nombre, paciente_dni, paciente_telefono, pdf_path, nro_receta, monto, estado, mp_preference_id, mp_payment_id, datos_ocr, created_at'
+  'id, medico_id, contacto_id, paciente_nombre, paciente_dni, paciente_telefono, pdf_path, nro_receta, monto, estado, mp_preference_id, mp_payment_id, datos_ocr, created_at, forma_pago, nro_orden_consulta, liberada_por, liberada_at'
 
 export async function crearRecetaDesdeOcr(
   db: SupabaseClient,
@@ -209,11 +213,12 @@ export async function revertirEntrega(db: SupabaseClient, medicoId: string, rece
 export async function resumenRecetas(db: SupabaseClient, medicoId: string): Promise<string> {
   const { data } = await db
     .from('recetas')
-    .select('paciente_nombre, estado, monto, created_at')
+    .select('paciente_nombre, estado, monto, created_at, forma_pago')
     .eq('medico_id', medicoId)
     .order('created_at', { ascending: false })
     .limit(50)
-  const rows = (data as { paciente_nombre: string; estado: string; monto: number | null; created_at: string }[] | null) ?? []
+  const rows =
+    (data as { paciente_nombre: string; estado: string; monto: number | null; created_at: string; forma_pago: string | null }[] | null) ?? []
   if (!rows.length) return 'Todavía no hay recetas cargadas. Reenviame un PDF de receta para empezar.'
 
   const cuenta: Record<string, number> = {}
@@ -231,7 +236,53 @@ export async function resumenRecetas(db: SupabaseClient, medicoId: string): Prom
     .join('\n')
   const ultimas = rows
     .slice(0, 5)
-    .map((r) => `• ${r.paciente_nombre || '(sin nombre)'} — ${etiqueta[r.estado] ?? r.estado}${r.monto != null ? ` — $${Number(r.monto).toLocaleString('es-AR')}` : ''}`)
+    .map(
+      (r) =>
+        `• ${r.paciente_nombre || '(sin nombre)'} — ${etiqueta[r.estado] ?? r.estado}${r.monto != null ? ` — $${Number(r.monto).toLocaleString('es-AR')}` : ''}${r.forma_pago === 'orden_consulta' ? ' · por orden de consulta' : ''}`,
+    )
     .join('\n')
   return `📋 Tus recetas:\n${resumen}\n\nÚltimas:\n${ultimas}`
+}
+
+/** Recetas pendientes de pago de un paciente (por su teléfono normalizado), para el panel. */
+export async function getRecetasPendientesPorTelefono(
+  db: SupabaseClient,
+  medicoId: string,
+  telefono: string,
+): Promise<RecetaRow[]> {
+  const { data } = await db
+    .from('recetas')
+    .select(COLS)
+    .eq('medico_id', medicoId)
+    .eq('paciente_telefono', telefono)
+    .eq('estado', 'pendiente_pago')
+    .order('created_at', { ascending: true })
+  return (data as RecetaRow[] | null) ?? []
+}
+
+/**
+ * Libera una receta por orden de consulta: registra la constancia y transiciona
+ * pendiente_pago → pagada (condicional por estado, anti-doble). Devuelve la fila
+ * lista para entregar, o null si no era liberable (no pendiente / ajena).
+ */
+export async function liberarPorOrdenConsulta(
+  db: SupabaseClient,
+  args: { medicoId: string; recetaId: string; nroOrden: string; liberadaPor: string },
+): Promise<RecetaRow | null> {
+  const { data } = await db
+    .from('recetas')
+    .update({
+      estado: 'pagada',
+      forma_pago: 'orden_consulta',
+      nro_orden_consulta: args.nroOrden,
+      liberada_por: args.liberadaPor,
+      liberada_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('medico_id', args.medicoId)
+    .eq('id', args.recetaId)
+    .eq('estado', 'pendiente_pago')
+    .select(COLS)
+    .maybeSingle()
+  return (data as RecetaRow | null) ?? null
 }

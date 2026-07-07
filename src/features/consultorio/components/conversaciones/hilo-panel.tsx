@@ -5,6 +5,7 @@ import { Loader2, Pause, Play, BellOff, Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getHilo, type Hilo } from '@/features/consultorio/services/panelService'
 import { responderComoHumano, setBotPausado, resolverAlarma } from '@/actions/consultorio-conversaciones'
+import { LiberarRecetaButton } from '@/features/consultorio/components/conversaciones/liberar-receta'
 
 const POLL_MS = 10_000
 
@@ -128,6 +129,7 @@ export function HiloPanel({ medicoId, conversacionId, onChange }: { medicoId: st
               </>
             )}
           </button>
+          <LiberarRecetaButton conversacionId={conversacionId} />
         </div>
       </div>
 
