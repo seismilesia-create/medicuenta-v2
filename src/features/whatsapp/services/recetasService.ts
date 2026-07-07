@@ -238,3 +238,46 @@ export async function resumenRecetas(db: SupabaseClient, medicoId: string): Prom
     .join('\n')
   return `📋 Tus recetas:\n${resumen}\n\nÚltimas:\n${ultimas}`
 }
+
+/** Recetas pendientes de pago de un paciente (por su teléfono normalizado), para el panel. */
+export async function getRecetasPendientesPorTelefono(
+  db: SupabaseClient,
+  medicoId: string,
+  telefono: string,
+): Promise<RecetaRow[]> {
+  const { data } = await db
+    .from('recetas')
+    .select(COLS)
+    .eq('medico_id', medicoId)
+    .eq('paciente_telefono', telefono)
+    .eq('estado', 'pendiente_pago')
+    .order('created_at', { ascending: true })
+  return (data as RecetaRow[] | null) ?? []
+}
+
+/**
+ * Libera una receta por orden de consulta: registra la constancia y transiciona
+ * pendiente_pago → pagada (condicional por estado, anti-doble). Devuelve la fila
+ * lista para entregar, o null si no era liberable (no pendiente / ajena).
+ */
+export async function liberarPorOrdenConsulta(
+  db: SupabaseClient,
+  args: { medicoId: string; recetaId: string; nroOrden: string; liberadaPor: string },
+): Promise<RecetaRow | null> {
+  const { data } = await db
+    .from('recetas')
+    .update({
+      estado: 'pagada',
+      forma_pago: 'orden_consulta',
+      nro_orden_consulta: args.nroOrden,
+      liberada_por: args.liberadaPor,
+      liberada_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('medico_id', args.medicoId)
+    .eq('id', args.recetaId)
+    .eq('estado', 'pendiente_pago')
+    .select(COLS)
+    .maybeSingle()
+  return (data as RecetaRow | null) ?? null
+}
