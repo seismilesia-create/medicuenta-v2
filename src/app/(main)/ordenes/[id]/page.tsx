@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { OrdenStatusBadge } from '@/features/ordenes/components'
 import { ResolverFaltantesPanel } from '@/features/ordenes/components/ResolverFaltantesPanel'
 import type { Orden } from '@/features/ordenes/types/ordenes'
+import { evaluarCompletitud, CAMPO_FALTANTE_LABELS } from '@/lib/ordenes/completitud'
 import { DeleteOrdenButton, EstadoSelector } from './_components'
 
 // ---------------------------------------------------------------------------
@@ -125,6 +126,8 @@ export default async function OrdenDetallePage({
   const plus = typedOrden.monto_plus ?? 0
   const total = honorario + particular + plus
 
+  const { completa, faltantes } = evaluarCompletitud(typedOrden)
+
   // ---- Main layout -----------------------------------------------------------
   return (
     <div className="px-4 py-6 md:px-8 md:py-10 max-w-4xl mx-auto space-y-6">
@@ -153,6 +156,23 @@ export default async function OrdenDetallePage({
           <OrdenStatusBadge estado={typedOrden.estado} />
         </div>
       </div>
+
+      {/* ------------------------------------------------------------------
+          Incompleta (faltan datos para presentar)
+      ------------------------------------------------------------------ */}
+      {!completa && (
+        <div
+          className="rounded-lg px-4 py-3 text-sm"
+          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-warning)' }}
+        >
+          <p className="font-medium" style={{ color: 'var(--color-warning)' }}>
+            ⚠ Incompleta — faltan {faltantes.length} datos para presentar
+          </p>
+          <p className="mt-1" style={{ color: 'var(--color-foreground)' }}>
+            {faltantes.map((f) => CAMPO_FALTANTE_LABELS[f]).join(', ')}
+          </p>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------------
           Action buttons

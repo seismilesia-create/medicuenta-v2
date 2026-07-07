@@ -14,6 +14,7 @@ import { AGENTE_LABELS } from '../types/ordenes'
 import { OrdenStatusBadge } from './OrdenStatusBadge'
 import { OrdenFilters } from './OrdenFilters'
 import { evaluarRiesgoOrden, FALTANTE_LABELS } from '@/lib/ordenes/riesgo-debito'
+import { evaluarCompletitud } from '@/lib/ordenes/completitud'
 
 function formatMonto(valor: number): string {
   return new Intl.NumberFormat('es-AR', {
@@ -356,7 +357,17 @@ export function OrdenesTable() {
                         </td>
                         <td className="px-3 md:px-5 py-4 text-right font-mono font-medium text-foreground">{formatMonto(getMontoTotal(orden))}</td>
                         <td className="px-3 md:px-5 py-4">
-                          <OrdenStatusBadge estado={orden.estado} />
+                          <span className="inline-flex items-center gap-2">
+                            <OrdenStatusBadge estado={orden.estado} />
+                            {!evaluarCompletitud(orden).completa && (
+                              <span
+                                className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-500/10 text-amber-600"
+                                title="Faltan datos para presentar esta orden"
+                              >
+                                Incompleta
+                              </span>
+                            )}
+                          </span>
                         </td>
                       </tr>
                     )
