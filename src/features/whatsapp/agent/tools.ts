@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { normalizeRecipient } from '@/lib/whatsapp/client'
 import { buildPreferenciaBody, crearPreferencia } from '@/lib/mercadopago/client'
 import { getConexionActiva } from '@/features/whatsapp/services/mpConexiones'
+import { registrarEvento } from '@/features/whatsapp/services/bitacora'
 import {
   buscarPendientesPorIdentidad,
   getRecetaDelMedico,
@@ -121,13 +122,21 @@ export function buildPacienteTools(ctx: PacienteToolsCtx) {
         }
         const { error } = await ctx.db
           .from('wa_conversaciones')
-          .update({ necesita_humano: true, updated_at: new Date().toISOString() })
+          .update({ necesita_humano: true, bot_pausado: true, updated_at: new Date().toISOString() })
           .eq('medico_id', ctx.medicoId)
           .eq('id', ctx.conversacionId)
         if (error) {
           console.error('[wa] solicitar_orden_consulta error:', error.message)
           return { ok: false, mensaje: 'No pude avisar al consultorio. Probá de nuevo en un momento 🙏' }
         }
+        await registrarEvento(ctx.db, {
+          medicoId: ctx.medicoId,
+          origen: 'agente',
+          nivel: 'info',
+          evento: 'necesita_humano',
+          detalle: { motivo: 'orden de consulta OSEP' },
+          conversacionId: ctx.conversacionId,
+        })
         return {
           ok: true,
           mensaje: 'Perfecto 🙌 Te va a atender la secretaria por este mismo chat para gestionar tu orden de consulta. Aguardá un momento.',
