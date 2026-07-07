@@ -23,7 +23,8 @@ import { normalizarOs } from '@/lib/consultorio/osSuspendidas'
 import { EscanearOrdenButton, type OrdenEscaneada } from './EscanearOrdenButton'
 import { SugerenciaTurnoCard } from './SugerenciaTurnoCard'
 import { evaluarRiesgoOrden, FALTANTE_LABELS } from '@/lib/ordenes/riesgo-debito'
-import { OCR_ORDEN_PROMPT_VERSION } from '@/lib/ai/ocr-orden'
+import { OCR_ORDEN_PROMPT_VERSION, NUCLEO_LABELS, type CampoNucleo } from '@/lib/ai/ocr-orden'
+import { estadoCampoOcr } from '@/lib/ordenes/estado-campo-ocr'
 
 const inputBase = 'w-full px-4 py-3 rounded-lg text-sm'
 const inputStyle = {
@@ -42,6 +43,7 @@ function Campo({
   placeholder,
   mono,
   dudoso,
+  estado,
   colSpan,
   step,
   min,
@@ -54,15 +56,27 @@ function Campo({
   placeholder?: string
   mono?: boolean
   dudoso?: boolean
+  estado?: 'ok' | 'dudoso' | 'no_encontrado'
   colSpan?: boolean
   step?: string
   min?: string
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
 }) {
+  const outline =
+    estado === 'no_encontrado'
+      ? { outline: '2px solid var(--color-error)' }
+      : (estado === 'dudoso' || dudoso)
+        ? { outline: '2px solid var(--color-warning)' }
+        : {}
   return (
     <div className={colSpan ? 'md:col-span-2' : undefined}>
       <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
         {label}
+        {estado === 'no_encontrado' && (
+          <span className="ml-2 text-xs font-normal" style={{ color: 'var(--color-error)' }}>
+            · cargar a mano
+          </span>
+        )}
       </label>
       <input
         name={name}
@@ -73,7 +87,7 @@ function Campo({
         min={min}
         onBlur={onBlur}
         className={`${inputBase}${mono ? ' font-mono' : ''}`}
-        style={{ ...inputStyle, ...(dudoso ? { outline: '2px solid var(--color-warning)' } : {}) }}
+        style={{ ...inputStyle, ...outline }}
       />
     </div>
   )
@@ -249,6 +263,17 @@ export function NuevaOrdenForm() {
     return !!ocr?.campos_dudosos?.includes(campo)
   }
 
+  function estadoCampo(campo: string) {
+    return estadoCampoOcr(campo, ocr?.no_encontrados ?? [], ocr?.campos_dudosos ?? [])
+  }
+  /** Estilo de outline según el estado OCR del campo del núcleo. */
+  function outlineOcr(campo: string): React.CSSProperties {
+    const e = estadoCampo(campo)
+    if (e === 'no_encontrado') return { outline: '2px solid var(--color-error)' }
+    if (e === 'dudoso') return { outline: '2px solid var(--color-warning)' }
+    return {}
+  }
+
   function handlePrestacionSelect(prestacion: Prestacion) {
     setPrestacionSeleccionada(prestacion)
   }
@@ -406,6 +431,22 @@ export function NuevaOrdenForm() {
         </div>
       )}
 
+      {ocr && ocr.no_encontrados.length > 0 && (
+        <div
+          className="mb-6 rounded-lg px-4 py-3 text-sm"
+          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-error)' }}
+        >
+          <p className="font-medium" style={{ color: 'var(--color-error)' }}>
+            ⚠ Faltan {ocr.no_encontrados.length} datos importantes — cargalos a mano
+          </p>
+          <p className="mt-1" style={{ color: 'var(--color-foreground)' }}>
+            {ocr.no_encontrados
+              .map((c) => NUCLEO_LABELS[c as CampoNucleo] ?? c)
+              .join(', ')}
+          </p>
+        </div>
+      )}
+
       {ocr && (
       <form key={formKey} ref={formRef} onSubmit={handleSubmit} className="space-y-6">
         {error && (
@@ -474,7 +515,7 @@ export function NuevaOrdenForm() {
               placeholder="Juan Perez"
               defaultValue={ocr?.paciente ?? ''}
               className={inputBase}
-              style={{ ...inputStyle, ...(isDudoso('paciente') ? { outline: '2px solid var(--color-warning)' } : {}) }}
+              style={{ ...inputStyle, ...outlineOcr('paciente') }}
             />
           </div>
           <div>
@@ -509,7 +550,7 @@ export function NuevaOrdenForm() {
               <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Comprobante</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Campo name="delegacion" label="Delegación" defaultValue={ocr?.delegacion ?? ''} />
-                <Campo name="nro_comprobante" label="N° Comprobante" mono defaultValue={ocr?.nro_comprobante ?? ''} dudoso={isDudoso('nro_comprobante')} />
+                <Campo name="nro_comprobante" label="N° Comprobante" mono defaultValue={ocr?.nro_comprobante ?? ''} estado={estadoCampo('nro_comprobante')} />
                 <Campo name="titulo_autorizacion" label="Título de autorización" defaultValue={ocr?.titulo_autorizacion ?? ''} />
               </div>
             </section>
@@ -521,7 +562,7 @@ export function NuevaOrdenForm() {
                 <Campo name="fecha_solicitud" label="Fecha de solicitud" type="date" defaultValue={ocr?.fecha_solicitud ?? ''} />
                 <Campo name="fecha_vencimiento" label="Fecha de vencimiento" type="date" defaultValue={ocr?.fecha_vencimiento ?? ''} />
                 <Campo name="fecha_prescripcion" label="Fecha de prescripción" type="date" defaultValue={ocr?.fecha_prescripcion ?? ''} />
-                <Campo name="fecha_emision" label="Fecha de emisión" type="date" defaultValue={ocr?.fecha_emision ?? ''} />
+                <Campo name="fecha_emision" label="Fecha de emisión" type="date" defaultValue={ocr?.fecha_emision ?? ''} estado={estadoCampo('fecha_emision')} />
                 <Campo name="hora_emision" label="Hora de emisión" mono placeholder="HH:MM" defaultValue={ocr?.hora_emision ?? ''} />
               </div>
             </section>
@@ -543,7 +584,7 @@ export function NuevaOrdenForm() {
                 <div>
                   <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Nro. Afiliado *</label>
                   <input name="nro_afiliado" type="text" required placeholder="000000" defaultValue={ocr?.nro_afiliado ?? ''}
-                    className={inputBase} style={{ ...inputStyle, ...(isDudoso('nro_afiliado') ? { outline: '2px solid var(--color-warning)' } : {}) }} />
+                    className={inputBase} style={{ ...inputStyle, ...outlineOcr('nro_afiliado') }} />
                 </div>
                 <Campo name="grupo_afiliado" label="Grupo" mono placeholder="01" defaultValue={ocr?.grupo_afiliado ?? ''} dudoso={isDudoso('grupo_afiliado')} />
                 <Campo name="titular_nombre" label="Titular (apellido y nombre)" defaultValue={ocr?.titular_nombre ?? ''} />
@@ -562,10 +603,10 @@ export function NuevaOrdenForm() {
             <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
               <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Beneficiario y documento</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Campo name="cobertura" label="Cobertura" defaultValue={ocr?.cobertura ?? ''} />
+                <Campo name="cobertura" label="Cobertura" defaultValue={ocr?.cobertura ?? ''} estado={estadoCampo('cobertura')} />
                 <Campo name="parentesco" label="Parentesco" defaultValue={ocr?.parentesco ?? ''} />
                 <Campo name="tipo_documento" label="Tipo de documento" placeholder="DNI" defaultValue={ocr?.tipo_documento ?? ''} />
-                <Campo name="nro_documento" label="N° de documento (DNI)" mono placeholder="00000000" defaultValue={ocr?.nro_documento ?? ''} dudoso={isDudoso('nro_documento')} onBlur={(e) => fetchSugerencias(e.target.value)} />
+                <Campo name="nro_documento" label="N° de documento (DNI)" mono placeholder="00000000" defaultValue={ocr?.nro_documento ?? ''} estado={estadoCampo('nro_documento')} onBlur={(e) => fetchSugerencias(e.target.value)} />
                 <Campo name="domicilio" label="Domicilio" colSpan defaultValue={ocr?.domicilio ?? ''} />
               </div>
             </section>
@@ -579,7 +620,7 @@ export function NuevaOrdenForm() {
                 value={prestacionSeleccionada ? `${prestacionSeleccionada.codigo} - ${prestacionSeleccionada.detalle}` : ocr?.codigo_practica ?? ''}
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Campo name="nombre_practica" label="Descripción" colSpan placeholder="Ej: Consulta médica" defaultValue={prestacionSeleccionada?.detalle ?? ocr?.nombre_practica ?? ''} dudoso={isDudoso('nombre_practica')} />
+                <Campo name="nombre_practica" label="Descripción" colSpan placeholder="Ej: Consulta médica" defaultValue={prestacionSeleccionada?.detalle ?? ocr?.nombre_practica ?? ''} estado={estadoCampo('nombre_practica')} />
                 <Campo name="cantidad" label="Cantidad" type="number" min="0" step="1" mono defaultValue={ocr?.cantidad || 1} />
                 <Campo name="cara" label="Cara (odontología)" defaultValue={ocr?.cara ?? ''} />
                 <Campo name="pieza" label="Pieza (odontología)" defaultValue={ocr?.pieza ?? ''} />
