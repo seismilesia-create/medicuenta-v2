@@ -9,6 +9,7 @@ import {
   type OrdenFormData,
   type EstadoOrden,
 } from '@/features/ordenes/types/ordenes'
+import { evaluarCompletitud } from '@/lib/ordenes/completitud'
 
 export async function createOrden(formData: OrdenFormData) {
   const supabase = await createClient()
@@ -236,15 +237,23 @@ export async function updateOrdenEstado(ordenId: string, estado: string) {
     return { error: 'Estado inválido' }
   }
 
+  const NUCLEO_SEL =
+    'estado, tipo, nro_comprobante, token_osep, fecha_emision, nro_afiliado, nro_documento, obra_social, nombre_practica, honorario_calculado'
   const { data: ordenActual } = await supabase
     .from('ordenes')
-    .select('estado')
+    .select(NUCLEO_SEL)
     .eq('id', ordenId)
     .eq('medico_id', user.id)
     .maybeSingle()
   if (!ordenActual) return { error: 'Orden no encontrada' }
   if (!transicionOrdenPermitida(ordenActual.estado as EstadoOrden, estado)) {
     return { error: `No se puede pasar de "${ordenActual.estado}" a "${estado}".` }
+  }
+  if (estado === 'presentada') {
+    const { completa, faltantes } = evaluarCompletitud(ordenActual)
+    if (!completa) {
+      return { error: `Orden incompleta: faltan ${faltantes.length} datos. Completala antes de presentarla.` }
+    }
   }
 
   const { error } = await supabase
@@ -275,6 +284,19 @@ export async function batchUpdateOrdenesEstado(ordenIds: string[], estado: strin
   // La presentación masiva solo lleva de borrador → presentada.
   if (!esEstadoOrden(estado) || !transicionOrdenPermitida('borrador', estado)) {
     return { error: 'Estado inválido para presentación masiva' }
+  }
+
+  if (estado === 'presentada') {
+    const { data: filas } = await supabase
+      .from('ordenes')
+      .select('id, tipo, nro_comprobante, token_osep, fecha_emision, nro_afiliado, nro_documento, obra_social, nombre_practica, honorario_calculado')
+      .in('id', ordenIds)
+      .eq('medico_id', user.id)
+      .eq('estado', 'borrador')
+    const incompletas = (filas ?? []).filter((o) => !evaluarCompletitud(o).completa)
+    if (incompletas.length > 0) {
+      return { error: `${incompletas.length} orden(es) incompletas no se pueden presentar. Completalas primero.` }
+    }
   }
 
   const { error, count } = await supabase
