@@ -1,75 +1,64 @@
-# HANDOFF — MediCuenta V2 — 2026-06-19
-
-> Sesión larga y productiva: se implementaron **2 items completos del backlog del contador** (item 2 y item 4), cada uno con el flujo `brainstorming → spec → plan → ejecución por subagentes (doble review + review final Opus)`. Todo commiteado, **nada mergeado** (Héctor prueba todo junto desde producción al final). El próximo chat arranca el **item 3 (aranceles → honorario)**.
+# HANDOFF — MediCuenta V2.0 — 2026-07-07
 
 ## Estado actual
-- **Tarea**: backlog del contador del Círculo, **item por item** (brainstorming/PRP por cada uno). Items 2 y 4 ✅. Próximo: **item 3**.
-- **Estado**: working (2 features completas, testeadas y revisadas, en ramas apiladas sin mergear).
-- **Branch**: `feat/tabla-canonica-os` (apilada sobre `feat/precheck-antidebito`, que a su vez sale de `feat/whatsapp-recetas-turnos` = trunk).
-- **Último commit ANTES de este handoff**: `b26f52d` *fix(catalogo-os): validar/mostrar token OSEP por codigo_os (327), no por string (review final)*.
+- **Tarea**: Sesión larga en dos arcos, ambos YA EN PROD: (1) auditoría integral de la app → fixes de seguridad/facturación/bot; (2) feature nueva **"orden de consulta OSEP vía secretaria (Fase A)"** — el bot deja saldar la receta electrónica por la obra social en vez de pagarla. Además, vencimiento de receta subido a 45 días.
+- **Estado**: `testing` — TODO está deployado a prod, pero la feature de orden de consulta **NO tuvo E2E manual todavía**. Ese es el próximo paso.
+- **Branch**: `main` (= `origin/main`, 0/0, todo pusheado)
+- **Último commit ANTES de este handoff**: `712094c` — merge: feature orden de consulta OSEP (Fase A)
 
-## Estructura de ramas (apiladas, SIN mergear)
-- `feat/whatsapp-recetas-turnos` (trunk; prod deploya de `main`).
-- `feat/precheck-antidebito` ← item 2 (16 commits sobre el trunk).
-- `feat/tabla-canonica-os` ← item 4 (sobre item 2). **Estás acá.**
-- Idea: seguir apilando los próximos items, o ramificar desde `feat/tabla-canonica-os`. La integración a `main` → prod la decide Héctor al final (ver "Lo que NO funcionó").
+## Qué se hizo esta sesión (todo en prod)
+1. **Auditoría (4 agentes) → fixes** — mergeado a prod antes de la feature. 2 críticos: (a) escalada a superadmin vía UPDATE de `perfiles` → trigger `proteger_columnas_admin_perfil` (migración aplicada); (b) arancel vigente sin anclar a fecha → `getArancelVigente(codigoOs, fechaAtencion)`. + blindaje N1 (fechas `hoyArgentina()`, guardas de estado/edición de órdenes, planilla por `codigo_os`), dashboard (excluye plus + filtra mes), robustez del bot (respuesta ante fallo, carrera de cobro, ruteo multi-médico), listados (error + límite 500), débitos con OS. Ver memoria `project_medicuenta_auditoria_2026-07-01.md`.
+2. **Feature orden de consulta OSEP (Fase A)** — brainstorm→spec→plan→implementación con subagentes (8 tasks TDD + reviews). Spec: `docs/superpowers/specs/2026-07-06-orden-consulta-osep-receta-design.md`. Plan: `docs/superpowers/plans/2026-07-06-orden-consulta-osep-receta.md`. Detalle por task: `.superpowers/sdd/progress.md` (scratch git-ignored).
+3. **Vencimiento receta 30 → 45 días** (`RECETA_VIGENCIA_DIAS`), alineado a la validez ~45d de las órdenes.
 
-## Lo hecho esta sesión
-**Item 2 — pre-check anti-débito + emisión de planilla** (en `feat/precheck-antidebito`):
-- Regla pura `evaluarRiesgoOrden` (`src/lib/ordenes/riesgo-debito.ts`); OCR detecta firma+sello médico; aviso al cargar; punto de riesgo en el listado; panel "Resolver faltantes" con constancia; emisión de planilla por OS (tabla `presentaciones` + `ordenes.presentacion_id`), historial y ruta imprimible `/imprimir/presentacion/[id]`.
-- Migraciones aplicadas a prod: `ordenes.firma_sello_medico`, `faltantes_confirmados_at`, `presentacion_id`, tabla `presentaciones` (RLS).
-- Review final atrapó: cirugías nivel-2 se colaban en la planilla (corregido con guards `nivel=1`) + agrupación por OS/mes/agente.
-
-**Item 4 — catálogo de OS cableado en órdenes** (en `feat/tabla-canonica-os`):
-- La tabla `aranceles_os` YA existía y está seedeada (50 OS, vigencia 2026-02-01, todas activas) → item 4 fue **cablear**, no crear.
-- `OsAutocomplete` (catálogo + escape texto libre) reemplaza el enum en nueva/editar orden; `ordenes.codigo_os` (+ backfill por match tolerante); aviso de OS suspendida (`estaSuspendida` = catálogo `activa` OR `wa_os_suspendidas`); filtro por `codigo_os`. Helpers puros + tests en `src/lib/catalogo/obras-sociales.ts`; actions en `src/actions/catalogo.ts`; componente en `src/features/catalogo/components/OsAutocomplete.tsx`.
-- Migración aplicada a prod: `ordenes.codigo_os` + índice + backfill.
-
-## Archivos modificados (resumen por área)
-- **Migraciones** (`supabase/migrations/`): `20260618_ordenes_faltantes.sql`, `20260618_presentaciones.sql`, `20260619_ordenes_codigo_os.sql`. (Las 3 YA aplicadas en prod — aditivas.)
-- **Lógica pura** (`src/lib/`): `ordenes/riesgo-debito.ts`(+test), `ordenes/planilla.ts`(+test), `catalogo/obras-sociales.ts`(+test).
-- **Actions** (`src/actions/`): `ordenes.ts` (firma_sello_medico, codigo_os, resolverFaltantes, guards OSEP por codigo_os), `presentaciones.ts`, `catalogo.ts`.
-- **Componentes** (`src/features/ordenes/components/`): `NuevaOrdenForm`, `EditarOrdenForm`, `OrdenesTable`, `OrdenFilters`, `ResolverFaltantesPanel`, `PresentarPlanillaDialog`, `ImprimirBoton`; (`src/features/catalogo/components/`): `OsAutocomplete`.
-- **App routes**: `(main)/ordenes/[id]/page.tsx`, `(main)/ordenes/presentaciones/page.tsx`, `imprimir/presentacion/[id]/page.tsx`.
-- **Tipos**: `src/features/ordenes/types/ordenes.ts` (firma_sello_medico, codigo_os, Presentacion, OrdenFilters.codigo_os).
-- **Docs**: `docs/superpowers/specs/` y `docs/superpowers/plans/` (2026-06-18-precheck-antidebito*, 2026-06-19-catalogo-os*).
+## Archivos clave de la feature (ya en prod)
+- `supabase/migrations/20260706_recetas_constancia_orden.sql` — columnas `recetas.forma_pago / nro_orden_consulta / liberada_por / liberada_at` (migración YA aplicada a prod).
+- `src/lib/turnos/slots.ts` — `estaDentroDelHorario()` puro (+tests en `slots.test.ts`).
+- `src/features/whatsapp/services/horarioSecretaria.ts` — `secretariaDisponibleAhora()`.
+- `src/features/whatsapp/services/recetasService.ts` — `liberarPorOrdenConsulta()` + `getRecetasPendientesPorTelefono()`; `RECETA_VIGENCIA_DIAS=45`.
+- `src/features/whatsapp/agent/tools.ts` — tool `solicitar_orden_consulta` (pausa el bot + bitácora en el handoff).
+- `src/features/whatsapp/runner.ts` + `agent/systemPrompt.ts` — wiring de `secretariaDisponible` + las dos vías.
+- `src/actions/consultorio-recetas.ts` — server actions `getRecetasPendientesConversacion` + `liberarReceta` (authz por `resolverConsultorio` + service-role).
+- `src/features/consultorio/components/conversaciones/liberar-receta.tsx` + `hilo-panel.tsx` — botón "Liberar receta" en el panel.
 
 ## Decisiones tomadas (con el "por qué")
-- **Item por item con brainstorming→spec→plan→subagentes** — varias cosas tocan compliance; el dueño quiere control y calidad.
-- **Migraciones aditivas aplicadas directo a prod** — no hay staging (un solo Supabase); son no destructivas y quedan sin uso hasta mergear el código. Las aplica el controlador (no subagentes), verificando.
-- **NO mergear hasta el final** — Héctor prueba TODO el backlog junto desde producción, con el médico y órdenes reales (no feature por feature).
-- **Suspensión / firmas: avisar, no bloquear** — la IA puede equivocarse; el médico es la autoridad.
-- **`codigo_os` clave de negocio (no FK)** — `aranceles_os` es time-varying.
+- **Alcance = Fase A** (liberar receta + constancia). Fase B (crear la orden de consulta N1 OSEP en el módulo de órdenes, con hora inventada anti-colisión 15min y nota "sin atención física") queda documentada en spec §10, NO construida.
+- **El bot ofrece las 2 vías gateadas por horario**: dentro del horario del médico (reúsa `wa_horarios`) ofrece pagar o secretaria; fuera de horario solo pago + aviso (el paciente vuelve a escribir → NO se reabre chat fuera de la ventana de 24h de Meta, que se cobra).
+- **Autorización**: la secretaria NO ve `recetas` por RLS → las actions autorizan con `resolverConsultorio` (deriva `medicoActivoId` server-side) y operan con service-role; el `.eq('medico_id')` del UPDATE impide liberar receta de otro médico.
+- **Handoff pausa el bot** (`bot_pausado: true`, no solo `necesita_humano`) — corregido en el review final.
+- **Fix superadmin fue un TRIGGER, no un REVOKE**: el grant de UPDATE es a nivel TABLA (default Supabase) → un REVOKE de columna no alcanza.
 
-## Lo que NO funcionó (no repetir)
-- **Mergear a `feat/whatsapp-recetas-turnos`**: lo BLOQUEÓ el clasificador de seguridad (lo leyó como mover código a prod contra el límite de Héctor). NO reintentar el merge a trunk/main — la integración la decide Héctor explícitamente al final. Por eso las ramas quedan apiladas.
-- **FK duro `obra_social_id`**: descartado, se hizo migración suave (codigo_os nullable + backfill, texto intacto).
-- **`SendMessage` para continuar un subagente**: NO está disponible en esta sesión → para fixes, despachar un agente fresco con instrucción exacta.
-- **GOTCHA crítico de item 4**: `aranceles_os.nombre_os` viene con puntos ("O.S.E.P.", no "OSEP") y `prestaciones` (nomenclador) sigue keyed por 'OSEP'. Cualquier comparación `obra_social === 'OSEP'` en el código DEBE ser `codigo_os === 327`. El review final encontró que rompía la validación del token OSEP y el lookup del nomenclador (ya corregido). `normalizarOs` NO saca puntos.
+## Lo que NO funcionó / no repetir
+- **REVOKE de columna para el superadmin**: inútil, el grant es a nivel tabla → usar trigger `SECURITY INVOKER` (con DEFINER `current_user` sería el owner y no bloquearía).
+- **Tool que solo prende `necesita_humano`**: no pausa el bot (el gate es `bot_pausado`) → hay que setear ambos.
+- **Auto-backup cron horario**: commitea el working tree como "Auto-backup <ts>" y barrió cambios una vez → reorganizados a mano. Tenerlo presente.
 
 ## Próximo paso concreto
-Arrancar **item 3 (aranceles time-varying → honorario)** con `brainstorming`: que `ordenes.honorario_calculado` salga del **arancel vigente** de `aranceles_os` (`valor_consulta_medica` / `_especialista` / `_consulta_oftalmologica` / `_recertificado`) según la OS (join por `codigo_os`, ya disponible) + tipo de orden, con **recargo % si es interior**. Confirmar con Héctor el mapeo "tipo de orden → columna valor_*" y el recargo interior antes de diseñar.
+Correr el **checklist E2E manual de la orden de consulta OSEP en prod (o un preview)**:
+1. Paciente pide receta EN horario → el bot ofrece pagar u obra social; elige obra social → llega alarma al panel + el bot dice "te atiende la secretaria" **y el bot queda pausado**.
+2. Secretaria toma el chat en `/conversaciones`, toca "Liberar receta", elige la receta, pone nº de orden, confirma → el paciente recibe el PDF por WhatsApp.
+3. La receta queda `forma_pago='orden_consulta'` + nº + `liberada_por/at`; el médico la ve marcada "· por orden de consulta" en su resumen (comando `recetas`).
+4. Paciente FUERA de horario elige obra social → aviso de horario + opción de pago (no deriva).
+5. Médico SIN horario cargado → solo pago.
+Si algo falla, se puede revertir con `git revert 712094c` (el merge de la feature) sin tocar los 45 días.
 
 ## Comandos para verificar estado al retomar
 ```bash
-git status                       # limpio, en feat/tabla-canonica-os
-git log -3                       # último: b26f52d (después de este checkpoint, el WIP)
-npm run test                     # 256 tests verde (incluye riesgo-debito, planilla, obras-sociales)
-npm run build                    # ok (38 rutas)
-git branch                       # ver las 3 ramas apiladas
+git status        # esperado: limpio, en main, up-to-date con origin/main
+git log -3        # esperado HEAD: 712094c (merge feature OSEP)
+npm run test      # esperado: 295 passing
+npm run build     # esperado: build OK
 ```
 
-## Archivos clave para releer en la próxima sesión
-- `docs/superpowers/specs/2026-06-19-catalogo-os-design.md` y `docs/superpowers/plans/2026-06-19-catalogo-os.md` — el item recién hecho (referencia de patrón).
-- `.claude/PRPs/prp-catalogo-obras-sociales-prestadores.md` — el PRP madre (item 3 = parte de su Fase 3/5; aranceles + débitos).
-- `src/lib/catalogo/obras-sociales.ts` — helpers de catálogo (item 3 reusa el `codigo_os` y el catálogo).
-- Esquema de `aranceles_os` (columnas valor_*) — la fuente del arancel para item 3.
-- `src/actions/ordenes.ts` (createOrden/updateOrden, `honorario_calculado` hoy manual) — donde item 3 va a calcular.
+## Archivos para releer al retomar
+- `docs/superpowers/specs/2026-07-06-orden-consulta-osep-receta-design.md` — spec de la feature (incluye Fase B §10).
+- `.superpowers/sdd/progress.md` — ledger con el detalle y los Minor de cada task (scratch, git-ignored).
+- Memoria del proyecto (`~/.claude/projects/-Users-hector-proyectos-Medicuenta-V2-0/memory/`): `project_medicuenta_auditoria_2026-07-01.md`, `project_medicuenta_reunion_empleado_circulo.md`, `reference_medicuenta_bot_recetas_flow.md`.
 
-## Notas contextuales
-- **Las 3 migraciones de items 2 y 4 YA están en prod** (aditivas, sin uso hasta mergear el código).
-- La prueba E2E real es **al final, desde producción**, con el médico (decisión de Héctor); no se probó la UI en dev (smoke test sin auth fue OK: app levanta, guards de auth funcionan).
-- Hay un **chip de tarea spawneada** pendiente: "Reconciliar nivel-2: tabla ordenes vs cirugias" (deuda técnica detectada, no urgente).
-- Pendiente viejo de seguridad (sin tocar): sacar `WA_TOKEN_TMP` de `.env.local` si quedó + evaluar rotar el token de WhatsApp.
-- Memoria del backlog actualizada: `project_medicuenta_backlog_contador.md` (estado de items 2 y 4 + el gotcha OSEP→codigo_os).
-- Backlog restante: item 3 (aranceles), item 1 (órdenes por sistema), item 6 (comisión 5%), item 5 (descartar A/B/C/P) + oportunidades A (honorarios N2), B (receta/OSEP compliance), C (B2B Círculo).
+## Notas contextuales / pendientes
+- **Fase B (orden de consulta en el módulo de órdenes)**: documentada, sin construir. Necesita: crear orden N1 OSEP desde la receta liberada, hora inventada que no choque 15min con otra OSEP, nota "sin atención física", vínculo al nº de orden.
+- **Validez de 45 días de las órdenes**: dato de dominio de Héctor, CREENCIA A CONFIRMAR (no estaba registrado antes). Si se confirma otra cifra, ajustar `RECETA_VIGENCIA_DIAS`.
+- **Mejora futura**: que el OCR lea la validez impresa de la receta (hoy capta `fecha_creada` pero no un vencimiento) y vencer según eso, no 45 fijos desde la carga.
+- **Pendientes de la reunión del Círculo**: modelos de órdenes de todas las OS (→ OCR por formato; principio: registrar SOLO campos de facturación, converger a set lean común, no sumar por OS), prácticas ambulatorias comunes + honorarios (→ nomenclador `prestaciones` vacío), valores de módulos N2 por OS.
+- **Pendientes de auditoría (no hechos)**: dedupe del webhook WhatsApp at-most-once (mensaje perdido si el handler crashea → rediseño), schema baseline versionado, 3 reglas distintas de cálculo de adicionales de cirugía, ratio de DebitosStats.
+- **Migraciones de la feature YA aplicadas a prod** — el push del código las alcanzó, consistente.
