@@ -16,6 +16,8 @@ export interface PacienteToolsCtx {
   medicoId: string
   telefonoPaciente: string
   contactoId: string | null
+  conversacionId: string | null
+  secretariaDisponible: boolean
 }
 
 function resumenMedicamento(r: RecetaRow): string {
@@ -102,6 +104,34 @@ export function buildPacienteTools(ctx: PacienteToolsCtx) {
           }
         }
         return { link: pref.initPoint, monto: Number(receta.monto) }
+      },
+    }),
+
+    solicitar_orden_consulta: tool({
+      description:
+        'El paciente quiere gestionar su receta por su OBRA SOCIAL (orden de consulta), no pagarla. Llamala cuando lo pida. Si la secretaria está disponible ahora, deriva la conversación a ella; si no, devuelve el aviso de horario. Respondé al paciente con el `mensaje` que devuelve, tal cual.',
+      inputSchema: z.object({}),
+      execute: async () => {
+        if (!ctx.secretariaDisponible) {
+          return {
+            ok: false,
+            mensaje:
+              'La orden de consulta te la gestiona la secretaria del consultorio, en el horario de atención del médico. Si la querés ahora, la podés pagar acá; si preferís la vía obra social, escribime cuando la secretaria esté disponible 🙌',
+          }
+        }
+        const { error } = await ctx.db
+          .from('wa_conversaciones')
+          .update({ necesita_humano: true, updated_at: new Date().toISOString() })
+          .eq('medico_id', ctx.medicoId)
+          .eq('id', ctx.conversacionId)
+        if (error) {
+          console.error('[wa] solicitar_orden_consulta error:', error.message)
+          return { ok: false, mensaje: 'No pude avisar al consultorio. Probá de nuevo en un momento 🙏' }
+        }
+        return {
+          ok: true,
+          mensaje: 'Perfecto 🙌 Te va a atender la secretaria por este mismo chat para gestionar tu orden de consulta. Aguardá un momento.',
+        }
       },
     }),
   }

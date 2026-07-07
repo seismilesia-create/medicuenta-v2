@@ -27,6 +27,7 @@ import { buildPacienteTools } from '@/features/whatsapp/agent/tools'
 import { buildConsultorioTools } from '@/features/whatsapp/agent/toolsConsultorio'
 import { registrarEvento } from '@/features/whatsapp/services/bitacora'
 import { registrarUsoIa } from '@/lib/ai/usoIa'
+import { secretariaDisponibleAhora } from '@/features/whatsapp/services/horarioSecretaria'
 
 type Db = ReturnType<typeof createServiceClient>
 
@@ -255,9 +256,11 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
     .eq('medico_id', canal.medicoId)
     .maybeSingle()
 
+  const secretariaDisponible = await secretariaDisponibleAhora(db, canal.medicoId)
   const systemPrompt = buildSystemPromptPaciente({
     config: cfgRow as ConfigAgente | null,
     contactName: incoming.contactName,
+    secretariaDisponible,
   })
   // Links viejos fuera del contexto del modelo: vencidos, y son fuente de imitación.
   const historial = (await loadHistorial(db, canal.medicoId, conversacionId, 12)).map((m) => ({
@@ -270,6 +273,7 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
     telefonoPaciente: incoming.from,
     contactoId,
     conversacionId,
+    secretariaDisponible,
   }
   const tools = {
     ...buildPacienteTools(toolsCtx),

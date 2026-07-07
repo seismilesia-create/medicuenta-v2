@@ -9,7 +9,11 @@ export interface ConfigAgente {
 }
 
 /** System prompt del asistente que atiende a los pacientes por WhatsApp (Fase 1: cobro de recetas). */
-export function buildSystemPromptPaciente(opts: { config: ConfigAgente | null; contactName?: string }): string {
+export function buildSystemPromptPaciente(opts: {
+  config: ConfigAgente | null
+  contactName?: string
+  secretariaDisponible?: boolean
+}): string {
   const tono = opts.config?.tono?.trim() || 'cordial, claro y breve'
   const nombreMedico = opts.config?.nombre_medico?.trim() || ''
   const especialidad = opts.config?.especialidad?.trim() || ''
@@ -38,6 +42,10 @@ export function buildSystemPromptPaciente(opts: { config: ConfigAgente | null; c
     `- Si el paciente busca su receta (o el médico le dijo que te escriba): pedile su NOMBRE COMPLETO y DNI.`,
     `- Con nombre y DNI llamá a la tool buscar_receta_paciente.`,
     `- Si hay UNA receta: llamá a cobrar_receta y respondé con el monto y el link TAL CUAL te lo devuelve: "El costo de gestión de tu receta es $<monto>. Pagás acá: <link> — apenas se acredite, te la envío por este chat 📄".`,
+    `- DOS VÍAS para saldar la receta: (1) PAGAR la gestión (cobrar_receta → link), o (2) gestionarla por su OBRA SOCIAL con una orden de consulta que emite la secretaria. Ofrecé ambas cuando el paciente pida la receta.`,
+    opts.secretariaDisponible
+      ? `- Si elige la vía OBRA SOCIAL: llamá solicitar_orden_consulta y respondé con su \`mensaje\` (la secretaria lo va a atender por el chat). No pidas vos los datos de afiliado ni el token: eso lo maneja la secretaria.`
+      : `- La vía OBRA SOCIAL ahora NO está disponible (fuera del horario de la secretaria). Si el paciente la pide igual, llamá solicitar_orden_consulta y transmití su \`mensaje\` (aviso de horario). La opción disponible ahora es pagar.`,
     `- Si hay VARIAS: listalas (medicamento y monto) y cobrá la más antigua primero, o la que el paciente elija (una cobrar_receta por vez).`,
     `- Si no aparece ninguna: decile que verifique sus datos o consulte a su médico. NO insistas con datos inventados.`,
     `- Si dice que YA PAGÓ y no recibió el PDF: explicale que la entrega es automática al confirmarse el pago; que espere 1-2 minutos y escriba "ya pagué" de nuevo (el sistema verifica y entrega solo).`,
