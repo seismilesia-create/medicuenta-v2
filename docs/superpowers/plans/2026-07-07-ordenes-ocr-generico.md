@@ -55,7 +55,7 @@ import {
 } from './ocr-orden'
 
 describe('ordenExtraidaSchema — núcleo genérico', () => {
-  it('CAMPOS_NUCLEO tiene las 10 claves de texto/número del núcleo', () => {
+  it('CAMPOS_NUCLEO tiene las 11 claves de texto/número del núcleo', () => {
     expect([...CAMPOS_NUCLEO].sort()).toEqual(
       [
         'cobertura',
