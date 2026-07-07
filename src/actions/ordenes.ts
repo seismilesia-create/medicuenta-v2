@@ -92,6 +92,7 @@ export async function createOrden(formData: OrdenFormData) {
     entidad: data.entidad ?? null,
     responsable: data.responsable ?? null,
     imagen_comprobante: data.imagen_comprobante ?? null,
+    datos_ocr: data.datos_ocr ?? null,
     // Nivel + foja quirúrgica (Nivel 2)
     nivel: data.nivel ?? 1,
     cirugia_adicional: data.cirugia_adicional ?? null,

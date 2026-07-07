@@ -125,6 +125,8 @@ export interface Orden {
   entidad: string | null
   responsable: string | null
   imagen_comprobante: string | null
+  // OCR crudo de la foto (para reproceso). { version, datos: OrdenExtraida }.
+  datos_ocr: unknown | null
   // Nivel (1 = ambulatoria/consulta, 2 = foja quirúrgica)
   nivel: number
   cirugia_adicional: string | null
@@ -228,6 +230,7 @@ export const ordenBaseSchema = z.object({
   entidad: z.string().optional(),
   responsable: z.string().optional(),
   imagen_comprobante: z.string().optional(),
+  datos_ocr: z.unknown().optional(),
   // Nivel + foja quirúrgica (Nivel 2)
   nivel: z.coerce.number().optional(),
   cirugia_adicional: z.string().optional(),
