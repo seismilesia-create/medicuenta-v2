@@ -212,11 +212,12 @@ export async function revertirEntrega(db: SupabaseClient, medicoId: string, rece
 export async function resumenRecetas(db: SupabaseClient, medicoId: string): Promise<string> {
   const { data } = await db
     .from('recetas')
-    .select('paciente_nombre, estado, monto, created_at')
+    .select('paciente_nombre, estado, monto, created_at, forma_pago')
     .eq('medico_id', medicoId)
     .order('created_at', { ascending: false })
     .limit(50)
-  const rows = (data as { paciente_nombre: string; estado: string; monto: number | null; created_at: string }[] | null) ?? []
+  const rows =
+    (data as { paciente_nombre: string; estado: string; monto: number | null; created_at: string; forma_pago: string | null }[] | null) ?? []
   if (!rows.length) return 'Todavía no hay recetas cargadas. Reenviame un PDF de receta para empezar.'
 
   const cuenta: Record<string, number> = {}
@@ -234,7 +235,10 @@ export async function resumenRecetas(db: SupabaseClient, medicoId: string): Prom
     .join('\n')
   const ultimas = rows
     .slice(0, 5)
-    .map((r) => `• ${r.paciente_nombre || '(sin nombre)'} — ${etiqueta[r.estado] ?? r.estado}${r.monto != null ? ` — $${Number(r.monto).toLocaleString('es-AR')}` : ''}`)
+    .map(
+      (r) =>
+        `• ${r.paciente_nombre || '(sin nombre)'} — ${etiqueta[r.estado] ?? r.estado}${r.monto != null ? ` — $${Number(r.monto).toLocaleString('es-AR')}` : ''}${r.forma_pago === 'orden_consulta' ? ' · por orden de consulta' : ''}`,
+    )
     .join('\n')
   return `📋 Tus recetas:\n${resumen}\n\nÚltimas:\n${ultimas}`
 }
