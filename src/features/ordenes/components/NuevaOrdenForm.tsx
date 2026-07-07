@@ -406,6 +406,7 @@ export function NuevaOrdenForm() {
   }
 
   const today = hoyArgentina()
+  const esOsep = codigoOs === 327
 
   return (
     <div className="max-w-2xl">
@@ -545,15 +546,17 @@ export function NuevaOrdenForm() {
         {/* ===== Campos Obra Social (en el orden físico de la orden) ===== */}
         {tipo === 'obra_social' && (
           <>
-            {/* Cabecera / comprobante */}
-            <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Comprobante</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Campo name="delegacion" label="Delegación" defaultValue={ocr?.delegacion ?? ''} />
-                <Campo name="nro_comprobante" label="N° Comprobante" mono defaultValue={ocr?.nro_comprobante ?? ''} estado={estadoCampo('nro_comprobante')} />
-                <Campo name="titulo_autorizacion" label="Título de autorización" defaultValue={ocr?.titulo_autorizacion ?? ''} />
-              </div>
-            </section>
+            {/* Cabecera / comprobante (OSEP) */}
+            {esOsep && (
+              <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Comprobante</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Campo name="delegacion" label="Delegación" defaultValue={ocr?.delegacion ?? ''} />
+                  <Campo name="nro_comprobante" label="N° Comprobante" mono defaultValue={ocr?.nro_comprobante ?? ''} estado={estadoCampo('nro_comprobante')} />
+                  <Campo name="titulo_autorizacion" label="Título de autorización" defaultValue={ocr?.titulo_autorizacion ?? ''} />
+                </div>
+              </section>
+            )}
 
             {/* Fechas */}
             <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
@@ -561,9 +564,13 @@ export function NuevaOrdenForm() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Campo name="fecha_solicitud" label="Fecha de solicitud" type="date" defaultValue={ocr?.fecha_solicitud ?? ''} />
                 <Campo name="fecha_vencimiento" label="Fecha de vencimiento" type="date" defaultValue={ocr?.fecha_vencimiento ?? ''} />
-                <Campo name="fecha_prescripcion" label="Fecha de prescripción" type="date" defaultValue={ocr?.fecha_prescripcion ?? ''} />
                 <Campo name="fecha_emision" label="Fecha de emisión" type="date" defaultValue={ocr?.fecha_emision ?? ''} estado={estadoCampo('fecha_emision')} />
-                <Campo name="hora_emision" label="Hora de emisión" mono placeholder="HH:MM" defaultValue={ocr?.hora_emision ?? ''} />
+                {esOsep && (
+                  <>
+                    <Campo name="fecha_prescripcion" label="Fecha de prescripción" type="date" defaultValue={ocr?.fecha_prescripcion ?? ''} />
+                    <Campo name="hora_emision" label="Hora de emisión" mono placeholder="HH:MM" defaultValue={ocr?.hora_emision ?? ''} />
+                  </>
+                )}
               </div>
             </section>
 
@@ -586,13 +593,17 @@ export function NuevaOrdenForm() {
                   <input name="nro_afiliado" type="text" required placeholder="000000" defaultValue={ocr?.nro_afiliado ?? ''}
                     className={inputBase} style={{ ...inputStyle, ...outlineOcr('nro_afiliado') }} />
                 </div>
-                <Campo name="grupo_afiliado" label="Grupo" mono placeholder="01" defaultValue={ocr?.grupo_afiliado ?? ''} dudoso={isDudoso('grupo_afiliado')} />
-                <Campo name="titular_nombre" label="Titular (apellido y nombre)" defaultValue={ocr?.titular_nombre ?? ''} />
-                <Campo name="medico_solicitante" label="Prescriptor / médico solicitante" colSpan defaultValue={ocr?.medico_solicitante ?? ''} />
+                {esOsep && (
+                  <>
+                    <Campo name="grupo_afiliado" label="Grupo" mono placeholder="01" defaultValue={ocr?.grupo_afiliado ?? ''} dudoso={isDudoso('grupo_afiliado')} />
+                    <Campo name="titular_nombre" label="Titular (apellido y nombre)" defaultValue={ocr?.titular_nombre ?? ''} />
+                    <Campo name="medico_solicitante" label="Prescriptor / médico solicitante" colSpan defaultValue={ocr?.medico_solicitante ?? ''} />
+                  </>
+                )}
               </div>
 
               {/* OSEP: token (cód 327) */}
-              {codigoOs === 327 && (
+              {esOsep && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Campo name="token_osep" label="Token OSEP (6 dígitos)" mono placeholder="123456" defaultValue={ocr?.token_osep ?? ''} dudoso={isDudoso('token_osep')} />
                 </div>
@@ -604,10 +615,14 @@ export function NuevaOrdenForm() {
               <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Beneficiario y documento</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Campo name="cobertura" label="Cobertura" defaultValue={ocr?.cobertura ?? ''} estado={estadoCampo('cobertura')} />
-                <Campo name="parentesco" label="Parentesco" defaultValue={ocr?.parentesco ?? ''} />
                 <Campo name="tipo_documento" label="Tipo de documento" placeholder="DNI" defaultValue={ocr?.tipo_documento ?? ''} />
                 <Campo name="nro_documento" label="N° de documento (DNI)" mono placeholder="00000000" defaultValue={ocr?.nro_documento ?? ''} estado={estadoCampo('nro_documento')} onBlur={(e) => fetchSugerencias(e.target.value)} />
-                <Campo name="domicilio" label="Domicilio" colSpan defaultValue={ocr?.domicilio ?? ''} />
+                {esOsep && (
+                  <>
+                    <Campo name="parentesco" label="Parentesco" defaultValue={ocr?.parentesco ?? ''} />
+                    <Campo name="domicilio" label="Domicilio" colSpan defaultValue={ocr?.domicilio ?? ''} />
+                  </>
+                )}
               </div>
             </section>
 
@@ -622,8 +637,12 @@ export function NuevaOrdenForm() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Campo name="nombre_practica" label="Descripción" colSpan placeholder="Ej: Consulta médica" defaultValue={prestacionSeleccionada?.detalle ?? ocr?.nombre_practica ?? ''} estado={estadoCampo('nombre_practica')} />
                 <Campo name="cantidad" label="Cantidad" type="number" min="0" step="1" mono defaultValue={ocr?.cantidad || 1} />
-                <Campo name="cara" label="Cara (odontología)" defaultValue={ocr?.cara ?? ''} />
-                <Campo name="pieza" label="Pieza (odontología)" defaultValue={ocr?.pieza ?? ''} />
+                {esOsep && (
+                  <>
+                    <Campo name="cara" label="Cara (odontología)" defaultValue={ocr?.cara ?? ''} />
+                    <Campo name="pieza" label="Pieza (odontología)" defaultValue={ocr?.pieza ?? ''} />
+                  </>
+                )}
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Diagnóstico CIE-10</label>
                   <input value={diagnostico} onChange={(e) => setDiagnostico(e.target.value)}
@@ -685,18 +704,24 @@ export function NuevaOrdenForm() {
               </div>
             </section>
 
-            {/* Origen */}
-            <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Origen</h3>
-              <Campo name="origen" label="Origen" placeholder="Prestador / Web Service" defaultValue={ocr?.origen ?? ''} />
-            </section>
+            {/* Origen (OSEP) */}
+            {esOsep && (
+              <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Origen</h3>
+                <Campo name="origen" label="Origen" placeholder="Prestador / Web Service" defaultValue={ocr?.origen ?? ''} />
+              </section>
+            )}
 
             {/* Arancel / total */}
             <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
               <h3 className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>Arancel y total</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Campo name="arancelista" label="Arancelista" defaultValue={ocr?.arancelista ?? ''} />
-                <Campo name="cajero" label="Cajero" defaultValue={ocr?.cajero ?? ''} />
+                {esOsep && (
+                  <>
+                    <Campo name="arancelista" label="Arancelista" defaultValue={ocr?.arancelista ?? ''} />
+                    <Campo name="cajero" label="Cajero" defaultValue={ocr?.cajero ?? ''} />
+                  </>
+                )}
                 <Campo name="total_cargo_afiliado" label="Total a cargo afiliado" type="number" min="0" step="0.01" mono placeholder="0.00" defaultValue={ocr?.total_cargo_afiliado || ''} />
                 <Campo name="horario_realizacion" label="Hora de realización" mono placeholder="HH:MM" defaultValue={ocr?.horario_realizacion ?? ''} />
               </div>
