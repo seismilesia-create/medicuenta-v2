@@ -23,6 +23,7 @@ import { normalizarOs } from '@/lib/consultorio/osSuspendidas'
 import { EscanearOrdenButton, type OrdenEscaneada } from './EscanearOrdenButton'
 import { SugerenciaTurnoCard } from './SugerenciaTurnoCard'
 import { evaluarRiesgoOrden, FALTANTE_LABELS } from '@/lib/ordenes/riesgo-debito'
+import { OCR_ORDEN_PROMPT_VERSION } from '@/lib/ai/ocr-orden'
 
 const inputBase = 'w-full px-4 py-3 rounded-lg text-sm'
 const inputStyle = {
@@ -218,7 +219,6 @@ export function NuevaOrdenForm() {
 
   async function handleOcrExtracted(data: OrdenEscaneada) {
     setOcr(data)
-    setHonorario(data.importe ? String(data.importe) : '')
     setTipo('obra_social')
     setTurnoAplicado(null)
     setAviso15(null)
@@ -332,6 +332,7 @@ export function NuevaOrdenForm() {
       entidad: str('entidad'),
       responsable: str('responsable'),
       imagen_comprobante: imagenPath,
+      datos_ocr: ocr ? { version: OCR_ORDEN_PROMPT_VERSION, datos: ocr } : undefined,
       // Correlación 3C: solo los turnos (no sobreturnos) tienen FK a la agenda.
       turno_id: turnoAplicado?.tipo === 'turno' ? turnoAplicado.id : undefined,
     }
