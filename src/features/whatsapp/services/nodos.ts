@@ -4,6 +4,7 @@ import { getCanalByPhoneNumberId, getCanalByMedicoId, type CanalResuelto } from 
 import { getRuteoMedico, upsertRuteoMedico } from './ruteoConversacion'
 import { extraerIdSlug, limpiarMarcadorId } from '@/lib/whatsapp/linkNodo'
 import { normalizeRecipient } from '@/lib/whatsapp/client'
+import type { MedicoNodo } from '@/lib/whatsapp/desambiguacionRuteo'
 
 // Servicios de lectura de la arquitectura de nodos (PRP-006, Fase 1).
 // El cliente llega sin tipar (igual que canales.ts): se castea cada fila a mano.
@@ -137,6 +138,40 @@ async function contarAsignacionesActivas(db: SupabaseClient, phoneNumberId: stri
     .eq('nodo_id', (nodo as { id: string }).id)
     .eq('activo', true)
   return count ?? 0
+}
+
+/** Médicos ACTIVOS del nodo (para desambiguar por nombre): id + datos de identidad de `perfiles`. */
+export async function getMedicosDelNodo(db: SupabaseClient, phoneNumberId: string): Promise<MedicoNodo[]> {
+  const { data: nodo } = await db
+    .from('wa_nodos')
+    .select('id')
+    .eq('phone_number_id', phoneNumberId)
+    .maybeSingle()
+  if (!nodo) return []
+  const { data: asigs } = await db
+    .from('wa_asignaciones')
+    .select('medico_id')
+    .eq('nodo_id', (nodo as { id: string }).id)
+    .eq('activo', true)
+  const ids = ((asigs as { medico_id: string }[] | null) ?? []).map((a) => a.medico_id)
+  if (ids.length === 0) return []
+  const { data: perfiles } = await db
+    .from('perfiles')
+    .select('id, nombre, apellido, especialidad, matricula')
+    .in('id', ids)
+  return ((perfiles as {
+    id: string
+    nombre: string | null
+    apellido: string | null
+    especialidad: string | null
+    matricula: string | null
+  }[] | null) ?? []).map((p) => ({
+    medicoId: p.id,
+    nombre: p.nombre ?? '',
+    apellido: p.apellido ?? '',
+    especialidad: p.especialidad,
+    matricula: p.matricula,
+  }))
 }
 
 /** Nodo del médico para salientes (entrega receta, webhook MP, toma humana). Drop-in de getCanalByMedicoId (Fase 4). */
