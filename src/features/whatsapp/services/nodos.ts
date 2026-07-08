@@ -1,10 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { descifrar } from '@/lib/crypto/encryption'
 import { getCanalByPhoneNumberId, getCanalByMedicoId, type CanalResuelto } from './canales'
-import { getRuteoMedico, upsertRuteoMedico } from './ruteoConversacion'
+import { getSesionRuteo, setSesionActiva, setSesionEsperando, bumpActividad, type SesionRuteo } from './ruteoConversacion'
+import {
+  matchApellido, etiquetaMedico, interpretarConfirmacion, interpretarSeleccion,
+  sesionVencida, RUTEO_TTL_MS, type MedicoNodo,
+} from '@/lib/whatsapp/desambiguacionRuteo'
+import { esRemitenteMedico } from '@/lib/whatsapp/clasificar'
 import { extraerIdSlug, limpiarMarcadorId } from '@/lib/whatsapp/linkNodo'
 import { normalizeRecipient } from '@/lib/whatsapp/client'
-import type { MedicoNodo } from '@/lib/whatsapp/desambiguacionRuteo'
 
 // Servicios de lectura de la arquitectura de nodos (PRP-006, Fase 1).
 // El cliente llega sin tipar (igual que canales.ts): se castea cada fila a mano.
@@ -124,22 +128,6 @@ export async function esMedicoDelNodo(
   return (await getMedicoIdPorNumeroEnNodo(db, phoneNumberId, telefono)) !== null
 }
 
-/** Cuántos médicos ACTIVOS tiene asignados el nodo de este phone_number_id. */
-async function contarAsignacionesActivas(db: SupabaseClient, phoneNumberId: string): Promise<number> {
-  const { data: nodo } = await db
-    .from('wa_nodos')
-    .select('id')
-    .eq('phone_number_id', phoneNumberId)
-    .maybeSingle()
-  if (!nodo) return 0
-  const { count } = await db
-    .from('wa_asignaciones')
-    .select('*', { count: 'exact', head: true })
-    .eq('nodo_id', (nodo as { id: string }).id)
-    .eq('activo', true)
-  return count ?? 0
-}
-
 /** Médicos ACTIVOS del nodo (para desambiguar por nombre): id + datos de identidad de `perfiles`. */
 export async function getMedicosDelNodo(db: SupabaseClient, phoneNumberId: string): Promise<MedicoNodo[]> {
   const { data: nodo } = await db
@@ -199,75 +187,136 @@ export async function getNodoByMedicoId(db: SupabaseClient, medicoId: string): P
   }
 }
 
-/** Resultado de resolver el médico de un mensaje entrante: el canal (contrato existente) + el texto sin marcador. */
-export interface IngresoResuelto {
-  canal: CanalResuelto
-  /** Texto del mensaje con el marcador [ID:...] removido (solo si venía). undefined si no había marcador. */
-  textoLimpio?: string
+/** Resultado de resolver un mensaje entrante en el modelo de nodos. */
+export type ResultadoIngreso =
+  | { tipo: 'medico'; canal: CanalResuelto }
+  | { tipo: 'paciente'; canal: CanalResuelto; textoLimpio?: string }
+  | { tipo: 'mensaje'; nodo: NodoCreds; texto: string }
+  | null
+
+/** Interpreta la respuesta del paciente a una pregunta de desambiguación pendiente. */
+async function manejarRespuestaDesambiguacion(
+  db: SupabaseClient,
+  nodo: NodoCreds,
+  telefono: string,
+  sesion: SesionRuteo,
+  texto: string,
+  medicos: MedicoNodo[],
+): Promise<ResultadoIngreso> {
+  const phoneNumberId = nodo.phoneNumberId
+
+  if (sesion.estado === 'esperando_confirmacion') {
+    const r = interpretarConfirmacion(texto)
+    const cand = sesion.candidatos?.[0]
+    if (r === 'si' && cand) {
+      await setSesionActiva(db, phoneNumberId, telefono, cand.medicoId)
+      return { tipo: 'mensaje', nodo, texto: `Listo, estás con ${etiquetaMedico(cand)} 🙌 Contame en qué te puedo ayudar.` }
+    }
+    if (r === 'no') {
+      await setSesionEsperando(db, phoneNumberId, telefono, 'esperando_nombre', { medicoId: null })
+      return { tipo: 'mensaje', nodo, texto: 'Dale. Escribí el *apellido* del médico al que le querés escribir.' }
+    }
+    return { tipo: 'mensaje', nodo, texto: 'Respondé *sí* o *no*, por favor 🙏' }
+  }
+
+  if (sesion.estado === 'esperando_nombre') {
+    const cands = matchApellido(texto, medicos)
+    if (cands.length === 0) {
+      return { tipo: 'mensaje', nodo, texto: 'No encontré un médico con ese apellido en este número. Revisá el apellido o escaneá el *QR* del consultorio.' }
+    }
+    if (cands.length === 1) {
+      await setSesionEsperando(db, phoneNumberId, telefono, 'esperando_confirmacion', { medicoId: null, candidatos: cands })
+      return { tipo: 'mensaje', nodo, texto: `¿Es ${etiquetaMedico(cands[0])}? Respondé *sí* o *no*.` }
+    }
+    await setSesionEsperando(db, phoneNumberId, telefono, 'esperando_seleccion', { medicoId: null, candidatos: cands })
+    const lista = cands.map((c, i) => `${i + 1}) ${etiquetaMedico(c)}`).join('\n')
+    return { tipo: 'mensaje', nodo, texto: `Encontré varios médicos con ese apellido. ¿A cuál le escribís?\n${lista}\n\nRespondé con el *número*.` }
+  }
+
+  // esperando_seleccion
+  const sel = interpretarSeleccion(texto, sesion.candidatos ?? [])
+  if (!sel) {
+    return { tipo: 'mensaje', nodo, texto: 'No entendí. Respondé con el *número* de la lista.' }
+  }
+  await setSesionActiva(db, phoneNumberId, telefono, sel.medicoId)
+  return { tipo: 'mensaje', nodo, texto: `Listo, estás con ${etiquetaMedico(sel)} 🙌 Contame en qué te puedo ayudar.` }
 }
 
-/**
- * Resuelve el médico de un mensaje entrante en el modelo de nodos, con fallback al canal legacy.
- * Orden: (a) [ID:slug] del 1.er mensaje → re-ancla ruteo · (a.5) el número entrante = numero_personal
- * de un médico del nodo → es el médico escribiéndole al bot · (b) ruteo persistido (paciente
- * recurrente) · (c) fallback legacy (wa_canales 1:1; en el piloto el nodo reusa el canal) ·
- * (d) null (no romper). Mantiene el contrato CanalResuelto → el pipeline aguas abajo (runner) no cambia.
- */
 export async function resolverIngreso(
   db: SupabaseClient,
   incoming: { phoneNumberId: string; from: string; text?: string },
-): Promise<IngresoResuelto | null> {
+): Promise<ResultadoIngreso> {
   const phoneNumberId = incoming.phoneNumberId
   const text = incoming.text ?? ''
   const telefono = normalizeRecipient(incoming.from)
 
-  // ¿El número que recibió es un nodo? Si no, es flujo legacy puro (wa_canales 1:1).
+  // ¿El número que recibió es un nodo? Si no, flujo legacy puro (wa_canales 1:1).
   const nodo = await getNodoByPhoneNumberId(db, phoneNumberId)
   if (!nodo) {
     const legacy = await getCanalByPhoneNumberId(db, phoneNumberId)
-    return legacy ? { canal: legacy } : null
+    if (!legacy) return null
+    return esRemitenteMedico(incoming.from, legacy.numeroPersonal)
+      ? { tipo: 'medico', canal: legacy }
+      : { tipo: 'paciente', canal: legacy }
   }
 
-  // (a) Marcador [ID:slug] del 1.er mensaje (paciente que entró por el link).
+  // (a) Marcador [ID:slug] del 1.er mensaje: gana siempre.
   const slug = extraerIdSlug(text)
   if (slug) {
     const asig = await getAsignacionBySlug(db, slug)
     if (asig && asig.nodoPhoneNumberId === phoneNumberId) {
-      await upsertRuteoMedico(db, phoneNumberId, telefono, asig.medicoId)
+      await setSesionActiva(db, phoneNumberId, telefono, asig.medicoId)
       const canal = await getNodoByMedicoId(db, asig.medicoId)
-      if (canal) return { canal, textoLimpio: limpiarMarcadorId(text) }
+      if (canal) return { tipo: 'paciente', canal, textoLimpio: limpiarMarcadorId(text) }
     }
-    // slug inválido o de otro nodo → seguir resolviendo por otros medios
   }
 
-  // (a.5) El número entrante es el numero_personal de un médico de este nodo (el médico
-  // escribiéndole al bot, sin marcador). Lo resolvemos a SU canal → el runner lo reconoce
-  // como médico (esRemitenteMedico) y le da los comandos de médico (recetas, precio, turnos).
+  // (a.5) El número entrante es un médico del nodo (le escribe al bot).
   const medicoPropio = await getMedicoIdPorNumeroEnNodo(db, phoneNumberId, telefono)
   if (medicoPropio) {
     const canal = await getNodoByMedicoId(db, medicoPropio)
-    if (canal) return { canal }
+    if (canal) return { tipo: 'medico', canal }
   }
 
-  // (b) Ruteo persistido (paciente recurrente, ya sin marcador).
-  const ruteadoId = await getRuteoMedico(db, phoneNumberId, telefono)
-  if (ruteadoId) {
-    const canal = await getNodoByMedicoId(db, ruteadoId)
-    if (canal) return { canal }
+  const medicos = await getMedicosDelNodo(db, phoneNumberId)
+
+  // Guarda defensiva: nodo con 1 solo médico → directo, sin preguntar.
+  if (medicos.length === 1) {
+    await setSesionActiva(db, phoneNumberId, telefono, medicos[0].medicoId)
+    const canal = await getNodoByMedicoId(db, medicos[0].medicoId)
+    if (canal) return { tipo: 'paciente', canal }
   }
 
-  // (c) Fallback legacy SOLO si el nodo tiene a lo sumo 1 médico asignado (wa_canales 1:1;
-  // en el piloto el nodo reusa el canal). En un nodo multi-médico, un paciente sin marcador
-  // es ambiguo: caer al canal legacy lo mandaría al médico original del número (mezcla de
-  // tenants). Ahí preferimos el aviso de ruteo fallido (d) para que reingrese por su link.
-  const asignados = await contarAsignacionesActivas(db, phoneNumberId)
-  if (asignados <= 1) {
-    const legacy = await getCanalByPhoneNumberId(db, phoneNumberId)
-    if (legacy) return { canal: legacy }
+  const sesion = await getSesionRuteo(db, phoneNumberId, telefono)
+
+  // (3) Hay una pregunta de desambiguación pendiente → el mensaje es la respuesta.
+  if (sesion && sesion.estado !== 'activa') {
+    return manejarRespuestaDesambiguacion(db, nodo, telefono, sesion, text, medicos)
   }
 
-  // (d) Nada resolvió (paciente nuevo sin marcador en un nodo multi-médico): no rompemos.
-  return null
+  // (4) Sesión activa y reciente → continuar con el médico.
+  if (sesion && sesion.estado === 'activa' && sesion.medicoId && !sesionVencida(sesion.lastActivityAt, Date.now(), RUTEO_TTL_MS)) {
+    const canal = await getNodoByMedicoId(db, sesion.medicoId)
+    if (canal) {
+      await bumpActividad(db, phoneNumberId, telefono)
+      return { tipo: 'paciente', canal }
+    }
+  }
+
+  // (5) Sesión activa pero vieja → preguntar "¿mismo o otro?".
+  if (sesion && sesion.medicoId && sesionVencida(sesion.lastActivityAt, Date.now(), RUTEO_TTL_MS)) {
+    const actual = medicos.find((m) => m.medicoId === sesion.medicoId) ?? null
+    await setSesionEsperando(db, phoneNumberId, telefono, 'esperando_confirmacion', {
+      medicoId: sesion.medicoId,
+      candidatos: actual ? [actual] : null,
+    })
+    const nombre = actual ? etiquetaMedico(actual) : 'el mismo médico de antes'
+    return { tipo: 'mensaje', nodo, texto: `¿Seguís con ${nombre} o es con *otro* médico? Respondé *mismo* u *otro*.` }
+  }
+
+  // (6) Sin sesión (paciente nuevo) y sin marcador → preguntar el nombre.
+  await setSesionEsperando(db, phoneNumberId, telefono, 'esperando_nombre', { medicoId: null })
+  return { tipo: 'mensaje', nodo, texto: '¡Hola! 👋 ¿A qué médico le escribís? Escribí su *apellido* y te conecto.' }
 }
 
 /** Canal de SALIDA del médico: nodo asignado (modelo nuevo) con fallback al canal legacy (wa_canales). */
