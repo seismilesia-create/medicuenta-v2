@@ -162,7 +162,7 @@ export const RUTEO_TTL_MS = 4 * 60 * 60 * 1000 // 4 horas
 export function normalizarNombre(s: string): string {
   return s
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim()
