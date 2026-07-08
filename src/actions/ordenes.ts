@@ -269,50 +269,6 @@ export async function updateOrdenEstado(ordenId: string, estado: string) {
   return { success: true }
 }
 
-export async function batchUpdateOrdenesEstado(ordenIds: string[], estado: string) {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { error: 'No autenticado' }
-  }
-
-  if (ordenIds.length === 0) {
-    return { error: 'No se seleccionaron ordenes' }
-  }
-
-  // La presentación masiva solo lleva de borrador → presentada.
-  if (!esEstadoOrden(estado) || !transicionOrdenPermitida('borrador', estado)) {
-    return { error: 'Estado inválido para presentación masiva' }
-  }
-
-  if (estado === 'presentada') {
-    const { data: filas } = await supabase
-      .from('ordenes')
-      .select('id, tipo, nro_comprobante, token_osep, fecha_emision, nro_afiliado, nro_documento, obra_social, nombre_practica, honorario_calculado')
-      .in('id', ordenIds)
-      .eq('medico_id', user.id)
-      .eq('estado', 'borrador')
-    const incompletas = (filas ?? []).filter((o) => !evaluarCompletitud(o).completa)
-    if (incompletas.length > 0) {
-      return { error: `${incompletas.length} orden(es) incompletas no se pueden presentar. Completalas primero.` }
-    }
-  }
-
-  const { error, count } = await supabase
-    .from('ordenes')
-    .update({ estado, updated_at: new Date().toISOString() })
-    .in('id', ordenIds)
-    .eq('medico_id', user.id)
-    .eq('estado', 'borrador')
-
-  if (error) {
-    return { error: error.message }
-  }
-
-  return { success: true, count: count ?? ordenIds.length }
-}
-
 export async function deleteOrden(ordenId: string) {
   const supabase = await createClient()
 
