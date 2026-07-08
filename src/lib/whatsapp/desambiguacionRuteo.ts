@@ -15,7 +15,7 @@ export const RUTEO_TTL_MS = 4 * 60 * 60 * 1000 // 4 horas
 export function normalizarNombre(s: string): string {
   return s
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim()
@@ -45,16 +45,17 @@ export function etiquetaMedico(m: MedicoNodo): string {
   return base
 }
 
-const SI = new Set(['si', 'sí', 'dale', 'ok', 'oka', 'correcto', 'mismo', 'sigo', 'ese', 'esa', 'confirmo', 'es'])
+const SI = new Set(['si', 'sí', 'dale', 'ok', 'oka', 'correcto', 'mismo', 'sigo', 'ese', 'esa', 'confirmo'])
 const NO = new Set(['no', 'otro', 'otra', 'diferente', 'distinto', 'distinta', 'cambiar', 'nel'])
 
 /** Interpreta una respuesta de confirmación: 'si' | 'no' | 'ambiguo'. */
 export function interpretarConfirmacion(texto: string): 'si' | 'no' | 'ambiguo' {
   const q = normalizarNombre(texto)
   if (!q) return 'ambiguo'
-  const primera = q.split(' ')[0]
+  const tokens = q.split(' ')
+  if (tokens.some((t) => NO.has(t))) return 'no'
+  const primera = tokens[0]
   if (SI.has(primera) || SI.has(q)) return 'si'
-  if (NO.has(primera) || NO.has(q)) return 'no'
   return 'ambiguo'
 }
 

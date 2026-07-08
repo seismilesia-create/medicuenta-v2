@@ -57,6 +57,9 @@ describe('interpretarConfirmacion', () => {
   it('cualquier otra cosa → ambiguo', () => {
     expect(interpretarConfirmacion('necesito una receta')).toBe('ambiguo')
   })
+  it('"es otro médico" → no (no lo confunde con sí)', () => {
+    expect(interpretarConfirmacion('es otro médico')).toBe('no')
+  })
 })
 
 describe('interpretarSeleccion', () => {

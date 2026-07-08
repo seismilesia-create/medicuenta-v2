@@ -119,15 +119,6 @@ export async function getMedicoIdPorNumeroEnNodo(
   return null
 }
 
-/** ¿El teléfono entrante es el de un médico de ese nodo? (guard para no mandarle msje de paciente). */
-export async function esMedicoDelNodo(
-  db: SupabaseClient,
-  phoneNumberId: string,
-  telefono: string,
-): Promise<boolean> {
-  return (await getMedicoIdPorNumeroEnNodo(db, phoneNumberId, telefono)) !== null
-}
-
 /** Médicos ACTIVOS del nodo (para desambiguar por nombre): id + datos de identidad de `perfiles`. */
 export async function getMedicosDelNodo(db: SupabaseClient, phoneNumberId: string): Promise<MedicoNodo[]> {
   const { data: nodo } = await db
@@ -211,6 +202,10 @@ async function manejarRespuestaDesambiguacion(
     if (r === 'si' && cand) {
       await setSesionActiva(db, phoneNumberId, telefono, cand.medicoId)
       return { tipo: 'mensaje', nodo, texto: `Listo, estás con ${etiquetaMedico(cand)} 🙌 Contame en qué te puedo ayudar.` }
+    }
+    if (r === 'si' && !cand) {
+      await setSesionEsperando(db, phoneNumberId, telefono, 'esperando_nombre', { medicoId: null })
+      return { tipo: 'mensaje', nodo, texto: 'Escribí el *apellido* del médico al que le querés escribir.' }
     }
     if (r === 'no') {
       await setSesionEsperando(db, phoneNumberId, telefono, 'esperando_nombre', { medicoId: null })
