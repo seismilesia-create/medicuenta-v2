@@ -1,9 +1,8 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { parseIncomingMessage, type IncomingMessage } from '@/lib/whatsapp/parse'
 import { sendWhatsAppText, markAsRead, fetchWhatsAppMedia, normalizeRecipient } from '@/lib/whatsapp/client'
-import { esRemitenteMedico } from '@/lib/whatsapp/clasificar'
 import { type CanalResuelto } from '@/features/whatsapp/services/canales'
-import { resolverIngreso, getNodoByPhoneNumberId, esMedicoDelNodo } from '@/features/whatsapp/services/nodos'
+import { resolverIngreso } from '@/features/whatsapp/services/nodos'
 import {
   ensureContacto,
   ensureConversacion,
@@ -39,16 +38,6 @@ const AYUDA_MEDICO = [
   "• 'turnos' (o 'agenda') — su agenda de los próximos 7 días",
 ].join('\n')
 
-// Paciente que escribió sin que podamos saber a qué médico (borró el marcador [ID:slug]
-// del 1.er mensaje). Le explicamos por qué importa ese mensaje y cómo recuperarlo.
-const MSG_RUTEO_FALLIDO = [
-  '¡Hola! 👋 Todavía no sé con qué profesional querés comunicarte.',
-  '',
-  'Cuando entrás por el *link* o el *QR* de tu médico se carga un mensaje ya escrito con un código. Ese código es el que me dice con quién comunicarte (para sacar un turno, hacer una consulta o consultar tu receta). Por eso, *no borres ese mensaje* antes de enviármelo 🙏',
-  '',
-  'Si ya lo borraste y no recordás qué decía, volvé a *escanear el QR* o a *tocar el link* que te pasaron: el mensaje con el código aparece de nuevo solo. Así te derivo con el profesional correcto, sin errores. 🙌',
-].join('\n')
-
 /**
  * Procesa un webhook entrante de WhatsApp re-keyeado a medico_id.
  * Best-effort: no lanza (el webhook siempre responde 200).
@@ -59,28 +48,26 @@ export async function handleIncomingWhatsApp(payload: unknown): Promise<void> {
   if (incoming.type !== 'text' && incoming.type !== 'document') return
 
   const db = createServiceClient()
-  const resuelto = await resolverIngreso(db, incoming)
-  if (!resuelto) {
-    // No pudimos resolver el médico (típico: el paciente borró el marcador [ID:slug] del
-    // 1.er mensaje y es su primer contacto). En vez de quedarnos mudos, le explicamos cómo
-    // volver a entrar por el link/QR. (avisarRuteoFallido no le escribe a un médico del nodo.)
-    await avisarRuteoFallido(db, incoming)
-    console.warn('[wa] sin médico para phone_number_id', incoming.phoneNumberId)
+  const r = await resolverIngreso(db, incoming)
+  if (!r) {
+    console.warn('[wa] sin nodo/canal para phone_number_id', incoming.phoneNumberId)
     return
   }
-  const canal = resuelto.canal
-  // El marcador [ID:slug] del 1.er mensaje ya cumplió su función: lo quitamos para que no
-  // ensucie el historial ni se filtre en las respuestas del agente.
-  if (resuelto.textoLimpio !== undefined) incoming.text = resuelto.textoLimpio
 
-  markAsRead({
-    phoneNumberId: canal.phoneNumberId,
-    accessToken: canal.accessToken,
-    to: incoming.from,
-    messageId: incoming.messageId,
-  })
+  // Pregunta de desambiguación: respondemos por el nodo y NO ruteamos contenido.
+  if (r.tipo === 'mensaje') {
+    markAsRead({ phoneNumberId: r.nodo.phoneNumberId, accessToken: r.nodo.accessToken, to: incoming.from, messageId: incoming.messageId })
+    await sendWhatsAppText({ phoneNumberId: r.nodo.phoneNumberId, accessToken: r.nodo.accessToken, to: incoming.from, text: r.texto })
+    return
+  }
 
-  if (esRemitenteMedico(incoming.from, canal.numeroPersonal)) {
+  const canal = r.canal
+  // El marcador [ID:slug] ya cumplió su función: lo quitamos del texto.
+  if (r.tipo === 'paciente' && r.textoLimpio !== undefined) incoming.text = r.textoLimpio
+
+  markAsRead({ phoneNumberId: canal.phoneNumberId, accessToken: canal.accessToken, to: incoming.from, messageId: incoming.messageId })
+
+  if (r.tipo === 'medico') {
     await handleMedico(db, canal, incoming)
     return
   }
@@ -89,23 +76,6 @@ export async function handleIncomingWhatsApp(payload: unknown): Promise<void> {
 
 async function responder(canal: CanalResuelto, to: string, text: string): Promise<void> {
   await sendWhatsAppText({ phoneNumberId: canal.phoneNumberId, accessToken: canal.accessToken, to, text })
-}
-
-/**
- * El mensaje entrante no se pudo rutear a ningún médico. Si llegó a un NODO y NO es un
- * médico del nodo (un paciente que borró el [ID:slug]), le explicamos cómo recuperar el
- * link/QR. Si el número no es un nodo, o es un médico, no respondemos (igual que antes).
- */
-async function avisarRuteoFallido(db: Db, incoming: IncomingMessage): Promise<void> {
-  const nodo = await getNodoByPhoneNumberId(db, incoming.phoneNumberId)
-  if (!nodo) return // no es un nodo: número desconocido, no hay credenciales con qué responder
-  if (await esMedicoDelNodo(db, incoming.phoneNumberId, normalizeRecipient(incoming.from))) return
-  await sendWhatsAppText({
-    phoneNumberId: nodo.phoneNumberId,
-    accessToken: nodo.accessToken,
-    to: incoming.from,
-    text: MSG_RUTEO_FALLIDO,
-  })
 }
 
 // ── Rama MÉDICO: carga de recetas (PDF) + comandos de texto ──────────────────
