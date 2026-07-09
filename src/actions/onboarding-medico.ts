@@ -85,7 +85,8 @@ export async function completarInvitacionMedico(
   } else {
     medicoId = created.data.user.id
     // Reclamar el email en la invitación (guard del reintento idempotente).
-    await service.from('invitaciones_medico').update({ email: d.email }).eq('id', inv.id as string)
+    const { error: eReclamo } = await service.from('invitaciones_medico').update({ email: d.email }).eq('id', inv.id as string)
+    if (eReclamo) console.error('[completarInvitacionMedico] no se pudo reclamar el email en la invitación:', eReclamo.message)
   }
 
   // 4) Cablear nodo/slug/servicio (reutiliza la RPC existente).
@@ -105,14 +106,16 @@ export async function completarInvitacionMedico(
   }
 
   // 5) Arancel básico por defecto (service-role está exento del trigger de protección).
-  await service.from('perfiles')
+  const { error: eCategoria } = await service.from('perfiles')
     .update({ categoria_arancel: 'medica', atiende_interior: false })
     .eq('id', medicoId)
+  if (eCategoria) console.error('[completarInvitacionMedico] no se pudo guardar la categoría arancelaria:', eCategoria.message)
 
   // 6) Marcar la invitación como completada.
-  await service.from('invitaciones_medico')
+  const { error: eCompletada } = await service.from('invitaciones_medico')
     .update({ estado: 'completada', completada_en: new Date().toISOString(), medico_id: medicoId })
     .eq('id', inv.id as string)
+  if (eCompletada) console.error('[completarInvitacionMedico] no se pudo marcar la invitación como completada:', eCompletada.message)
 
   // 7) Iniciar sesión automáticamente (setea cookies vía SSR client) y al dashboard.
   const supabase = await createClient()
