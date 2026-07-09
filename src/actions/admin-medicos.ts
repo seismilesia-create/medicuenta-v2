@@ -6,6 +6,8 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { normalizeRecipient } from '@/lib/whatsapp/client'
 import { onboardMedicoSchema, type OnboardMedicoInput, type MedicoFila, type OnboardMedicoResult, editarMedicoSchema, type EditarMedicoInput, type MedicoDetalle } from '@/features/admin/medicos/types'
 import { siteUrl } from '@/lib/site-url'
+import { generarTokenInvitacion, invitacionVigente } from '@/features/onboarding/token'
+import type { InvitacionFila } from '@/features/onboarding/invitaciones-types'
 
 /** Verifica superadmin y devuelve error si no lo es. */
 async function requireSuperadmin(): Promise<{ userId: string } | { error: string }> {
@@ -221,4 +223,64 @@ export async function reintentarCableado(medicoId: string): Promise<OnboardMedic
   if (rpc.error) return { error: traducirErrorCableado(rpc.error.message) }
 
   return { slug: m.slug, link: `${siteUrl()}/c/${m.slug}`, medicoId }
+}
+
+/** Genera una invitación de alta para un médico. Devuelve el enlace copiable. */
+export async function generarInvitacionMedico(
+  nombreReferencia?: string
+): Promise<{ token: string; url: string } | { error: string }> {
+  const guard = await requireSuperadmin()
+  if ('error' in guard) return guard
+
+  const service = createServiceClient()
+  const token = generarTokenInvitacion()
+  const { error } = await service.from('invitaciones_medico').insert({
+    token,
+    estado: 'pendiente',
+    nombre_referencia: nombreReferencia?.trim() || null,
+    creada_por: guard.userId,
+  })
+  if (error) return { error: error.message }
+
+  return { token, url: `${siteUrl()}/alta/${token}` }
+}
+
+/** Lista de invitaciones (para el panel admin). */
+export async function listarInvitaciones(): Promise<{ data: InvitacionFila[] } | { error: string }> {
+  const guard = await requireSuperadmin()
+  if ('error' in guard) return guard
+
+  const service = createServiceClient()
+  const { data, error } = await service
+    .from('invitaciones_medico')
+    .select('id, token, estado, nombre_referencia, expira_en, created_at, medico_id')
+    .order('created_at', { ascending: false })
+  if (error) return { error: error.message }
+
+  const ahora = new Date()
+  const filas: InvitacionFila[] = (data ?? []).map((r) => ({
+    id: r.id as string,
+    nombreReferencia: (r.nombre_referencia as string | null) ?? null,
+    estado: r.estado as string,
+    vigente: invitacionVigente(r.estado as string, r.expira_en as string, ahora),
+    url: `${siteUrl()}/alta/${r.token as string}`,
+    creadaEn: r.created_at as string,
+    medicoId: (r.medico_id as string | null) ?? null,
+  }))
+  return { data: filas }
+}
+
+/** Revoca una invitación pendiente. */
+export async function revocarInvitacion(id: string): Promise<{ ok: true } | { error: string }> {
+  const guard = await requireSuperadmin()
+  if ('error' in guard) return guard
+
+  const service = createServiceClient()
+  const { error } = await service
+    .from('invitaciones_medico')
+    .update({ estado: 'revocada' })
+    .eq('id', id)
+    .eq('estado', 'pendiente')
+  if (error) return { error: error.message }
+  return { ok: true }
 }
