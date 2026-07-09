@@ -52,6 +52,9 @@ export async function completarInvitacionMedico(
   const numeroPersonal = normalizeRecipient(d.numeroWhatsapp)
 
   // 3) Crear la cuenta (o retomar un intento previo con el mismo email).
+  // SEGURIDAD: `rol` va HARDCODEADO a 'medico'. Nunca propagar input del médico
+  // a user_metadata.rol: handle_new_user (SECURITY DEFINER) lee ese campo y está
+  // exento del trigger proteger_columnas_admin_perfil → sería una vía de escalada.
   const metadata = {
     nombre: d.nombre, apellido: d.apellido, rol: 'medico',
     especialidad: d.especialidad, matricula: d.matricula, cuit: d.cuit, telefono: d.telefono,
