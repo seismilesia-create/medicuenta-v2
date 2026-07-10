@@ -6,9 +6,10 @@ import { OBRAS_SOCIALES, type Perfil, type PerfilFormData } from '../types/perfi
 
 interface Props {
   perfil: Perfil
+  email: string | null
 }
 
-export function PerfilForm({ perfil }: Props) {
+export function PerfilForm({ perfil, email }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -119,7 +120,7 @@ export function PerfilForm({ perfil }: Props) {
             </label>
             <input
               type="email"
-              value={perfil.email ?? ''}
+              value={email ?? ''}
               className={`${inputClasses} opacity-60 cursor-not-allowed`}
               style={{
                 backgroundColor: 'var(--color-surface-elevated)',

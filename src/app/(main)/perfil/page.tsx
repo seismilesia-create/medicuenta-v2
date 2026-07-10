@@ -67,7 +67,7 @@ export default async function PerfilPage() {
         </p>
       </div>
 
-      <PerfilForm perfil={perfil} />
+      <PerfilForm perfil={perfil} email={user.email ?? null} />
     </div>
   )
 }

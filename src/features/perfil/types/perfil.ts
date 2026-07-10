@@ -12,7 +12,6 @@ export interface Perfil {
   circulo_medico: boolean
   especialidad: string | null
   cuit: string | null
-  email: string | null
   telefono: string | null
   obras_sociales: string[]
 }
