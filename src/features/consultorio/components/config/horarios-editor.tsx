@@ -12,6 +12,19 @@ interface Bloque {
   close_time: string
 }
 
+type FormatoHora = '24h' | '12h'
+
+/** Solo para mostrar: convierte 'HH:MM' (24h, formato canónico de guardado) a 12h con AM/PM.
+ *  Nunca se usa para persistir — `wa_horarios` sigue guardando 24h siempre. */
+function formatHora12(hhmm: string): string {
+  const [hStr, mStr] = hhmm.split(':')
+  const h = Number(hStr)
+  if (!hStr || !mStr || Number.isNaN(h)) return hhmm
+  const periodo = h < 12 ? 'AM' : 'PM'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  return `${h12}:${mStr} ${periodo}`
+}
+
 /** Editor con el patrón de horarios de Google Business: día + interruptor abierto/cerrado
  *  + franjas apilables. Los cambios se persisten recién con "Guardar horarios". */
 export function HorariosEditor({ inicial, onSaved }: { inicial: Bloque[]; onSaved: () => void }) {
@@ -20,6 +33,9 @@ export function HorariosEditor({ inicial, onSaved }: { inicial: Bloque[]; onSave
   )
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // Toggle SOLO de presentación (ver/cargar): el valor de <input type="time"> siempre
+  // llega en 24h sin importar cómo lo muestre el navegador — nunca cambia lo que se guarda.
+  const [formato, setFormato] = useState<FormatoHora>('24h')
 
   function set(i: number, patch: Partial<Bloque>) {
     setBloques((bs) => bs.map((b, j) => (j === i ? { ...b, ...patch } : b)))
@@ -53,6 +69,27 @@ export function HorariosEditor({ inicial, onSaved }: { inicial: Bloque[]; onSave
           {error}
         </div>
       )}
+      <div className="flex items-center justify-end gap-1.5 pb-1">
+        <span className="text-[11px] text-[var(--color-muted-foreground)]">Formato</span>
+        <div className="inline-flex rounded-lg border border-border overflow-hidden text-xs">
+          <button
+            type="button"
+            aria-pressed={formato === '24h'}
+            onClick={() => setFormato('24h')}
+            className={`px-2 py-1 ${formato === '24h' ? 'bg-primary text-white' : 'text-[var(--color-muted-foreground)]'}`}
+          >
+            24 h
+          </button>
+          <button
+            type="button"
+            aria-pressed={formato === '12h'}
+            onClick={() => setFormato('12h')}
+            className={`px-2 py-1 border-l border-border ${formato === '12h' ? 'bg-primary text-white' : 'text-[var(--color-muted-foreground)]'}`}
+          >
+            12 h
+          </button>
+        </div>
+      </div>
       {[1, 2, 3, 4, 5, 6, 0].map((wd) => {
         const delDia = bloques.map((b, i) => ({ b, i })).filter((x) => x.b.weekday === wd)
         const abierto = delDia.length > 0
@@ -81,6 +118,7 @@ export function HorariosEditor({ inicial, onSaved }: { inicial: Bloque[]; onSave
                     <div key={i} className="flex items-center gap-1.5 text-sm">
                       <input
                         type="time"
+                        lang={formato === '24h' ? 'es-AR' : 'en-US'}
                         className={input}
                         value={b.open_time}
                         onChange={(e) => set(i, { open_time: e.target.value })}
@@ -88,10 +126,16 @@ export function HorariosEditor({ inicial, onSaved }: { inicial: Bloque[]; onSave
                       <span className="text-[var(--color-muted-foreground)]">–</span>
                       <input
                         type="time"
+                        lang={formato === '24h' ? 'es-AR' : 'en-US'}
                         className={input}
                         value={b.close_time}
                         onChange={(e) => set(i, { close_time: e.target.value })}
                       />
+                      {formato === '12h' && (
+                        <span className="text-[11px] text-[var(--color-muted-foreground)] tabular-nums whitespace-nowrap">
+                          ({formatHora12(b.open_time)} – {formatHora12(b.close_time)})
+                        </span>
+                      )}
                       <button
                         onClick={() => setBloques((bs) => bs.filter((_, j) => j !== i))}
                         aria-label="Quitar franja"
