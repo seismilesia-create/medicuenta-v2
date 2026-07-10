@@ -1,12 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { altaMedicoSchema } from '@/features/onboarding/types'
 import { completarInvitacionMedico } from '@/actions/onboarding-medico'
 
 export function FormAltaMedico({ token }: { token: string }) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [mostrarPassword, setMostrarPassword] = useState(false)
+  const [mostrarPasswordConfirm, setMostrarPasswordConfirm] = useState(false)
   const input = 'w-full rounded-xl border border-border px-3 py-2'
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -50,8 +53,40 @@ export function FormAltaMedico({ token }: { token: string }) {
       <input name="telefono" placeholder="Teléfono" className={input} />
       <input name="numeroWhatsapp" required placeholder="Número de WhatsApp (ej: +54 9 383 …)" className={input} />
       <input name="email" type="email" required placeholder="Email" className={input} />
-      <input name="password" type="password" required placeholder="Contraseña (mín. 8, con letras y números)" className={input} />
-      <input name="passwordConfirm" type="password" required placeholder="Repetí la contraseña" className={input} />
+      <div className="relative">
+        <input
+          name="password"
+          type={mostrarPassword ? 'text' : 'password'}
+          required
+          placeholder="Contraseña (mín. 8, con letras y números)"
+          className={`${input} pr-10`}
+        />
+        <button
+          type="button"
+          onClick={() => setMostrarPassword((v) => !v)}
+          aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 rounded-r-xl"
+        >
+          {mostrarPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
+      <div className="relative">
+        <input
+          name="passwordConfirm"
+          type={mostrarPasswordConfirm ? 'text' : 'password'}
+          required
+          placeholder="Repetí la contraseña"
+          className={`${input} pr-10`}
+        />
+        <button
+          type="button"
+          onClick={() => setMostrarPasswordConfirm((v) => !v)}
+          aria-label={mostrarPasswordConfirm ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 rounded-r-xl"
+        >
+          {mostrarPasswordConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <button type="submit" disabled={loading} className="rounded-xl bg-primary text-primary-foreground px-4 py-2 disabled:opacity-50">
         {loading ? 'Creando tu cuenta…' : 'Crear mi cuenta'}
