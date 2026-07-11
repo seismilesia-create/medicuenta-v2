@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
-import { altaMedicoSchema } from '@/features/onboarding/types'
-import { completarInvitacionMedico } from '@/actions/onboarding-medico'
+import { altaSecretariaSchema } from '@/features/onboarding/secretaria-types'
+import { completarInvitacionSecretaria } from '@/actions/onboarding-secretaria'
 
-export function FormAltaMedico({ token }: { token: string }) {
+export function FormAltaSecretaria({ token, email }: { token: string; email: string }) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [mostrarPassword, setMostrarPassword] = useState(false)
@@ -19,21 +19,15 @@ export function FormAltaMedico({ token }: { token: string }) {
     const raw = {
       nombre: String(form.get('nombre') ?? ''),
       apellido: String(form.get('apellido') ?? ''),
-      especialidad: String(form.get('especialidad') ?? ''),
-      matricula: String(form.get('matricula') ?? ''),
-      cuit: String(form.get('cuit') ?? ''),
-      telefono: String(form.get('telefono') ?? ''),
-      email: String(form.get('email') ?? ''),
-      numeroWhatsapp: String(form.get('numeroWhatsapp') ?? ''),
       password: String(form.get('password') ?? ''),
       passwordConfirm: String(form.get('passwordConfirm') ?? ''),
     }
     // Validación en cliente para feedback inmediato; la autoridad es el servidor.
-    const parsed = altaMedicoSchema.safeParse(raw)
+    const parsed = altaSecretariaSchema.safeParse(raw)
     if (!parsed.success) { setError(parsed.error.issues[0].message); return }
 
     setLoading(true)
-    const r = await completarInvitacionMedico(token, parsed.data)
+    const r = await completarInvitacionSecretaria(token, parsed.data)
     // Si hay éxito, la action hace redirect y no retorna. Solo llegamos acá con error.
     setLoading(false)
     if (r && 'error' in r) setError(r.error)
@@ -41,18 +35,16 @@ export function FormAltaMedico({ token }: { token: string }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      <div>
+        <input value={email} disabled readOnly className={`${input} bg-muted text-muted-foreground`} />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Este es el email con el que te invitó tu médico.
+        </p>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <input name="nombre" required placeholder="Nombre" className={input} />
         <input name="apellido" required placeholder="Apellido" className={input} />
       </div>
-      <input name="especialidad" placeholder="Especialidad" className={input} />
-      <div className="grid grid-cols-2 gap-3">
-        <input name="matricula" placeholder="Matrícula" className={input} />
-        <input name="cuit" placeholder="CUIT" className={input} />
-      </div>
-      <input name="telefono" placeholder="Teléfono" className={input} />
-      <input name="numeroWhatsapp" required placeholder="Número de WhatsApp (ej: +54 9 383 …)" className={input} />
-      <input name="email" type="email" required placeholder="Email" className={input} />
       <div className="relative">
         <input
           name="password"

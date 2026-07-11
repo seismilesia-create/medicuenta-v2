@@ -4,6 +4,7 @@ import { addDias, diasDesdeHoy, gridMes, minutosAR, minutosDeHora } from '@/lib/
 import { getServiciosActivos, getDisponibilidad } from '@/features/whatsapp/services/turnosService'
 import { armarDia, type ItemDia, type TurnoDia, type SlotLibre } from '@/lib/consultorio/armarDia'
 import { semaforoConversacion, msRestantesVentana, type Semaforo } from '@/lib/consultorio/semaforo'
+import { siteUrl } from '@/lib/site-url'
 
 /** supabase-js devuelve errores en vez de lanzarlos: acá los convertimos en throw
  *  para que las pantallas muestren su banner de error en vez de un vacío convincente. */
@@ -519,7 +520,14 @@ export interface ConfigConsultorio {
     precio_receta_default: number | null
   } | null
   conexiones: { whatsapp: boolean; mercadopago: boolean }
-  secretarias: { id: string; email: string; estado: 'pendiente' | 'activa' | 'revocada'; invited_at: string }[]
+  secretarias: {
+    id: string
+    email: string
+    estado: 'pendiente' | 'activa' | 'revocada'
+    invited_at: string
+    /** Enlace de alta (`/alta-secretaria/[token]`) — solo para 'pendiente' con token vigente. */
+    url?: string | null
+  }[]
 }
 
 export async function getConfig(db: SupabaseClient, medicoId: string): Promise<ConfigConsultorio> {
@@ -545,7 +553,7 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
     db.from('mp_conexiones').select('id').eq('medico_id', medicoId).eq('estado', 'conectado').maybeSingle().then(ok),
     db
       .from('equipo_consultorio')
-      .select('id, secretaria_email, estado, invited_at')
+      .select('id, secretaria_email, estado, invited_at, token')
       .eq('medico_id', medicoId)
       .neq('estado', 'revocada')
       .order('invited_at')
@@ -564,7 +572,15 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
       : null,
     conexiones: { whatsapp: !!canalRes.data, mercadopago: !!mpRes.data },
     secretarias: (
-      (secretariasRes.data as { id: string; secretaria_email: string; estado: 'pendiente' | 'activa' | 'revocada'; invited_at: string }[] | null) ?? []
-    ).map((s) => ({ id: s.id, email: s.secretaria_email, estado: s.estado, invited_at: s.invited_at })),
+      (secretariasRes.data as
+        | { id: string; secretaria_email: string; estado: 'pendiente' | 'activa' | 'revocada'; invited_at: string; token: string | null }[]
+        | null) ?? []
+    ).map((s) => ({
+      id: s.id,
+      email: s.secretaria_email,
+      estado: s.estado,
+      invited_at: s.invited_at,
+      url: s.estado === 'pendiente' && s.token ? `${siteUrl()}/alta-secretaria/${s.token}` : null,
+    })),
   }
 }

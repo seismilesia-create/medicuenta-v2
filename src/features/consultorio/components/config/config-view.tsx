@@ -43,6 +43,8 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
   const [agenteSaving, setAgenteSaving] = useState(false)
   const [agenteOk, setAgenteOk] = useState(false)
   const [emailSec, setEmailSec] = useState('')
+  const [secretariaUrl, setSecretariaUrl] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const refetch = useCallback(async () => {
     const supabase = createClient()
@@ -63,6 +65,32 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
     setError(fallo ? (r as { error: string }).error : null)
     refetch()
     return !fallo
+  }
+
+  // No usa onAccion: necesitamos leer `url` de la rama 'pendiente' de la respuesta,
+  // no solo si hubo error (onAccion normaliza todo a boolean).
+  async function invitarSecretariaSubmit() {
+    const email = emailSec.trim()
+    if (!email) return
+    const r = await invitarSecretaria(email)
+    if ('error' in r) {
+      setError(r.error)
+    } else {
+      setError(null)
+      setEmailSec('')
+      setSecretariaUrl(r.estado === 'pendiente' ? r.url : null)
+    }
+    refetch()
+  }
+
+  async function copiarEnlace(id: string, url: string) {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedId(id)
+      setTimeout(() => setCopiedId((prev) => (prev === id ? null : prev)), 2000)
+    } catch {
+      setError('No se pudo copiar el enlace. Copialo manualmente.')
+    }
   }
 
   async function guardarAgente(e: FormEvent<HTMLFormElement>) {
@@ -346,6 +374,11 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
               >
                 {s.estado === 'activa' ? 'activa' : 'pendiente'}
               </span>
+              {s.estado === 'pendiente' && s.url && (
+                <button className="text-xs underline" onClick={() => copiarEnlace(s.id, s.url as string)}>
+                  {copiedId === s.id ? '¡Copiado!' : 'Copiar enlace'}
+                </button>
+              )}
               <button
                 className="text-xs underline text-red-500"
                 onClick={() => {
@@ -370,17 +403,28 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
             value={emailSec}
             onChange={(e) => setEmailSec(e.target.value)}
           />
-          <button
-            onClick={async () => {
-              if (!emailSec.trim()) return
-              const ok = await onAccion(() => invitarSecretaria(emailSec))
-              if (ok) setEmailSec('')
-            }}
-            className="rounded-xl border border-border px-4 whitespace-nowrap"
-          >
+          <button onClick={invitarSecretariaSubmit} className="rounded-xl border border-border px-4 whitespace-nowrap">
             Invitar
           </button>
         </div>
+        {secretariaUrl && (
+          <div className="space-y-2 rounded-lg border border-border p-3">
+            <p className="text-sm break-all">
+              <a href={secretariaUrl} className="text-primary underline">
+                {secretariaUrl}
+              </a>
+            </p>
+            <button
+              onClick={() => copiarEnlace('nueva', secretariaUrl)}
+              className="rounded-lg border border-border px-3 py-1 text-xs"
+            >
+              {copiedId === 'nueva' ? '¡Copiado!' : 'Copiar enlace'}
+            </button>
+            <p className="text-[11px] text-[var(--color-muted-foreground)]">
+              Mandale este enlace a tu secretaria por WhatsApp. Vence en 72 hs.
+            </p>
+          </div>
+        )}
       </Seccion>
 
       <Seccion titulo="Actividad del asistente">

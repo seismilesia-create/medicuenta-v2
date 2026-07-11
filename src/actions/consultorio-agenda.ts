@@ -187,6 +187,26 @@ export async function bloquearDias(input: z.infer<typeof bloquearSchema>) {
   const d = parsed.data
   if (d.hasta < d.desde) return { error: 'El rango está invertido' }
   if (d.desde < arDateString(Date.now(), 0)) return { error: 'No se puede bloquear el pasado' }
+
+  // Evitar bloqueos duplicados o solapados: dos rangos de fecha [start_date, end_date]
+  // se solapan si start_date <= hasta AND end_date >= desde (comparación lexicográfica
+  // válida porque son strings 'YYYY-MM-DD'). Solo mira 'closed' — es el único kind que
+  // esta acción crea y el que representa "día bloqueado" en el panel.
+  const { data: existentes, error: solapeError } = await supabase
+    .from('wa_excepciones')
+    .select('start_date, end_date')
+    .eq('medico_id', medicoId)
+    .eq('kind', 'closed')
+    .lte('start_date', d.hasta)
+    .gte('end_date', d.desde)
+  if (solapeError) return { error: solapeError.message }
+  if (existentes && existentes.length > 0) {
+    const duplicadoExacto = existentes.some((e) => e.start_date === d.desde && e.end_date === d.hasta)
+    return {
+      error: duplicadoExacto ? 'Ese día ya está bloqueado' : 'Parte de ese período ya figura como no disponible',
+    }
+  }
+
   const { error } = await supabase.from('wa_excepciones').insert({
     medico_id: medicoId,
     start_date: d.desde,
