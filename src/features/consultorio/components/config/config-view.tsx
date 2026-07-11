@@ -35,10 +35,67 @@ function Campo({ label, ayuda, children }: { label: string; ayuda: string; child
   )
 }
 
+// Definido a nivel de módulo (no anidado dentro de ConfigView) para no crear un tipo de
+// componente nuevo en cada render — eso remontaría los <input> y les haría perder foco al tipear.
+function BloqueOs(props: {
+  titulo: string
+  ayuda: string
+  motivo: 'suspendida' | 'no_atiende'
+  estado: { nombre: string; nota: string }
+  setEstado: (v: { nombre: string; nota: string }) => void
+  cfg: ConfigConsultorio
+  input: string
+  onAccion: (fn: () => Promise<{ error?: string } | { ok: true }>) => Promise<boolean>
+}) {
+  const items = props.cfg.osSuspendidas.filter((o) => o.motivo === props.motivo)
+  return (
+    <Seccion titulo={props.titulo}>
+      <p className="text-[11px] text-[var(--color-muted-foreground)]">{props.ayuda}</p>
+      <div className="space-y-1 text-sm">
+        {items.map((os) => (
+          <p key={os.id} className="flex items-center gap-2">
+            <span className="font-medium">{os.nombre_os}</span>
+            <span className="text-[var(--color-muted-foreground)] flex-1">{os.nota ?? ''}</span>
+            <button onClick={() => props.onAccion(() => quitarOsSuspendida(os.id))}>
+              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+            </button>
+          </p>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input
+          placeholder="OSEP"
+          className={props.input + ' !w-36'}
+          value={props.estado.nombre}
+          onChange={(e) => props.setEstado({ ...props.estado, nombre: e.target.value })}
+        />
+        <input
+          placeholder="Nota (opcional)"
+          className={props.input}
+          value={props.estado.nota}
+          onChange={(e) => props.setEstado({ ...props.estado, nota: e.target.value })}
+        />
+        <button
+          onClick={() => {
+            if (props.estado.nombre.trim()) {
+              props.onAccion(() => agregarOsSuspendida(props.estado.nombre, props.estado.nota, props.motivo))
+              props.setEstado({ nombre: '', nota: '' })
+            }
+          }}
+          className="rounded-xl border border-border px-3"
+        >
+          Agregar
+        </button>
+      </div>
+    </Seccion>
+  )
+}
+
 export function ConfigView({ medicoId }: { medicoId: string }) {
   const [cfg, setCfg] = useState<ConfigConsultorio | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [osNueva, setOsNueva] = useState({ nombre: '', nota: '' })
+  const [osSusp, setOsSusp] = useState({ nombre: '', nota: '' })
+  const [osNoAt, setOsNoAt] = useState({ nombre: '', nota: '' })
   const [bloqueo, setBloqueo] = useState({ desde: '', hasta: '', nota: '' })
   const [agenteSaving, setAgenteSaving] = useState(false)
   const [agenteOk, setAgenteOk] = useState(false)
@@ -216,48 +273,26 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
         </div>
       </Seccion>
 
-      <Seccion titulo="Obras sociales suspendidas">
-        <p className="text-[11px] text-[var(--color-muted-foreground)]">
-          Fuente provisoria tuya — el día que exista la app del círculo, ellos serán la fuente oficial. El bot avisa
-          al reservar (no bloquea).
-        </p>
-        <div className="space-y-1 text-sm">
-          {cfg.osSuspendidas.map((os) => (
-            <p key={os.id} className="flex items-center gap-2">
-              <span className="font-medium">{os.nombre_os}</span>
-              <span className="text-[var(--color-muted-foreground)] flex-1">{os.nota ?? ''}</span>
-              <button onClick={() => onAccion(() => quitarOsSuspendida(os.id))}>
-                <Trash2 className="w-3.5 h-3.5 text-red-500" />
-              </button>
-            </p>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <input
-            placeholder="OSEP"
-            className={input + ' !w-36'}
-            value={osNueva.nombre}
-            onChange={(e) => setOsNueva({ ...osNueva, nombre: e.target.value })}
-          />
-          <input
-            placeholder="Nota (opcional)"
-            className={input}
-            value={osNueva.nota}
-            onChange={(e) => setOsNueva({ ...osNueva, nota: e.target.value })}
-          />
-          <button
-            onClick={() => {
-              if (osNueva.nombre.trim()) {
-                onAccion(() => agregarOsSuspendida(osNueva.nombre, osNueva.nota))
-                setOsNueva({ nombre: '', nota: '' })
-              }
-            }}
-            className="rounded-xl border border-border px-3"
-          >
-            Agregar
-          </button>
-        </div>
-      </Seccion>
+      <BloqueOs
+        titulo="Suspendidas por el Círculo (este mes)"
+        ayuda="Las que el Círculo suspendió temporalmente. El bot avisa que es particular (no bloquea)."
+        motivo="suspendida"
+        estado={osSusp}
+        setEstado={setOsSusp}
+        cfg={cfg}
+        input={input}
+        onAccion={onAccion}
+      />
+      <BloqueOs
+        titulo="Obras sociales que no atiendo"
+        ayuda="Las que decidiste no tomar. El bot las trata igual: avisa que es particular."
+        motivo="no_atiende"
+        estado={osNoAt}
+        setEstado={setOsNoAt}
+        cfg={cfg}
+        input={input}
+        onAccion={onAccion}
+      />
 
       <Seccion titulo="El asistente">
         <p className="text-xs text-[var(--color-muted-foreground)]">
