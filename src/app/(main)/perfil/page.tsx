@@ -32,7 +32,6 @@ export default async function PerfilPage() {
         email: user.email,
         rol: 'medico',
         circulo_medico: true,
-        obras_sociales: [],
       })
       .select()
       .single()

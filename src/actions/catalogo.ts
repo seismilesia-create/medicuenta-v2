@@ -14,7 +14,9 @@ export async function getCatalogoOs(): Promise<OsCatalogoItem[]> {
   return catalogoVigente(data as ArancelOsRow[])
 }
 
-/** OS suspendidas que el médico cargó a mano (wa_os_suspendidas). */
+/** OS suspendidas POR EL CÍRCULO (motivo='suspendida') que el médico cargó a mano.
+ *  Alimenta el aviso de riesgo de débito en Órdenes — NO incluye 'no_atiende'
+ *  (el médico no la toma, pero no es un riesgo de débito del Círculo). */
 export async function getMisOsSuspendidas(): Promise<string[]> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -23,6 +25,7 @@ export async function getMisOsSuspendidas(): Promise<string[]> {
     .from('wa_os_suspendidas')
     .select('nombre_os')
     .eq('medico_id', user.id)
+    .eq('motivo', 'suspendida')
   if (error || !data) return []
   return data.map((r) => r.nombre_os as string)
 }

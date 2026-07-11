@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { updatePerfil } from '@/actions/perfil'
-import { OBRAS_SOCIALES, type Perfil, type PerfilFormData } from '../types/perfil'
+import { type Perfil, type PerfilFormData } from '../types/perfil'
 
 interface Props {
   perfil: Perfil
@@ -13,13 +13,6 @@ export function PerfilForm({ perfil, email }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [selectedOS, setSelectedOS] = useState<string[]>(perfil.obras_sociales ?? [])
-
-  function toggleOS(os: string) {
-    setSelectedOS(prev =>
-      prev.includes(os) ? prev.filter(o => o !== os) : [...prev, os]
-    )
-  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -36,7 +29,6 @@ export function PerfilForm({ perfil, email }: Props) {
       cuit: (form.get('cuit') as string) || undefined,
       telefono: (form.get('telefono') as string) || undefined,
       especialidad: (form.get('especialidad') as string) || undefined,
-      obras_sociales: selectedOS,
     }
 
     const result = await updatePerfil(formData)
@@ -204,45 +196,6 @@ export function PerfilForm({ perfil, email }: Props) {
               color: 'var(--color-foreground)',
             }}
           />
-        </div>
-      </section>
-
-      {/* Obras Sociales */}
-      <section className="rounded-xl p-4 md:p-6" style={{ backgroundColor: 'var(--color-surface)' }}>
-        <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-foreground)' }}>
-          Obras sociales habilitadas
-        </h2>
-        <p className="text-sm mb-5" style={{ color: 'var(--color-foreground-muted)' }}>
-          Selecciona las obras sociales con las que trabajas
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {OBRAS_SOCIALES.map((os) => {
-            const isSelected = selectedOS.includes(os)
-            return (
-              <button
-                key={os}
-                type="button"
-                onClick={() => toggleOS(os)}
-                className="flex items-center gap-2.5 px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left"
-                style={{
-                  backgroundColor: isSelected ? 'var(--color-primary)' : 'var(--color-surface-elevated)',
-                  color: isSelected ? '#FFFFFF' : 'var(--color-foreground)',
-                }}
-              >
-                <span className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0" style={{
-                  border: isSelected ? 'none' : '2px solid var(--color-foreground-muted)',
-                  backgroundColor: isSelected ? 'rgba(255,255,255,0.2)' : 'transparent',
-                }}>
-                  {isSelected && (
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </span>
-                {os}
-              </button>
-            )
-          })}
         </div>
       </section>
 
