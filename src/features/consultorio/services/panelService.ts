@@ -510,7 +510,7 @@ export interface ConfigConsultorio {
   duracionMin: number
   servicioId: string | null
   excepciones: { id: string; start_date: string; end_date: string; kind: string; note: string | null }[]
-  osSuspendidas: { id: string; nombre_os: string; nota: string | null }[]
+  osSuspendidas: { id: string; nombre_os: string; nota: string | null; motivo: 'suspendida' | 'no_atiende' }[]
   agente: {
     nombre_medico: string | null
     especialidad: string | null
@@ -542,7 +542,7 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
       .gte('end_date', hoy)
       .order('start_date')
       .then(ok),
-    db.from('wa_os_suspendidas').select('id, nombre_os, nota').eq('medico_id', medicoId).order('nombre_os').then(ok),
+    db.from('wa_os_suspendidas').select('id, nombre_os, nota, motivo').eq('medico_id', medicoId).order('nombre_os').then(ok),
     db
       .from('wa_config_agente')
       .select('nombre_medico, especialidad, tono, saludo, faqs, precio_receta_default')

@@ -80,18 +80,23 @@ export async function guardarDuracionConsulta(servicioId: string, duracionMin: n
   return { ok: true as const }
 }
 
-export async function agregarOsSuspendida(nombreOs: string, nota: string) {
+export async function agregarOsSuspendida(
+  nombreOs: string,
+  nota: string,
+  motivo: 'suspendida' | 'no_atiende',
+) {
   const c = await ctxDueño()
   if ('error' in c) return c
   const { supabase, medicoId } = c
+  if (motivo !== 'suspendida' && motivo !== 'no_atiende') return { error: 'Motivo inválido' }
   // Normalizada al guardar (review parte 1): el UNIQUE es sensible, el match no.
   const nombre = normalizarOs(nombreOs)
   if (!nombre || nombre === 'particular') return { error: 'Nombre de obra social inválido' }
   const { error } = await supabase
     .from('wa_os_suspendidas')
-    .insert({ medico_id: medicoId, nombre_os: nombre, nota: nota.trim() || null })
+    .insert({ medico_id: medicoId, nombre_os: nombre, nota: nota.trim() || null, motivo })
   if (error) {
-    if (error.code === '23505') return { error: 'Esa obra social ya está en la lista' }
+    if (error.code === '23505') return { error: 'Esa obra social ya está en tus listas' }
     return { error: error.message }
   }
   return { ok: true as const }
