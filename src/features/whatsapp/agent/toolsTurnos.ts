@@ -139,7 +139,7 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
           .describe('"si" SOLO si la tool te avisó que el nombre o apellido parecía mal escrito y el paciente lo confirmó o corrigió. "" en cualquier otro caso.'),
         os_confirmada: z
           .string()
-          .describe('"si" SOLO si la tool te avisó que la obra social está SUSPENDIDA y el paciente confirmó que igual quiere reservar (como particular). "" en cualquier otro caso.'),
+          .describe('"si" SOLO si la tool te avisó que la obra social es PARTICULAR con este profesional y el paciente confirmó que igual quiere reservar. "" en cualquier otro caso.'),
       }),
       execute: async ({ servicio, fecha, hora, nombre_paciente, apellido_paciente, dni_paciente, obra_social, motivo_consulta, nombre_confirmado, os_confirmada }) => {
         if (!nombre_paciente.trim() || !apellido_paciente.trim()) {
@@ -165,7 +165,7 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
           })
           return {
             ok: false,
-            error: `AVISO: por el momento la atención por "${obra_social.trim()}" está suspendida — la consulta sería PARTICULAR (se abona en el consultorio). Explicáselo al paciente y preguntale si quiere reservar igual. SOLO si acepta, llamá de nuevo con os_confirmada:"si".`,
+            error: `AVISO: con este profesional la obra social "${obra_social.trim()}" es PARTICULAR (se abona en el consultorio). Explicáselo al paciente y preguntale si quiere reservar igual. SOLO si acepta, llamá de nuevo con os_confirmada:"si".`,
           }
         }
         // Alarma de tipeo: un nombre mal escrito ensucia la base para siempre.
