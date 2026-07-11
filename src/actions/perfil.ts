@@ -26,7 +26,6 @@ export async function getPerfil() {
         email: user.email,
         rol: 'medico',
         circulo_medico: true,
-        obras_sociales: [],
       })
       .select()
       .single()
@@ -69,7 +68,6 @@ export async function updatePerfil(formData: PerfilFormData) {
       cuit: data.cuit ?? null,
       telefono: data.telefono ?? null,
       especialidad: data.especialidad ?? null,
-      obras_sociales: data.obras_sociales,
     })
     .eq('id', user.id)
 
