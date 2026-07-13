@@ -4,6 +4,7 @@ import { addDias, diasDesdeHoy, gridMes, minutosAR, minutosDeHora } from '@/lib/
 import { getServiciosActivos, getDisponibilidad } from '@/features/whatsapp/services/turnosService'
 import { armarDia, type ItemDia, type TurnoDia, type SlotLibre } from '@/lib/consultorio/armarDia'
 import { semaforoConversacion, msRestantesVentana, type Semaforo } from '@/lib/consultorio/semaforo'
+import { esDiaParticular, type DiaParticular } from '@/lib/consultorio/diasParticulares'
 import { siteUrl } from '@/lib/site-url'
 
 /** supabase-js devuelve errores en vez de lanzarlos: acá los convertimos en throw
@@ -63,6 +64,8 @@ export interface DiaAgenda {
   cerrado: boolean
   /** Excepción (vacaciones/congreso) que cubre la fecha, si existe. */
   bloqueado: { id: string; nota: string | null } | null
+  /** Día particular (config del médico: por fecha puntual o por día de semana recurrente). */
+  particular: boolean
   jornada: JornadaDia | null
   duracionMin: number
 }
@@ -71,7 +74,7 @@ export interface DiaAgenda {
 export async function getDia(db: SupabaseClient, medicoId: string, fecha: string): Promise<DiaAgenda> {
   const desdeIso = new Date(`${fecha}T00:00:00${AR_OFFSET}`).toISOString()
   const hastaIso = new Date(new Date(desdeIso).getTime() + 86_400_000).toISOString()
-  const [turnosRes, sobresRes, horariosRes, excepcionRes, servicios] = await Promise.all([
+  const [turnosRes, sobresRes, horariosRes, excepcionRes, diasPartRes, servicios] = await Promise.all([
     db
       .from('wa_turnos')
       .select(COLS_TURNO)
@@ -103,11 +106,17 @@ export async function getDia(db: SupabaseClient, medicoId: string, fecha: string
       .limit(1)
       .maybeSingle()
       .then(ok),
+    db
+      .from('wa_dias_particulares')
+      .select('tipo, dia_semana, fecha')
+      .eq('medico_id', medicoId)
+      .then(ok),
     getServiciosActivos(db, medicoId),
   ])
   const turnos = (turnosRes.data as TurnoDia[] | null) ?? []
   const bloquesDia = (horariosRes.data as { open_time: string; close_time: string }[] | null) ?? []
   const excepcion = excepcionRes.data as { id: string; note: string | null } | null
+  const diasParticulares = (diasPartRes.data as DiaParticular[] | null) ?? []
   // Huecos libres SOLO del día pedido (getDisponibilidad ya excluye pasados y ocupados).
   let libres: SlotLibre[] = []
   if (servicios.length > 0) {
@@ -120,6 +129,7 @@ export async function getDia(db: SupabaseClient, medicoId: string, fecha: string
     sobreturnos: (sobresRes.data as SobreturnoRow[] | null) ?? [],
     cerrado: bloquesDia.length === 0,
     bloqueado: excepcion ? { id: excepcion.id, nota: excepcion.note } : null,
+    particular: esDiaParticular(diasParticulares, fecha),
     jornada: calcularJornada(bloquesDia, turnos),
     duracionMin: servicios[0]?.duracion_min ?? 30,
   }
@@ -130,6 +140,7 @@ export interface DiaAgendaSemana {
   items: ItemDia[]
   sobreturnos: number
   bloqueado: boolean
+  particular: boolean
   cerrado: boolean // sin horario de atención ese día de la semana
 }
 
@@ -144,7 +155,7 @@ export async function getAgendaSemana(db: SupabaseClient, medicoId: string, lune
   const domingo = addDias(lunes, 6)
   const desdeIso = new Date(`${lunes}T00:00:00${AR_OFFSET}`).toISOString()
   const hastaIso = new Date(`${addDias(lunes, 7)}T00:00:00${AR_OFFSET}`).toISOString()
-  const [turnosRes, sobresRes, horariosRes, excepcionesRes, servicios] = await Promise.all([
+  const [turnosRes, sobresRes, horariosRes, excepcionesRes, diasPartRes, servicios] = await Promise.all([
     db
       .from('wa_turnos')
       .select(COLS_TURNO)
@@ -169,12 +180,18 @@ export async function getAgendaSemana(db: SupabaseClient, medicoId: string, lune
       .lte('start_date', domingo)
       .gte('end_date', lunes)
       .then(ok),
+    db
+      .from('wa_dias_particulares')
+      .select('tipo, dia_semana, fecha')
+      .eq('medico_id', medicoId)
+      .then(ok),
     getServiciosActivos(db, medicoId),
   ])
   const turnos = (turnosRes.data as TurnoDia[] | null) ?? []
   const sobres = (sobresRes.data as { fecha: string }[] | null) ?? []
   const horarios = (horariosRes.data as { weekday: number; open_time: string; close_time: string }[] | null) ?? []
   const excepciones = (excepcionesRes.data as { start_date: string; end_date: string }[] | null) ?? []
+  const diasParticulares = (diasPartRes.data as DiaParticular[] | null) ?? []
 
   // Huecos ofrecibles: UNA llamada con horizonte hasta el domingo visible (cap 90 días).
   const libresPorFecha = new Map<string, SlotLibre[]>()
@@ -195,6 +212,7 @@ export async function getAgendaSemana(db: SupabaseClient, medicoId: string, lune
       items: armarDia(turnosDia, libresPorFecha.get(fecha) ?? [], nowMs),
       sobreturnos: sobres.filter((s) => s.fecha === fecha).length,
       bloqueado: excepciones.some((ex) => ex.start_date <= fecha && fecha <= ex.end_date),
+      particular: esDiaParticular(diasParticulares, fecha),
       cerrado: !weekdaysConHorario.has(weekdayOf(fecha)),
     })
   }
@@ -210,6 +228,7 @@ export interface DiaMesContador {
   turnos: number
   sobreturnos: number
   bloqueado: boolean
+  particular: boolean
 }
 
 /** Contadores por día para la grilla mensual (incluye el relleno de meses vecinos). */
@@ -224,7 +243,7 @@ export async function getMesContadores(
   const ultima = grid[grid.length - 1][6]
   const desdeIso = new Date(`${primera}T00:00:00${AR_OFFSET}`).toISOString()
   const hastaIso = new Date(`${addDias(ultima, 1)}T00:00:00${AR_OFFSET}`).toISOString()
-  const [turnosRes, sobresRes, excepcionesRes] = await Promise.all([
+  const [turnosRes, sobresRes, excepcionesRes, diasPartRes] = await Promise.all([
     db
       .from('wa_turnos')
       .select('starts_at')
@@ -248,17 +267,24 @@ export async function getMesContadores(
       .lte('start_date', ultima)
       .gte('end_date', primera)
       .then(ok),
+    db
+      .from('wa_dias_particulares')
+      .select('tipo, dia_semana, fecha')
+      .eq('medico_id', medicoId)
+      .then(ok),
   ])
   const turnos = ((turnosRes.data as { starts_at: string }[] | null) ?? []).map((t) =>
     arDateString(new Date(t.starts_at).getTime(), 0),
   )
   const sobres = (sobresRes.data as { fecha: string }[] | null) ?? []
   const excepciones = (excepcionesRes.data as { start_date: string; end_date: string }[] | null) ?? []
+  const diasParticulares = (diasPartRes.data as DiaParticular[] | null) ?? []
   return grid.flat().map((fecha) => ({
     fecha,
     turnos: turnos.filter((f) => f === fecha).length,
     sobreturnos: sobres.filter((s) => s.fecha === fecha).length,
     bloqueado: excepciones.some((ex) => ex.start_date <= fecha && fecha <= ex.end_date),
+    particular: esDiaParticular(diasParticulares, fecha),
   }))
 }
 
@@ -511,6 +537,7 @@ export interface ConfigConsultorio {
   servicioId: string | null
   excepciones: { id: string; start_date: string; end_date: string; kind: string; note: string | null }[]
   osSuspendidas: { id: string; nombre_os: string; nota: string | null; motivo: 'suspendida' | 'no_atiende' }[]
+  diasParticulares: { id: string; tipo: 'semanal' | 'fecha'; dia_semana: number | null; fecha: string | null }[]
   agente: {
     nombre_medico: string | null
     especialidad: string | null
@@ -532,7 +559,7 @@ export interface ConfigConsultorio {
 
 export async function getConfig(db: SupabaseClient, medicoId: string): Promise<ConfigConsultorio> {
   const hoy = arDateString(Date.now(), 0)
-  const [horariosRes, serviciosRes, excepcionesRes, osRes, agenteRes, canalRes, mpRes, secretariasRes] = await Promise.all([
+  const [horariosRes, serviciosRes, excepcionesRes, osRes, agenteRes, canalRes, mpRes, secretariasRes, diasPartRes] = await Promise.all([
     db.from('wa_horarios').select('id, weekday, open_time, close_time').eq('medico_id', medicoId).order('weekday').then(ok),
     db.from('wa_servicios').select('id, duracion_min').eq('medico_id', medicoId).eq('activo', true).limit(1).then(ok),
     db
@@ -558,6 +585,7 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
       .neq('estado', 'revocada')
       .order('invited_at')
       .then(ok),
+    db.from('wa_dias_particulares').select('id, tipo, dia_semana, fecha').eq('medico_id', medicoId).then(ok),
   ])
   const servicio = ((serviciosRes.data as { id: string; duracion_min: number }[] | null) ?? [])[0] ?? null
   const agente = agenteRes.data as ConfigConsultorio['agente'] & { precio_receta_default: unknown } | null
@@ -567,6 +595,7 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
     servicioId: servicio?.id ?? null,
     excepciones: (excepcionesRes.data as ConfigConsultorio['excepciones'] | null) ?? [],
     osSuspendidas: (osRes.data as ConfigConsultorio['osSuspendidas'] | null) ?? [],
+    diasParticulares: (diasPartRes.data as ConfigConsultorio['diasParticulares'] | null) ?? [],
     agente: agente
       ? { ...agente, precio_receta_default: agente.precio_receta_default != null ? Number(agente.precio_receta_default) : null }
       : null,

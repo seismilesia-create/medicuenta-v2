@@ -10,6 +10,9 @@ import {
   agregarOsSuspendida,
   quitarOsSuspendida,
   guardarAsistente,
+  agregarDiaSemanalParticular,
+  agregarFechaParticular,
+  quitarDiaParticular,
 } from '@/actions/consultorio-config'
 import { desbloquearDias, bloquearDias } from '@/actions/consultorio-agenda'
 import { invitarSecretaria, revocarSecretaria } from '@/actions/consultorio-secretaria'
@@ -97,6 +100,7 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
   const [osSusp, setOsSusp] = useState({ nombre: '', nota: '' })
   const [osNoAt, setOsNoAt] = useState({ nombre: '', nota: '' })
   const [bloqueo, setBloqueo] = useState({ desde: '', hasta: '', nota: '' })
+  const [fechaPart, setFechaPart] = useState('')
   const [agenteSaving, setAgenteSaving] = useState(false)
   const [agenteOk, setAgenteOk] = useState(false)
   const [emailSec, setEmailSec] = useState('')
@@ -269,6 +273,65 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
             className="rounded-xl border border-border px-3 py-1.5"
           >
             Bloquear
+          </button>
+        </div>
+      </Seccion>
+
+      <Seccion titulo="Días particulares">
+        <p className="text-[11px] text-[var(--color-muted-foreground)]">
+          Días en que atendés todo particular. El bot le avisa al paciente al reservar (no bloquea).
+        </p>
+        {/* Recurrentes por día de la semana */}
+        <div className="flex flex-wrap gap-1.5">
+          {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((lbl, wd) => {
+            const fila = cfg.diasParticulares.find((d) => d.tipo === 'semanal' && d.dia_semana === wd)
+            const activo = !!fila
+            return (
+              <button
+                key={wd}
+                onClick={() =>
+                  onAccion(() => (activo ? quitarDiaParticular(fila!.id) : agregarDiaSemanalParticular(wd)))
+                }
+                className={`rounded-lg border px-2.5 py-1 text-xs ${
+                  activo ? 'bg-primary text-primary-foreground border-primary' : 'border-border'
+                }`}
+              >
+                {lbl}
+              </button>
+            )
+          })}
+        </div>
+        {/* Fechas puntuales */}
+        <div className="space-y-1 text-sm">
+          {cfg.diasParticulares
+            .filter((d) => d.tipo === 'fecha')
+            .map((d) => (
+              <p key={d.id} className="flex items-center gap-2">
+                <span className="tabular-nums">{d.fecha}</span>
+                <span className="flex-1" />
+                <button onClick={() => onAccion(() => quitarDiaParticular(d.id))}>
+                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                </button>
+              </p>
+            ))}
+        </div>
+        <div className="flex flex-wrap gap-2 items-center text-sm">
+          <input
+            type="date"
+            className={input + ' !w-auto'}
+            value={fechaPart}
+            onChange={(e) => setFechaPart(e.target.value)}
+          />
+          <button
+            onClick={() => {
+              if (fechaPart) {
+                onAccion(() => agregarFechaParticular(fechaPart))
+                setFechaPart('')
+              }
+            }}
+            className="rounded-xl border border-border px-3 py-1.5"
+          >
+            Agregar fecha
           </button>
         </div>
       </Seccion>

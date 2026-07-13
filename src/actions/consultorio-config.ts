@@ -111,6 +111,45 @@ export async function quitarOsSuspendida(id: string) {
   return { ok: true as const }
 }
 
+export async function agregarDiaSemanalParticular(diaSemana: number) {
+  const c = await ctxDueño()
+  if ('error' in c) return c
+  const { supabase, medicoId } = c
+  if (!Number.isInteger(diaSemana) || diaSemana < 0 || diaSemana > 6) return { error: 'Día de la semana inválido' }
+  const { error } = await supabase
+    .from('wa_dias_particulares')
+    .insert({ medico_id: medicoId, tipo: 'semanal', dia_semana: diaSemana })
+  if (error) {
+    if (error.code === '23505') return { error: 'Ese día ya está marcado como particular' }
+    return { error: error.message }
+  }
+  return { ok: true as const }
+}
+
+export async function agregarFechaParticular(fecha: string) {
+  const c = await ctxDueño()
+  if ('error' in c) return c
+  const { supabase, medicoId } = c
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return { error: 'Fecha inválida' }
+  const { error } = await supabase
+    .from('wa_dias_particulares')
+    .insert({ medico_id: medicoId, tipo: 'fecha', fecha })
+  if (error) {
+    if (error.code === '23505') return { error: 'Esa fecha ya está marcada como particular' }
+    return { error: error.message }
+  }
+  return { ok: true as const }
+}
+
+export async function quitarDiaParticular(id: string) {
+  const c = await ctxDueño()
+  if ('error' in c) return c
+  const { supabase, medicoId } = c
+  const { error } = await supabase.from('wa_dias_particulares').delete().eq('medico_id', medicoId).eq('id', id)
+  if (error) return { error: error.message }
+  return { ok: true as const }
+}
+
 const agenteSchema = z.object({
   nombre_medico: z.string().trim(),
   especialidad: z.string().trim(),

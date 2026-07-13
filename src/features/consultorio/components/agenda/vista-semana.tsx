@@ -58,6 +58,8 @@ export function VistaSemana({ semana, onDiaClick, onSlotClick, onTurnoClick }: P
                 <span className="block min-h-4 text-[10px] leading-4">
                   {d.bloqueado ? (
                     <span className="text-[var(--color-muted-foreground)] uppercase">bloqueado</span>
+                  ) : d.particular ? (
+                    <span className="text-violet-600 dark:text-violet-300 uppercase">particular</span>
                   ) : d.sobreturnos > 0 ? (
                     <span className="text-amber-600 font-medium">
                       +{d.sobreturnos} sobret.

@@ -6,7 +6,8 @@ import { resolverServicio } from '@/lib/turnos/resolverServicio'
 import { armarStartsAtISO, fmtFechaLarga, fmtHora } from '@/lib/turnos/formato'
 import { esSlotOfrecido, AR_OFFSET, arDateString } from '@/lib/turnos/slots'
 import { nombreSospechoso, dniNormalizadoValido } from '@/lib/turnos/validarIdentidad'
-import { esOsSuspendida } from '@/lib/consultorio/osSuspendidas'
+import { esOsSuspendida, normalizarOs } from '@/lib/consultorio/osSuspendidas'
+import { esDiaParticular } from '@/lib/consultorio/diasParticulares'
 import { registrarEvento } from '@/features/whatsapp/services/bitacora'
 import {
   getServiciosActivos,
@@ -16,6 +17,7 @@ import {
   listarTurnosActivosPorDni,
   cancelarTurnoDePaciente,
   getOsSuspendidas,
+  getDiasParticulares,
 } from '@/features/whatsapp/services/turnosService'
 import { bajarAlarmaHumano } from '@/features/whatsapp/services/conversaciones'
 
@@ -139,7 +141,7 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
           .describe('"si" SOLO si la tool te avisó que el nombre o apellido parecía mal escrito y el paciente lo confirmó o corrigió. "" en cualquier otro caso.'),
         os_confirmada: z
           .string()
-          .describe('"si" SOLO si la tool te avisó que la obra social es PARTICULAR con este profesional y el paciente confirmó que igual quiere reservar. "" en cualquier otro caso.'),
+          .describe('"si" SOLO si la tool te avisó que la obra social es PARTICULAR con este profesional, O que ese día el profesional atiende todo particular, y el paciente confirmó que igual quiere reservar. "" en cualquier otro caso.'),
       }),
       execute: async ({ servicio, fecha, hora, nombre_paciente, apellido_paciente, dni_paciente, obra_social, motivo_consulta, nombre_confirmado, os_confirmada }) => {
         if (!nombre_paciente.trim() || !apellido_paciente.trim()) {
@@ -166,6 +168,27 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
           return {
             ok: false,
             error: `AVISO: con este profesional la obra social "${obra_social.trim()}" es PARTICULAR (se abona en el consultorio). Explicáselo al paciente y preguntale si quiere reservar igual. SOLO si acepta, llamá de nuevo con os_confirmada:"si".`,
+          }
+        }
+        // Día particular (B3): mismo patrón que OS suspendida — avisar, no bloquear.
+        // Reusa os_confirmada: un solo aviso cubre OS-suspendida + día-particular.
+        const diasParticulares = await getDiasParticulares(ctx.db, ctx.medicoId)
+        if (
+          esDiaParticular(diasParticulares, fecha) &&
+          os_confirmada.trim().toLowerCase() !== 'si' &&
+          normalizarOs(obra_social) !== 'particular'
+        ) {
+          await registrarEvento(ctx.db, {
+            medicoId: ctx.medicoId,
+            origen: 'agente',
+            nivel: 'info',
+            evento: 'aviso_dia_particular',
+            detalle: { fecha },
+            conversacionId: ctx.conversacionId,
+          })
+          return {
+            ok: false,
+            error: `AVISO: ese día el profesional atiende todo de forma PARTICULAR (se abona en el consultorio). Explicáselo al paciente y preguntale si quiere reservar igual. SOLO si acepta, llamá de nuevo con os_confirmada:"si".`,
           }
         }
         // Alarma de tipeo: un nombre mal escrito ensucia la base para siempre.
