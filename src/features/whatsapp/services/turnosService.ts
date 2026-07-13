@@ -12,6 +12,7 @@ import { fmtFechaCorta, fmtHora } from '@/lib/turnos/formato'
 import type { ServicioLite } from '@/lib/turnos/resolverServicio'
 import { upsertPacienteDesdeIdentidad } from '@/features/whatsapp/services/pacientesService'
 import { registrarEvento } from '@/features/whatsapp/services/bitacora'
+import type { DiaParticular } from '@/lib/consultorio/diasParticulares'
 
 /** Cuántos días hacia adelante se busca disponibilidad (el origen usaba 60: ruido). */
 const DIAS_A_OFRECER = 14
@@ -305,6 +306,19 @@ export async function getOsSuspendidas(db: SupabaseClient, medicoId: string): Pr
     return [] // fallo de lectura ≠ bloquear reservas: sin aviso es el degradado seguro
   }
   return ((data as { nombre_os: string }[] | null) ?? []).map((r) => r.nombre_os)
+}
+
+/** Días particulares del médico (recurrentes + puntuales). Para el aviso del bot. */
+export async function getDiasParticulares(db: SupabaseClient, medicoId: string): Promise<DiaParticular[]> {
+  const { data, error } = await db
+    .from('wa_dias_particulares')
+    .select('tipo, dia_semana, fecha')
+    .eq('medico_id', medicoId)
+  if (error) {
+    console.error('[turnos] dias_particulares read error:', error.message)
+    return [] // fallo de lectura ≠ bloquear: sin aviso es el degradado seguro (igual que getOsSuspendidas)
+  }
+  return (data as DiaParticular[] | null) ?? []
 }
 
 /** Agenda compacta para el comando 'turnos' del médico (visibilidad mínima, como 'recetas'). */
