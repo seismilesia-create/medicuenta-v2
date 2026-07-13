@@ -37,7 +37,7 @@ export function VistaDia({ fecha, dia, onSlotClick, onTurnoClick, onAccion, onNu
             </button>
           </div>
         )}
-        {dia.particular && (
+        {dia.particular && !dia.bloqueado && (
           <div className="p-3 rounded-lg text-sm bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/30 flex items-center gap-2">
             <span className="flex-1">Día particular. El asistente le avisa al paciente que se atiende de forma particular.</span>
           </div>

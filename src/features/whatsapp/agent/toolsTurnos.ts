@@ -6,7 +6,7 @@ import { resolverServicio } from '@/lib/turnos/resolverServicio'
 import { armarStartsAtISO, fmtFechaLarga, fmtHora } from '@/lib/turnos/formato'
 import { esSlotOfrecido, AR_OFFSET, arDateString } from '@/lib/turnos/slots'
 import { nombreSospechoso, dniNormalizadoValido } from '@/lib/turnos/validarIdentidad'
-import { esOsSuspendida } from '@/lib/consultorio/osSuspendidas'
+import { esOsSuspendida, normalizarOs } from '@/lib/consultorio/osSuspendidas'
 import { esDiaParticular } from '@/lib/consultorio/diasParticulares'
 import { registrarEvento } from '@/features/whatsapp/services/bitacora'
 import {
@@ -141,7 +141,7 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
           .describe('"si" SOLO si la tool te avisó que el nombre o apellido parecía mal escrito y el paciente lo confirmó o corrigió. "" en cualquier otro caso.'),
         os_confirmada: z
           .string()
-          .describe('"si" SOLO si la tool te avisó que la obra social es PARTICULAR con este profesional y el paciente confirmó que igual quiere reservar. "" en cualquier otro caso.'),
+          .describe('"si" SOLO si la tool te avisó que la obra social es PARTICULAR con este profesional, O que ese día el profesional atiende todo particular, y el paciente confirmó que igual quiere reservar. "" en cualquier otro caso.'),
       }),
       execute: async ({ servicio, fecha, hora, nombre_paciente, apellido_paciente, dni_paciente, obra_social, motivo_consulta, nombre_confirmado, os_confirmada }) => {
         if (!nombre_paciente.trim() || !apellido_paciente.trim()) {
@@ -173,7 +173,11 @@ export function buildTurnosTools(ctx: TurnosToolsCtx) {
         // Día particular (B3): mismo patrón que OS suspendida — avisar, no bloquear.
         // Reusa os_confirmada: un solo aviso cubre OS-suspendida + día-particular.
         const diasParticulares = await getDiasParticulares(ctx.db, ctx.medicoId)
-        if (esDiaParticular(diasParticulares, fecha) && os_confirmada.trim().toLowerCase() !== 'si') {
+        if (
+          esDiaParticular(diasParticulares, fecha) &&
+          os_confirmada.trim().toLowerCase() !== 'si' &&
+          normalizarOs(obra_social) !== 'particular'
+        ) {
           await registrarEvento(ctx.db, {
             medicoId: ctx.medicoId,
             origen: 'agente',
