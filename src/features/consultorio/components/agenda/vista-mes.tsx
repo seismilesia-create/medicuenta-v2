@@ -63,6 +63,9 @@ export function VistaMes({ anio, mes, contadores, onDiaClick }: Props) {
                 {c?.bloqueado && (
                   <span className="block text-[10px] uppercase text-[var(--color-muted-foreground)]">bloqueado</span>
                 )}
+                {c?.particular && !c?.bloqueado && (
+                  <span className="block text-[10px] uppercase text-violet-600 dark:text-violet-300">particular</span>
+                )}
               </button>
             )
           })}
