@@ -511,6 +511,7 @@ export interface ConfigConsultorio {
   servicioId: string | null
   excepciones: { id: string; start_date: string; end_date: string; kind: string; note: string | null }[]
   osSuspendidas: { id: string; nombre_os: string; nota: string | null; motivo: 'suspendida' | 'no_atiende' }[]
+  diasParticulares: { id: string; tipo: 'semanal' | 'fecha'; dia_semana: number | null; fecha: string | null }[]
   agente: {
     nombre_medico: string | null
     especialidad: string | null
@@ -532,7 +533,7 @@ export interface ConfigConsultorio {
 
 export async function getConfig(db: SupabaseClient, medicoId: string): Promise<ConfigConsultorio> {
   const hoy = arDateString(Date.now(), 0)
-  const [horariosRes, serviciosRes, excepcionesRes, osRes, agenteRes, canalRes, mpRes, secretariasRes] = await Promise.all([
+  const [horariosRes, serviciosRes, excepcionesRes, osRes, agenteRes, canalRes, mpRes, secretariasRes, diasPartRes] = await Promise.all([
     db.from('wa_horarios').select('id, weekday, open_time, close_time').eq('medico_id', medicoId).order('weekday').then(ok),
     db.from('wa_servicios').select('id, duracion_min').eq('medico_id', medicoId).eq('activo', true).limit(1).then(ok),
     db
@@ -558,6 +559,7 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
       .neq('estado', 'revocada')
       .order('invited_at')
       .then(ok),
+    db.from('wa_dias_particulares').select('id, tipo, dia_semana, fecha').eq('medico_id', medicoId).then(ok),
   ])
   const servicio = ((serviciosRes.data as { id: string; duracion_min: number }[] | null) ?? [])[0] ?? null
   const agente = agenteRes.data as ConfigConsultorio['agente'] & { precio_receta_default: unknown } | null
@@ -567,6 +569,7 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
     servicioId: servicio?.id ?? null,
     excepciones: (excepcionesRes.data as ConfigConsultorio['excepciones'] | null) ?? [],
     osSuspendidas: (osRes.data as ConfigConsultorio['osSuspendidas'] | null) ?? [],
+    diasParticulares: (diasPartRes.data as ConfigConsultorio['diasParticulares'] | null) ?? [],
     agente: agente
       ? { ...agente, precio_receta_default: agente.precio_receta_default != null ? Number(agente.precio_receta_default) : null }
       : null,
