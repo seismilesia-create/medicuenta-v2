@@ -127,6 +127,11 @@ export async function getRecetaDelMedico(
   return (data as RecetaRow | null) ?? null
 }
 
+/** Distingue el CONFLICTO real (otro teléfono ya gestiona la receta) de un FALLO
+ *  TÉCNICO: antes ambos volvían `false` y al paciente se le reportaba el conflicto,
+ *  tapando el error de verdad. */
+export type VinculoPago = { ok: true } | { ok: false; motivo: 'conflicto' | 'error' }
+
 /**
  * Al generar el link: asocia preferencia + teléfono + contacto del paciente (§6.2:
  * se capturan al escribir). Condicional anti-TOCTOU: solo escribe si el teléfono
@@ -137,22 +142,36 @@ export async function vincularPago(
   medicoId: string,
   recetaId: string,
   args: { mpPreferenceId: string; pacienteTelefono: string; contactoId: string | null },
-): Promise<boolean> {
-  const { data } = await db
-    .from('recetas')
-    .update({
-      mp_preference_id: args.mpPreferenceId,
-      paciente_telefono: args.pacienteTelefono,
-      contacto_id: args.contactoId,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('medico_id', medicoId)
-    .eq('id', recetaId)
-    .or(`paciente_telefono.is.null,paciente_telefono.eq.${args.pacienteTelefono}`)
-    .select('id')
-  // true solo si el UPDATE condicional afectó la fila: el que pierde la carrera
-  // (otro teléfono ya gestionando la receta) recibe false y NO un link válido.
-  return (data?.length ?? 0) > 0
+): Promise<VinculoPago> {
+  const patch = {
+    mp_preference_id: args.mpPreferenceId,
+    paciente_telefono: args.pacienteTelefono,
+    contacto_id: args.contactoId,
+    updated_at: new Date().toISOString(),
+  }
+  const update = () => db.from('recetas').update(patch).eq('medico_id', medicoId).eq('id', recetaId)
+
+  // El condicional va en DOS pasos y NO con un `.or()`: PostgREST rompe al aplicar
+  // `or=` sobre un UPDATE (42703 "column recetas.paciente_telefono does not exist")
+  // y el link de pago no se generaba nunca. Cada paso sigue siendo atómico.
+  // 1) Reclamarla si está libre — de dos solicitantes simultáneos, solo uno gana acá.
+  const libre = await update().is('paciente_telefono', null).select('id')
+  if (libre.error) {
+    console.error('[wa] vincularPago (reclamar):', libre.error.message)
+    return { ok: false, motivo: 'error' }
+  }
+  if ((libre.data?.length ?? 0) > 0) return { ok: true }
+
+  // 2) Ya estaba tomada: solo sigue si es de ESTE teléfono (re-generar su link).
+  const propia = await update().eq('paciente_telefono', args.pacienteTelefono).select('id')
+  if (propia.error) {
+    console.error('[wa] vincularPago (re-generar):', propia.error.message)
+    return { ok: false, motivo: 'error' }
+  }
+  if ((propia.data?.length ?? 0) > 0) return { ok: true }
+
+  // Ni libre ni suya: la gestiona otro número. El que pierde la carrera no recibe link.
+  return { ok: false, motivo: 'conflicto' }
 }
 
 /** Condicional por estado: reduce la ventana de carrera entre webhooks concurrentes. */
