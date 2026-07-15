@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { normalizarOs } from '@/lib/consultorio/osSuspendidas'
 import { resolverConsultorio, esDueño } from '@/features/consultorio/access/contexto'
 import { createServiceClient } from '@/lib/supabase/server'
+import { getConfig, type ConfigConsultorio } from '@/features/consultorio/services/panelService'
 
 /** Config del consultorio = médico-only (spec §8). Solo el DUEÑO del consultorio
  *  (ni la secretaria ni un médico operando otro consultorio) puede cambiarla. */
@@ -201,4 +202,62 @@ export async function guardarAsistente(input: z.infer<typeof agenteSchema>) {
     )
   if (error) return { error: error.message }
   return { ok: true as const }
+}
+
+/** Precio de gestión de receta (operativa: lo puede tocar la secretaria). Upsert parcial:
+ *  escribe SOLO precio_receta_default, sin tocar la personalidad de la misma fila. */
+export async function guardarPrecioReceta(precio: number | null) {
+  const c = await ctxOperativo()
+  if ('error' in c) return c
+  if (precio !== null && (!Number.isFinite(precio) || precio < 0)) return { error: 'Precio inválido' }
+  const supabase = createServiceClient()
+  const { error } = await supabase
+    .from('wa_config_agente')
+    .upsert(
+      { medico_id: c.medicoId, precio_receta_default: precio, updated_at: new Date().toISOString() },
+      { onConflict: 'medico_id' },
+    )
+  if (error) return { error: error.message }
+  return { ok: true as const }
+}
+
+/** Config para la vista del consultorio. Operativa SIEMPRE; personalidad/conexiones/secretarias
+ *  SOLO para el dueño (null para la secretaria → no le llegan al browser). */
+export interface ConfigVista {
+  esDueño: boolean
+  horarios: ConfigConsultorio['horarios']
+  duracionMin: number
+  servicioId: string | null
+  excepciones: ConfigConsultorio['excepciones']
+  osSuspendidas: ConfigConsultorio['osSuspendidas']
+  diasParticulares: ConfigConsultorio['diasParticulares']
+  precioReceta: number | null
+  agente: Omit<NonNullable<ConfigConsultorio['agente']>, 'precio_receta_default'> | null
+  conexiones: ConfigConsultorio['conexiones'] | null
+  secretarias: ConfigConsultorio['secretarias'] | null
+}
+
+/** Carga la config del consultorio operado (medicoActivoId). Autoriza con ctxOperativo y lee
+ *  con service-role (la secretaria no tiene RLS sobre varias tablas). Recorta lo médico-only. */
+export async function cargarConfigConsultorio(): Promise<ConfigVista | { error: string }> {
+  const c = await ctxOperativo()
+  if ('error' in c) return c as { error: string }
+  const ctx = c as { medicoId: string; userId: string; esDueño: boolean }
+  const cfg = await getConfig(createServiceClient(), ctx.medicoId)
+  const personalidad = cfg.agente
+    ? (({ precio_receta_default: _p, ...rest }) => rest)(cfg.agente)
+    : null
+  return {
+    esDueño: ctx.esDueño,
+    horarios: cfg.horarios,
+    duracionMin: cfg.duracionMin,
+    servicioId: cfg.servicioId,
+    excepciones: cfg.excepciones,
+    osSuspendidas: cfg.osSuspendidas,
+    diasParticulares: cfg.diasParticulares,
+    precioReceta: cfg.agente?.precio_receta_default ?? null,
+    agente: ctx.esDueño ? personalidad : null,
+    conexiones: ctx.esDueño ? cfg.conexiones : null,
+    secretarias: ctx.esDueño ? cfg.secretarias : null,
+  }
 }
