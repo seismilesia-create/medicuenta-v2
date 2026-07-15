@@ -153,6 +153,7 @@ export async function loadHistorial(
   medicoId: string,
   conversacionId: string,
   limite = 12,
+  userOrigen: 'paciente' | 'medico' = 'paciente',
 ): Promise<HistorialMsg[]> {
   const { data } = await db
     .from('wa_mensajes')
@@ -163,7 +164,7 @@ export async function loadHistorial(
     .limit(limite)
   const rows = ((data as { origen: string; contenido: string }[]) ?? []).reverse()
   return rows.map((m) => ({
-    role: m.origen === 'paciente' ? 'user' : 'assistant',
+    role: m.origen === userOrigen ? 'user' : 'assistant',
     content: m.contenido,
   }))
 }
