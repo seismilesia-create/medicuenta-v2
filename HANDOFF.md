@@ -1,72 +1,63 @@
-# HANDOFF — MediCuenta V2 — 2026-07-15 (tanda post-checklist: #1–#13 hechos, #14 con plan listo)
+# HANDOFF — MediCuenta V2 — 2026-07-15 (#14 agente médico del bot COMPLETO + review final limpio; next = E2E manual)
 
 ## Estado actual
-- **Tarea**: Tanda de ~14 mejoras post-E2E (rama `mejoras-post-checklist`). **#1 al #13 IMPLEMENTADOS y commiteados.** El **#14** tiene spec + plan escritos y aprobados, **listo para ejecutar** (no arrancado).
-- **Estado**: working — #14 pendiente de ejecución; después queda re-correr Fase 8 + Fase 9 del E2E.
-- **Branch**: `mejoras-post-checklist` (NO se mergeó a main; la rama junta toda la tanda + falta #14 + E2E).
-- **Último commit ANTES de este handoff**: `43287b5` docs(plan): rama médico del bot = agente de IA (backlog #14)
+- **Tarea**: Tanda post-E2E en `mejoras-post-checklist`. **#1–#14 IMPLEMENTADOS y commiteados.** El **#14** (rama médico del bot = agente de IA) se ejecutó subagent-driven: implementer + review por-task + fix loop en cada task, y **review final del branch completo (Opus) = "Ready to merge: Yes"** (sin Critical/Important).
+- **Estado**: #14 completo y verificado (typecheck + 389 tests + build verdes, árbol limpio). Falta el **E2E manual** (de Héctor). Rama NO mergeada.
+- **Branch**: `mejoras-post-checklist` (junta #1–#13 + #14 + E2E pendiente; NO se mergea a main hasta pasar E2E).
+- **Último commit**: `9aa21db` fix(bot): telemetría best-effort ya no descarta la respuesta del agente.
 
 ## Próximo paso concreto
-En sesión fresca: `/resume`, y ejecutar el **plan del #14** con **subagent-driven-development** (como se hizo el #13):
-- Plan: `docs/superpowers/plans/2026-07-15-agente-medico-bot.md` (3 tasks, cada una verde; Task 1 es TDD del prompt).
-- Base pre-#14 = `43287b5`. Al terminar el #14, re-correr **Fase 8** (liberar receta por orden de consulta — ya arreglada en #1) y **Fase 9** (cargar órdenes OSEP por foto) del checklist E2E.
+**E2E manual por WhatsApp** (requiere Héctor con teléfonos reales; NO es código):
+1. **Agente médico nuevo (#14)** — el médico le habla en lenguaje natural, ya no a un parser: pedir la agenda, el estado de recetas, "fijá la receta en $X" (el bot debe **CONFIRMAR el monto antes** de fijarlo), y ayuda de plataforma. Verificar: multi-turno + confirmación de precio + que un tool de **schema vacío** (`consultar_agenda`/`estado_recetas`) dispare OK con el proveedor (caveat del plan; hay precedente en prod con `solicitar_orden_consulta` que ya usa `z.object({})`, se espera que ande). El PDF de recetas del médico sigue igual (determinístico).
+2. **Fase 8** — liberar receta por orden de consulta (desbloqueada por #1: ahora busca por **DNI**, no por `paciente_telefono` NULL).
+3. **Fase 9** — cargar órdenes OSEP por foto.
+- Paciente de prueba: **Héctor Fernando Martinez, DNI 23309087**. Médico configurado: **Medina Vazquez** (celu `543834222049`).
 
-## Lo que se implementó esta sesión (#1–#13, todos commiteados)
-1. **#1 `53b3e34`** — liberar receta buscaba por `paciente_telefono` (NULL en vía OS) → ahora por **DNI** (`getPendientesPorDni`); campo DNI en `liberar-receta.tsx`. **Desbloquea Fase 8.**
-2. **#2 `e46aca7`** — auth UX: el `Button` usaba `bg-primary-500` (escala inexistente en Tailwind v3) → texto blanco invisible; reescrito a tokens semánticos. + `traducirErrorAuth` (errores GoTrue → español, `lib/auth/errores.ts` +test). + error-boxes a `destructive`. + hint/placeholder unificados.
-3. **#3 `66e70fb`** — `siteUrl()` caía a localhost fuera de Production → cadena de fallback `PUBLIC_BASE_URL → VERCEL_PROJECT_PRODUCTION_URL → VERCEL_URL → localhost` (+test).
-4. **#4 `67ce574`** — toggle 24h/12h de horarios no hacía nada (`<input type=time>` ignora `lang`) → picker propio con selects (`lib/consultorio/horaFormato.ts` +test); guardado sigue 24h canónico.
-5. **#5 `3698f71`** — OS suspendidas/no-atiendo: texto libre → `OsAutocomplete` contra el catálogo `aranceles_os`.
-6. **#6 `01d1580`** — número de WhatsApp del médico sin `54` → el bot lo trataba como paciente (falla silenciosa). `normalizarWhatsappAr` (`lib/whatsapp/numeroAr.ts` +test, tolera +54/549/0/15), los 3 actions RECHAZAN si es inválido, componente `WhatsappInput` con +54 fijo.
-7. **#7 `8100b92`** — quitado el campo "Teléfono" redundante del médico (3 forms + /perfil). Paciente NO tocado.
-8. **#8 `6cc6fdc`** — enlace de secretaria: bloque persistente por invitación pendiente (sobrevive recarga); quitado el "Copiar enlace" redundante de la fila.
-9. **#9 `f517b57`** — primer mensaje del bot paciente redundante → regla anti-duplicación en `buildSystemPromptPaciente` (solo-prompt).
-10. **#10 `60aa7e4`** — ventana de gracia de 15 min para la disponibilidad de la secretaria (`estaDentroConGracia` en `slots.ts` +test).
-11. **#11 `d15cd18`** — DOCUMENTADO el trade-off de privacidad de la búsqueda por nombre+DNI (nota de seguridad en `buscarPendientesPorIdentidad`; sin cambio de comportamiento, decisión de Héctor).
-12. **#12 `a390943`** — JUBILADO el alta manual de médico (`inviteUserByEmail` frágil): borrada la ruta `/admin/medicos/nuevo`, `FormNuevoMedico`, `onboardMedico`, `chequearSlugDisponible`. Todo alta pasa por el flujo por enlace. Memoria de onboarding actualizada.
-13. **#13 `83cb070`→`6ddff6b`** — config operativa para la secretaria (feature grande, ejecutada subagent-driven, review final opus = "Ready to merge"): `ctxOperativo` (médico dueño o secretaria vinculada, scopeado a `medicoActivoId` server-derived) + service-role; `guardarPrecioReceta` + `cargarConfigConsultorio` + tipo `ConfigVista`; precio separado de "El asistente"; `config-view` por rol; guard de página. Seguridad verificada en 5 ejes.
+## Lo que se implementó esta sesión (#14, 4 commits sobre base `0720a62`)
+1. **Task 1 `419d79f`** — `buildSystemPromptMedico` (prompt administrativo, NO clínico; confirmar monto antes de fijar; carga pesada órdenes/débitos/cirugías → derivar a la app) + test TDD. Fix de review: 2 asserts endurecidos (ligar "confirmá"↔`fijar_precio_receta` y carga-pesada↔"en la app" en la misma línea → una regresión que destripe la regla ahora falla el test).
+2. **Task 2 `7f12672`** — `buildMedicoTools` (`src/features/whatsapp/agent/toolsMedico.ts`): 4 tools (`consultar_agenda`, `estado_recetas`, `fijar_precio_receta` [valida monto finito y >0], `ayuda_plataforma`). service-role + `medicoId` inyectado, sin sesión (webhook).
+3. **Task 3 `138a374`** — `handleMedico` rama texto → `runAgentTurn` con esos tools + prompt (espejo de `handlePaciente`, sin toma-humana / entrega / scrub); borrados los 4 regex + `AYUDA_MEDICO`; cleanup de imports muertos. PDF intacto. **Fix de review (BLOCKER):** `loadHistorial` parametrizado con `userOrigen` (default `'paciente'` → rama paciente byte-idéntica); `handleMedico` pasa `'medico'` para que los mensajes del médico mapeen a role `'user'` (sin esto el historial salía todo `'assistant'` y el modelo no tenía turno de usuario → el agente médico no funcionaba).
+4. **`9aa21db`** — hardening: `registrarUsoIa` + `registrarEvento(éxito)` envueltos en try/catch interno best-effort en AMBOS handlers (médico + paciente); un fallo de telemetría ya no descarta el reply ya generado (en paciente, tampoco el link de cobro). El fallo de `runAgentTurn` sigue disparando el fallback.
 
-## #14 — spec + plan listos (NO ejecutado)
-- **Spec**: `docs/superpowers/specs/2026-07-15-agente-medico-bot-design.md` (`709ebf3`).
-- **Plan**: `docs/superpowers/plans/2026-07-15-agente-medico-bot.md` (`43287b5`).
-- Convierte `handleMedico` (texto) de parser de 4 comandos a **agente de IA** espejo del paciente: `buildMedicoTools` (agenda, recetas, fijar precio con confirmación, ayuda) + `buildSystemPromptMedico` (administrativo, NO clínico), reusando `runAgentTurn`. PDF determinístico intacto. Writes pesados (órdenes/débitos) quedan en la app.
-- **Alcance decidido con Héctor**: conversacional sobre lo existente (NO cargar órdenes/débitos por WhatsApp, NO OCR de orden = Fase 9).
-- **Caveat E2E anotado en el plan**: verificar que un schema de tool sin params (`z.object({})`) no rompa con el proveedor de IA.
+## Decisiones tomadas (Héctor, esta sesión)
+- #14 alcance conversacional: NO cargar órdenes/débitos/cirugías por WhatsApp; NO OCR de orden (eso es Fase 9).
+- Endurecer los 2 asserts de Task 1 (flag plan-mandated del review).
+- Blocker de historial: **parametrizar `loadHistorial`** (no re-map local ni diferir).
+- Telemetría: endurecer **AMBAS** ramas (no solo la médico) por consistencia; es un patrón pre-existente en prod, no una regresión del #14.
+- Mantener la rama sin mergear; cerrar con este HANDOFF para retomar en E2E.
 
-## Decisiones tomadas (con el "por qué")
-- Toda la tanda va en `mejoras-post-checklist`, sin mergear a main hasta terminar #14 + E2E (Héctor: "van en esa rama").
-- #12 jubilar (no convergir) el alta manual: el flujo por enlace ya lo reemplaza y es robusto; menos código frágil (elección de Héctor entre 3 opciones).
-- #13 enfoque B (app-authz + service-role) sobre RLS: el precio vive en `wa_config_agente` junto a la personalidad → RLS no separa columnas; service-role sí. Consistente con `liberarReceta`.
-- #14 alcance conversacional (no reuso completo del asistente in-app): sus tools usan sesión (RLS), el webhook no tiene sesión; y los writes pesados son mejores en la app.
+## Gotchas / no repetir
+- `.or()` de PostgREST no es seguro en UPDATE/DELETE (viejo, sigue vigente).
+- `bg-primary-500`/`success-*` no existen en el theme (Tailwind v3) → usar tokens semánticos.
+- `npm run build` togglea `next-env.d.ts` (`./.next/dev/types/` ↔ `./.next/types/`) — **NO commitear ese cambio** (restaurar con `git checkout next-env.d.ts`).
+- `npm run lint` está pre-roto (`next lint` mal configurado) — ignorar, no es del #14.
+- `loadHistorial` mapeaba solo `'paciente'→'user'`: cualquier rama NUEVA de agente que reuse el historial debe pasar su `userOrigen`.
+- El bot corre en webhook SIN sesión → los tools llevan `db` service-role + `medicoId` inyectado (los tools del asistente in-app NO son reutilizables tal cual: usan `createClient()`/RLS).
 
-## Lo que NO funcionó / gotchas (no repetir)
-- **Plan del #13 tenía 2 huecos que atrapó la ejecución**: (a) `ActividadAsistente` usaba `medicoId` (que sacamos de ConfigView) → el subagente lo resolvió agregando `medicoId` a `ConfigVista` (review lo bendijo: autorizado por RLS de `wa_bitacora`); (b) el `refetch` perdió el `try/catch` original → spinner permanente si la action tira → arreglado en `6ddff6b`. Lección: al planear cutover de un componente grande, mapear TODAS sus secciones/props.
-- **`bg-primary-500` etc. NO existen** en este theme (Tailwind v3, config solo define `primary.DEFAULT/foreground`). Usar tokens semánticos (`bg-primary`, `bg-destructive`).
-- **`.or()` de PostgREST no es seguro en UPDATE/DELETE** (gotcha viejo, sigue vigente).
-- **Next regenera `.next/types` tarde**: al borrar una ruta (#12), el typecheck falla por un validador obsoleto; limpiar `.next/types` + reiniciar dev server.
-
-## Decisiones de PRODUCTO pendientes para Héctor (no son bugs)
-1. **#13 — bitácora visible a la secretaria**: `ActividadAsistente` (ungated) muestra eventos origen `mp`/"Pagos" de recetas; la copy de invitación dice "nunca verá tu facturación ni las recetas". Autorizado por RLS + por el takeover de recetas de la secretaria. ¿Ocultarle las líneas de pago, o suavizar la frase de invitación?
-2. **#2 — flags menores no tocados**: el success-box de `/forgot-password` usa `success-*` (familia que no existe en el theme) → mensaje "revisá tu correo" invisible; y `/login?error=enlace_expirado` (de `activarCuenta`) nunca se muestra. Ambos fuera del scope del #2.
-3. **Minor #13 no arreglado (acordado "acceptable")**: `cargarConfigConsultorio` tiene 2 `as` casts sanos (narrowing por la anotación de retorno explícita). Fix más limpio si molesta: quitar la anotación de retorno.
+## Minor pendientes del review final (acceptable follow-ups — 1 ticket de baja prioridad, NINGUNO es correctness/security/data-loss)
+- `ayuda_plataforma` ignora el arg `tema` (plan-verbatim; el modelo extrae lo relevante).
+- validación de `monto` (`toolsMedico.ts`) y mapeo `origen→role` (`conversaciones.ts:167`) son puros → extraíbles a función + testeables sin mocks.
+- outer-catch `registrarEvento` sin envolver en best-effort: si tira, el fallback `responder` NO se manda (silencio; awaits secuenciales; pre-existente, espeja al paciente; doble-falla de baja probabilidad).
+- reply del médico no pasa por `sanitizarReplyCobro`/`scrubLinksMP` (inofensivo: el médico no tiene tools de cobro ni es target de pago). El review sugirió un comentario de 1 línea en `runner.ts:144` documentando la asimetría — **Héctor eligió NO agregarlo ahora**.
+- guard no-clínico del médico (`systemPromptMedico.ts:9`) más suave que el bloque "REGLA DURA" B4 del paciente (aceptable: audiencia = médico licenciado, no consumidor; el riesgo Meta-compliance es la cara al paciente).
 
 ## Comandos para verificar estado al retomar
 ```bash
-git status                 # esperado: limpio (salvo este HANDOFF)
-git log --oneline -3       # top: 43287b5 (plan #14), 709ebf3 (spec #14), 6ddff6b (fix #13)
-git branch --show-current  # mejoras-post-checklist
-npm run typecheck && npm run test   # esperado: limpio + 385 tests verde
+git branch --show-current   # mejoras-post-checklist
+git log --oneline -4        # 9aa21db, 138a374, 7f12672, 419d79f
+git status                  # limpio
+npm run typecheck && npm run test   # limpio + 389 verde
 ```
 
-## Archivos clave para releer en la próxima sesión
-- `docs/superpowers/plans/2026-07-15-agente-medico-bot.md` — el plan a ejecutar (#14).
-- `docs/superpowers/specs/2026-07-15-agente-medico-bot-design.md` — spec del #14.
-- `src/features/whatsapp/runner.ts` — `handleMedico` (lo que se reescribe) + `handlePaciente` (el patrón a espejar).
-- `src/features/whatsapp/agent/runAgentTurn.ts`, `agent/tools.ts`, `agent/systemPrompt.ts` — patrón de agente + tools + prompt del paciente.
-- `.superpowers/sdd/progress.md` — ledger del #13 (git-ignored; referencia de lo hecho).
+## Archivos clave del #14
+- `src/features/whatsapp/agent/systemPromptMedico.ts` (+ `.test.ts`) — prompt administrativo del médico.
+- `src/features/whatsapp/agent/toolsMedico.ts` — las 4 tools del agente médico.
+- `src/features/whatsapp/runner.ts` — `handleMedico` (ahora agente) + `handlePaciente` (hardening telemetría).
+- `src/features/whatsapp/services/conversaciones.ts` — `loadHistorial` con `userOrigen`.
+- `docs/superpowers/plans/2026-07-15-agente-medico-bot.md` + `specs/...-design.md` — plan y spec del #14.
+- `.superpowers/sdd/progress.md` — ledger SDD del #14 (git-ignored; historial de tasks + reviews + fixes + Minors).
 
 ## Notas contextuales
-- Deploy: push a `main` dispara prod (Vercel `medicuenta-v2`). Esta rama NO está en main → nada de la tanda está en prod todavía. Deployar cuando Héctor lo diga.
-- Memoria del proyecto (se carga sola): `~/.claude/projects/-Users-hector-proyectos-Medicuenta-V2-0/memory/`. Actualizada: onboarding (#12 jubilar alta manual).
-- Paciente de prueba: **Héctor Fernando Martinez, DNI 23309087**. Médico con todo configurado: **Medina Vazquez** (`1bee7847-…`, celu `543834222049`).
-- 385 tests baseline (subieron desde 351 por los tests agregados en la tanda). El #14 suma ~4 (test del prompt médico).
+- Deploy: push a `main` dispara prod (Vercel `medicuenta-v2`). Esta rama NO está en main → **nada del #14 está en prod**. Deployar cuando pase el E2E + Héctor lo diga.
+- 389 tests baseline (subieron de 385 por los 4 del test del prompt médico). Los tools/runner NO se unit-testean (convención del repo → E2E).
+- Memoria del proyecto (se carga sola): `~/.claude/projects/-Users-hector-proyectos-Medicuenta-V2-0/memory/`.
