@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { normalizarOs } from '@/lib/consultorio/osSuspendidas'
 import { resolverConsultorio, esDueño } from '@/features/consultorio/access/contexto'
+import { createServiceClient } from '@/lib/supabase/server'
 
 /** Config del consultorio = médico-only (spec §8). Solo el DUEÑO del consultorio
  *  (ni la secretaria ni un médico operando otro consultorio) puede cambiarla. */
@@ -11,6 +12,16 @@ async function ctxDueño() {
   if (!r) return { error: 'No autenticado' as const }
   if (!esDueño(r.ctx)) return { error: 'Solo el médico puede cambiar la configuración' as const }
   return { supabase: r.supabase, medicoId: r.ctx.userId }
+}
+
+/** Config OPERATIVA: la puede tocar el médico dueño O la secretaria vinculada, sobre el
+ *  consultorio que están operando (medicoActivoId, derivado server-side). Las actions que la
+ *  usan escriben con service-role (RLS de la secretaria no cubre estas tablas). */
+async function ctxOperativo() {
+  const r = await resolverConsultorio()
+  if (!r) return { error: 'No autenticado' as const }
+  if (!r.ctx.medicoActivoId) return { error: 'No estás operando ningún consultorio' as const }
+  return { medicoId: r.ctx.medicoActivoId as string, userId: r.ctx.userId, esDueño: esDueño(r.ctx) }
 }
 
 const horariosSchema = z.array(
@@ -26,9 +37,10 @@ const horariosSchema = z.array(
  *  el horario anterior queda intacto (sin ventana destructiva).
  *  Los turnos YA dados fuera del nuevo horario NO se tocan (spec §8.1). */
 export async function guardarHorarios(bloques: z.infer<typeof horariosSchema>) {
-  const c = await ctxDueño()
+  const c = await ctxOperativo()
   if ('error' in c) return c
-  const { supabase, medicoId } = c
+  const { medicoId } = c
+  const supabase = createServiceClient()
   const parsed = horariosSchema.safeParse(bloques)
   if (!parsed.success) return { error: 'Horarios inválidos' }
   for (const b of parsed.data) {
@@ -65,9 +77,10 @@ export async function guardarHorarios(bloques: z.infer<typeof horariosSchema>) {
 
 /** Cambia la duración del único servicio "Consulta" (spec D12). Solo afecta turnos futuros. */
 export async function guardarDuracionConsulta(servicioId: string, duracionMin: number) {
-  const c = await ctxDueño()
+  const c = await ctxOperativo()
   if ('error' in c) return c
-  const { supabase, medicoId } = c
+  const { medicoId } = c
+  const supabase = createServiceClient()
   if (!Number.isInteger(duracionMin) || duracionMin < 5 || duracionMin > 120) {
     return { error: 'Duración inválida (entre 5 y 120 minutos)' }
   }
@@ -85,9 +98,10 @@ export async function agregarOsSuspendida(
   nota: string,
   motivo: 'suspendida' | 'no_atiende',
 ) {
-  const c = await ctxDueño()
+  const c = await ctxOperativo()
   if ('error' in c) return c
-  const { supabase, medicoId } = c
+  const { medicoId } = c
+  const supabase = createServiceClient()
   if (motivo !== 'suspendida' && motivo !== 'no_atiende') return { error: 'Motivo inválido' }
   // Normalizada al guardar (review parte 1): el UNIQUE es sensible, el match no.
   const nombre = normalizarOs(nombreOs)
@@ -103,18 +117,20 @@ export async function agregarOsSuspendida(
 }
 
 export async function quitarOsSuspendida(id: string) {
-  const c = await ctxDueño()
+  const c = await ctxOperativo()
   if ('error' in c) return c
-  const { supabase, medicoId } = c
+  const { medicoId } = c
+  const supabase = createServiceClient()
   const { error } = await supabase.from('wa_os_suspendidas').delete().eq('medico_id', medicoId).eq('id', id)
   if (error) return { error: error.message }
   return { ok: true as const }
 }
 
 export async function agregarDiaSemanalParticular(diaSemana: number) {
-  const c = await ctxDueño()
+  const c = await ctxOperativo()
   if ('error' in c) return c
-  const { supabase, medicoId } = c
+  const { medicoId } = c
+  const supabase = createServiceClient()
   if (!Number.isInteger(diaSemana) || diaSemana < 0 || diaSemana > 6) return { error: 'Día de la semana inválido' }
   const { error } = await supabase
     .from('wa_dias_particulares')
@@ -127,9 +143,10 @@ export async function agregarDiaSemanalParticular(diaSemana: number) {
 }
 
 export async function agregarFechaParticular(fecha: string) {
-  const c = await ctxDueño()
+  const c = await ctxOperativo()
   if ('error' in c) return c
-  const { supabase, medicoId } = c
+  const { medicoId } = c
+  const supabase = createServiceClient()
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return { error: 'Fecha inválida' }
   const { error } = await supabase
     .from('wa_dias_particulares')
@@ -142,9 +159,10 @@ export async function agregarFechaParticular(fecha: string) {
 }
 
 export async function quitarDiaParticular(id: string) {
-  const c = await ctxDueño()
+  const c = await ctxOperativo()
   if ('error' in c) return c
-  const { supabase, medicoId } = c
+  const { medicoId } = c
+  const supabase = createServiceClient()
   const { error } = await supabase.from('wa_dias_particulares').delete().eq('medico_id', medicoId).eq('id', id)
   if (error) return { error: error.message }
   return { ok: true as const }
