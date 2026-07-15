@@ -2,17 +2,18 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Loader2, Trash2, CheckCircle2, XCircle } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { parseMontoArs } from '@/lib/recetas/normalizar'
-import { getConfig, type ConfigConsultorio } from '@/features/consultorio/services/panelService'
 import {
   guardarDuracionConsulta,
   agregarOsSuspendida,
   quitarOsSuspendida,
   guardarAsistente,
+  guardarPrecioReceta,
   agregarDiaSemanalParticular,
   agregarFechaParticular,
   quitarDiaParticular,
+  cargarConfigConsultorio,
+  type ConfigVista,
 } from '@/actions/consultorio-config'
 import { desbloquearDias, bloquearDias } from '@/actions/consultorio-agenda'
 import { invitarSecretaria, revocarSecretaria } from '@/actions/consultorio-secretaria'
@@ -49,7 +50,7 @@ function BloqueOs(props: {
   motivo: 'suspendida' | 'no_atiende'
   estado: { nombre: string; nota: string }
   setEstado: (v: { nombre: string; nota: string }) => void
-  cfg: ConfigConsultorio
+  cfg: ConfigVista
   catalogo: OsCatalogoItem[]
   input: string
   onAccion: (fn: () => Promise<{ error?: string } | { ok: true }>) => Promise<boolean>
@@ -104,8 +105,8 @@ function BloqueOs(props: {
   )
 }
 
-export function ConfigView({ medicoId }: { medicoId: string }) {
-  const [cfg, setCfg] = useState<ConfigConsultorio | null>(null)
+export function ConfigView({ esDueño }: { esDueño: boolean }) {
+  const [cfg, setCfg] = useState<ConfigVista | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [osSusp, setOsSusp] = useState({ nombre: '', nota: '' })
   const [osNoAt, setOsNoAt] = useState({ nombre: '', nota: '' })
@@ -113,6 +114,7 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
   const [fechaPart, setFechaPart] = useState('')
   const [agenteSaving, setAgenteSaving] = useState(false)
   const [agenteOk, setAgenteOk] = useState(false)
+  const [precioOk, setPrecioOk] = useState(false)
   const [emailSec, setEmailSec] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [catalogoOs, setCatalogoOs] = useState<OsCatalogoItem[]>([])
@@ -122,13 +124,10 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
   }, [])
 
   const refetch = useCallback(async () => {
-    const supabase = createClient()
-    try {
-      setCfg(await getConfig(supabase, medicoId))
-    } catch {
-      setError('No pude cargar la configuración. Recargá la página.')
-    }
-  }, [medicoId])
+    const r = await cargarConfigConsultorio()
+    if ('error' in r) { setError('No pude cargar la configuración. Recargá la página.'); return }
+    setCfg(r)
+  }, [])
 
   useEffect(() => {
     refetch()
@@ -168,7 +167,6 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
     setAgenteSaving(true)
     setAgenteOk(false)
     const fd = new FormData(e.currentTarget)
-    const precio = String(fd.get('precio_receta') ?? '').trim()
     const ok = await onAccion(() =>
       guardarAsistente({
         nombre_medico: String(fd.get('nombre_medico') ?? ''),
@@ -176,12 +174,20 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
         tono: String(fd.get('tono') ?? ''),
         saludo: String(fd.get('saludo') ?? ''),
         faqs: cfg?.agente?.faqs ?? [], // edición de FAQs: v2 del panel — hoy se preservan
-        precio_receta: precio ? parseMontoArs(precio) : null,
       }),
     )
     setAgenteSaving(false)
     setAgenteOk(ok)
     if (ok) setTimeout(() => setAgenteOk(false), 3000)
+  }
+
+  async function guardarPrecio(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    const raw = String(fd.get('precio_receta') ?? '').trim()
+    const ok = await onAccion(() => guardarPrecioReceta(raw ? parseMontoArs(raw) : null))
+    setPrecioOk(ok)
+    if (ok) setTimeout(() => setPrecioOk(false), 3000)
   }
 
   if (!cfg)
@@ -367,7 +373,21 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
         onAccion={onAccion}
       />
 
-      <Seccion titulo="El asistente">
+      <Seccion titulo="Precio de la receta">
+        <p className="text-xs text-[var(--color-muted-foreground)]">
+          Monto que el asistente informa cuando un paciente pide una receta. Dejalo vacío si no cobrás la gestión.
+        </p>
+        <form onSubmit={guardarPrecio} className="flex items-end gap-2">
+          <Campo label="Monto en pesos" ayuda="Ej: 5.000">
+            <input name="precio_receta" defaultValue={cfg.precioReceta ?? ''} placeholder="5.000" className={input + ' !w-36'} />
+          </Campo>
+          <button className="rounded-xl bg-primary text-white px-4 py-2 text-sm font-medium">Guardar precio</button>
+        </form>
+        {precioOk && <p className="text-sm text-emerald-600 font-medium">Guardado ✓</p>}
+      </Seccion>
+
+      {esDueño && (
+        <Seccion titulo="El asistente">
         <p className="text-xs text-[var(--color-muted-foreground)]">
           Así se presenta y habla el asistente de WhatsApp con tus pacientes. Lo que cambies acá rige desde el
           próximo mensaje.
@@ -414,17 +434,6 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
               className={input}
             />
           </Campo>
-          <Campo
-            label="Precio de la receta"
-            ayuda="Monto en pesos que el asistente informa cuando un paciente pide una receta."
-          >
-            <input
-              name="precio_receta"
-              defaultValue={cfg.agente?.precio_receta_default ?? ''}
-              placeholder="5.000"
-              className={input + ' !w-36'}
-            />
-          </Campo>
           <p className="text-[11px] text-[var(--color-muted-foreground)]">
             Las preguntas frecuentes (FAQs) se editan por ahora con el equipo técnico.
           </p>
@@ -437,12 +446,14 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
           </button>
           {agenteOk && <p className="text-sm text-emerald-600 font-medium">Guardado ✓</p>}
         </form>
-      </Seccion>
+        </Seccion>
+      )}
 
-      <Seccion titulo="Conexiones">
+      {esDueño && (
+        <Seccion titulo="Conexiones">
         <div className="flex gap-4 text-sm">
           <span className="flex items-center gap-1">
-            {cfg.conexiones.whatsapp ? (
+            {cfg.conexiones?.whatsapp ? (
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             ) : (
               <XCircle className="w-4 h-4 text-red-500" />
@@ -450,7 +461,7 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
             WhatsApp
           </span>
           <span className="flex items-center gap-1">
-            {cfg.conexiones.mercadopago ? (
+            {cfg.conexiones?.mercadopago ? (
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             ) : (
               <XCircle className="w-4 h-4 text-red-500" />
@@ -461,16 +472,18 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
             <XCircle className="w-4 h-4" /> Google Calendar (llega en 3C)
           </span>
         </div>
-      </Seccion>
+        </Seccion>
+      )}
 
-      <Seccion titulo="Secretaria">
+      {esDueño && (
+        <Seccion titulo="Secretaria">
         <p className="text-xs text-[var(--color-muted-foreground)]">
           Invitá a tu secretaria con su email. Solo verá la agenda, las conversaciones y los pacientes —
           nunca tu facturación ni las recetas. Si todavía no tiene cuenta, queda «pendiente» y se activa
           cuando se registre con ese email. <strong>Revocar corta el acceso al instante.</strong>
         </p>
         <div className="space-y-2 text-sm">
-          {cfg.secretarias.map((s) => (
+          {(cfg.secretarias ?? []).map((s) => (
             <div key={s.id} className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <span className="flex-1 truncate">{s.email}</span>
@@ -514,7 +527,7 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
               )}
             </div>
           ))}
-          {cfg.secretarias.length === 0 && (
+          {(cfg.secretarias ?? []).length === 0 && (
             <p className="text-[var(--color-muted-foreground)]">Todavía no invitaste a nadie.</p>
           )}
         </div>
@@ -530,10 +543,11 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
             Invitar
           </button>
         </div>
-      </Seccion>
+        </Seccion>
+      )}
 
       <Seccion titulo="Actividad del asistente">
-        <ActividadAsistente medicoId={medicoId} />
+        <ActividadAsistente medicoId={cfg.medicoId} />
       </Seccion>
     </div>
   )

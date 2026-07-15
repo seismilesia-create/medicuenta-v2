@@ -175,7 +175,6 @@ const agenteSchema = z.object({
   tono: z.string().trim(),
   saludo: z.string().trim(),
   faqs: z.array(z.object({ pregunta: z.string().min(1), respuesta: z.string().min(1) })).max(20),
-  precio_receta: z.number().nonnegative().nullable(),
 })
 
 export async function guardarAsistente(input: z.infer<typeof agenteSchema>) {
@@ -195,7 +194,6 @@ export async function guardarAsistente(input: z.infer<typeof agenteSchema>) {
         tono: d.tono || null,
         saludo: d.saludo || null,
         faqs: d.faqs,
-        precio_receta_default: d.precio_receta,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'medico_id' },
@@ -225,6 +223,9 @@ export async function guardarPrecioReceta(precio: number | null) {
  *  SOLO para el dueño (null para la secretaria → no le llegan al browser). */
 export interface ConfigVista {
   esDueño: boolean
+  /** Id del consultorio operado (medicoActivoId). Lo usa p.ej. la bitácora de actividad,
+   *  cuya RLS ya delega lectura a la secretaria vinculada (puede_acceder_consultorio). */
+  medicoId: string
   horarios: ConfigConsultorio['horarios']
   duracionMin: number
   servicioId: string | null
@@ -249,6 +250,7 @@ export async function cargarConfigConsultorio(): Promise<ConfigVista | { error: 
     : null
   return {
     esDueño: ctx.esDueño,
+    medicoId: ctx.medicoId,
     horarios: cfg.horarios,
     duracionMin: cfg.duracionMin,
     servicioId: cfg.servicioId,
