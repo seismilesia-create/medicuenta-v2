@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { passwordSchema } from './password'
+import { normalizarWhatsappAr } from '@/lib/whatsapp/numeroAr'
 
 export const altaMedicoSchema = z
   .object({
@@ -13,8 +14,7 @@ export const altaMedicoSchema = z
     numeroWhatsapp: z
       .string()
       .trim()
-      .min(8, 'Número de WhatsApp inválido')
-      .refine((v) => v.replace(/\D/g, '').length >= 10, 'Número de WhatsApp inválido'),
+      .refine((v) => normalizarWhatsappAr(v) !== null, 'Número de WhatsApp inválido (ej: 383 4222049)'),
     password: passwordSchema,
     passwordConfirm: z.string(),
   })

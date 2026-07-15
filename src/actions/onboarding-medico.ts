@@ -3,7 +3,7 @@
 
 import { redirect } from 'next/navigation'
 import { createServiceClient, createClient } from '@/lib/supabase/server'
-import { normalizeRecipient } from '@/lib/whatsapp/client'
+import { normalizarWhatsappAr } from '@/lib/whatsapp/numeroAr'
 import { generarSlugBase, siguienteSlugLibre } from '@/features/admin/medicos/slug'
 import { invitacionVigente } from '@/features/onboarding/token'
 import { altaMedicoSchema, type AltaMedicoInput } from '@/features/onboarding/types'
@@ -49,7 +49,9 @@ export async function completarInvitacionMedico(
   const parsed = altaMedicoSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
   const d = parsed.data
-  const numeroPersonal = normalizeRecipient(d.numeroWhatsapp)
+  // Canónico 54+nacional (el schema ya validó que normaliza; guard defensivo).
+  const numeroPersonal = normalizarWhatsappAr(d.numeroWhatsapp)
+  if (!numeroPersonal) return { error: 'Número de WhatsApp inválido (ej: 383 4222049)' }
 
   // 3) Crear la cuenta (o retomar un intento previo con el mismo email).
   // SEGURIDAD: `rol` va HARDCODEADO a 'medico'. Nunca propagar input del médico

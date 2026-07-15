@@ -6,6 +6,7 @@ import QRCode from 'qrcode'
 import { onboardMedico, chequearSlugDisponible } from '@/actions/admin-medicos'
 import { generarSlugBase } from '@/features/admin/medicos/slug'
 import type { OnboardMedicoResult } from '@/features/admin/medicos/types'
+import { WhatsappInput } from '@/shared/components/WhatsappInput'
 
 export function FormNuevoMedico() {
   const [nombre, setNombre] = useState('')
@@ -91,7 +92,7 @@ export function FormNuevoMedico() {
         <input name="cuit" placeholder="CUIT" className={input} />
       </div>
       <input name="telefono" placeholder="Teléfono" className={input} />
-      <input name="numeroWhatsapp" required placeholder="Número de WhatsApp (ej: +54 9 383 …)" className={input} />
+      <WhatsappInput required />
       <div>
         <input
           required value={slug}

@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { actualizarMedico } from '@/actions/admin-medicos'
 import type { MedicoDetalle } from '@/features/admin/medicos/types'
+import { WhatsappInput } from '@/shared/components/WhatsappInput'
 
 export function FormEditarMedico({ medicoId, inicial }: { medicoId: string; inicial: MedicoDetalle }) {
   const router = useRouter()
@@ -59,7 +60,7 @@ export function FormEditarMedico({ medicoId, inicial }: { medicoId: string; inic
         <input name="cuit" defaultValue={inicial.cuit} placeholder="CUIT" className={input} />
       </div>
       <input name="telefono" defaultValue={inicial.telefono} placeholder="Teléfono" className={input} />
-      <input name="numeroWhatsapp" required defaultValue={inicial.numeroWhatsapp} placeholder="Número de WhatsApp" className={input} />
+      <WhatsappInput required defaultValue={inicial.numeroWhatsapp} />
       {error && <p className="text-sm text-destructive">{error}</p>}
       {ok && <p className="text-sm text-primary">✓ Cambios guardados.</p>}
       <div className="flex gap-3">

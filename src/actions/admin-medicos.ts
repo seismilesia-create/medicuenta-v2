@@ -3,7 +3,7 @@
 
 import { resolverSuperadmin } from '@/features/admin/access/superadmin'
 import { createServiceClient } from '@/lib/supabase/server'
-import { normalizeRecipient } from '@/lib/whatsapp/client'
+import { normalizarWhatsappAr } from '@/lib/whatsapp/numeroAr'
 import { onboardMedicoSchema, type OnboardMedicoInput, type MedicoFila, type OnboardMedicoResult, editarMedicoSchema, type EditarMedicoInput, type MedicoDetalle } from '@/features/admin/medicos/types'
 import { siteUrl } from '@/lib/site-url'
 import { generarTokenInvitacion, invitacionVigente } from '@/features/onboarding/token'
@@ -75,7 +75,8 @@ export async function onboardMedico(input: OnboardMedicoInput): Promise<OnboardM
   const yaUsado = await service.from('wa_asignaciones').select('id').eq('slug_publico', d.slug).maybeSingle()
   if (yaUsado.data) return { error: 'Ese slug ya está en uso, elegí otro.' }
 
-  const numeroPersonal = normalizeRecipient(d.numeroWhatsapp)
+  const numeroPersonal = normalizarWhatsappAr(d.numeroWhatsapp)
+  if (!numeroPersonal) return { error: 'Número de WhatsApp inválido (ej: 383 4222049)' }
 
   // Crear la cuenta + invitar. Pasamos TODA la identidad en data: el trigger lee
   // nombre/apellido/rol; el resto queda como "memoria del intento" para reintentar.
@@ -187,7 +188,8 @@ export async function actualizarMedico(medicoId: string, input: EditarMedicoInpu
     .eq('id', medicoId)
   if (e1) return { error: e1.message }
 
-  const numeroPersonal = normalizeRecipient(d.numeroWhatsapp)
+  const numeroPersonal = normalizarWhatsappAr(d.numeroWhatsapp)
+  if (!numeroPersonal) return { error: 'Número de WhatsApp inválido (ej: 383 4222049)' }
   const { error: e2 } = await service
     .from('wa_asignaciones')
     .update({ numero_personal: numeroPersonal })
