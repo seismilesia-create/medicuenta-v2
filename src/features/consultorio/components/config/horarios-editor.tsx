@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Plus, Trash2, Loader2 } from 'lucide-react'
 import { guardarHorarios } from '@/actions/consultorio-config'
+import { componerHora, from12, pad2, parseHora, to12, type Periodo } from '@/lib/consultorio/horaFormato'
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
@@ -14,15 +15,69 @@ interface Bloque {
 
 type FormatoHora = '24h' | '12h'
 
-/** Solo para mostrar: convierte 'HH:MM' (24h, formato canónico de guardado) a 12h con AM/PM.
- *  Nunca se usa para persistir — `wa_horarios` sigue guardando 24h siempre. */
-function formatHora12(hhmm: string): string {
-  const [hStr, mStr] = hhmm.split(':')
-  const h = Number(hStr)
-  if (!hStr || !mStr || Number.isNaN(h)) return hhmm
-  const periodo = h < 12 ? 'AM' : 'PM'
-  const h12 = h % 12 === 0 ? 12 : h % 12
-  return `${h12}:${mStr} ${periodo}`
+const HORAS_24 = Array.from({ length: 24 }, (_, i) => i) // 0–23
+const HORAS_12 = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] // orden de reloj (12 = medianoche/mediodía)
+const MINUTOS_BASE = Array.from({ length: 12 }, (_, i) => i * 5) // 00,05,…,55
+
+const selectCls =
+  'rounded-lg border border-border bg-[var(--color-background)] px-1.5 py-1 text-sm tabular-nums'
+
+/**
+ * Picker de hora propio (selects) en vez de <input type="time">: el input nativo muestra el
+ * formato según el locale del navegador (Chrome ignora `lang`), así que el toggle 24h/12h no
+ * hacía nada. Con selects, el toggle controla de verdad qué se ve. El valor SIEMPRE se compone
+ * y se guarda en 'HH:MM' 24h canónico — el 12h es pura presentación.
+ */
+function TimeSelect({
+  value,
+  formato,
+  onChange,
+  etiqueta,
+}: {
+  value: string
+  formato: FormatoHora
+  onChange: (v: string) => void
+  etiqueta: string
+}) {
+  const { h, m } = parseHora(value)
+  // Si el minuto guardado no cae en la grilla de 5 (dato viejo), lo agregamos para no perderlo.
+  const minutos = MINUTOS_BASE.includes(m) ? MINUTOS_BASE : [...MINUTOS_BASE, m].sort((a, b) => a - b)
+  const { h12, periodo } = to12(h)
+
+  if (formato === '24h') {
+    return (
+      <span className="inline-flex items-center gap-0.5">
+        <select aria-label={`${etiqueta}: hora`} className={selectCls} value={h}
+          onChange={(e) => onChange(componerHora(Number(e.target.value), m))}>
+          {HORAS_24.map((hh) => <option key={hh} value={hh}>{pad2(hh)}</option>)}
+        </select>
+        <span className="text-[var(--color-muted-foreground)]">:</span>
+        <select aria-label={`${etiqueta}: minutos`} className={selectCls} value={m}
+          onChange={(e) => onChange(componerHora(h, Number(e.target.value)))}>
+          {minutos.map((mm) => <option key={mm} value={mm}>{pad2(mm)}</option>)}
+        </select>
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      <select aria-label={`${etiqueta}: hora`} className={selectCls} value={h12}
+        onChange={(e) => onChange(componerHora(from12(Number(e.target.value), periodo), m))}>
+        {HORAS_12.map((hh) => <option key={hh} value={hh}>{hh}</option>)}
+      </select>
+      <span className="text-[var(--color-muted-foreground)]">:</span>
+      <select aria-label={`${etiqueta}: minutos`} className={selectCls} value={m}
+        onChange={(e) => onChange(componerHora(h, Number(e.target.value)))}>
+        {minutos.map((mm) => <option key={mm} value={mm}>{pad2(mm)}</option>)}
+      </select>
+      <select aria-label={`${etiqueta}: AM o PM`} className={selectCls} value={periodo}
+        onChange={(e) => onChange(componerHora(from12(h12, e.target.value as Periodo), m))}>
+        <option value="AM">AM</option>
+        <option value="PM">PM</option>
+      </select>
+    </span>
+  )
 }
 
 /** Editor con el patrón de horarios de Google Business: día + interruptor abierto/cerrado
@@ -33,8 +88,8 @@ export function HorariosEditor({ inicial, onSaved }: { inicial: Bloque[]; onSave
   )
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  // Toggle SOLO de presentación (ver/cargar): el valor de <input type="time"> siempre
-  // llega en 24h sin importar cómo lo muestre el navegador — nunca cambia lo que se guarda.
+  // Toggle de presentación (ver/cargar): controla si el picker muestra 24h o 12h AM/PM.
+  // Nunca cambia lo que se guarda — TimeSelect siempre compone 'HH:MM' 24h canónico.
   const [formato, setFormato] = useState<FormatoHora>('24h')
 
   function set(i: number, patch: Partial<Bloque>) {
@@ -59,8 +114,6 @@ export function HorariosEditor({ inicial, onSaved }: { inicial: Bloque[]; onSave
     else onSaved()
     setSaving(false)
   }
-
-  const input = 'rounded-lg border border-border bg-[var(--color-background)] px-2 py-1 text-sm'
 
   return (
     <div className="space-y-1">
@@ -116,26 +169,19 @@ export function HorariosEditor({ inicial, onSaved }: { inicial: Bloque[]; onSave
                 <>
                   {delDia.map(({ b, i }) => (
                     <div key={i} className="flex items-center gap-1.5 text-sm">
-                      <input
-                        type="time"
-                        lang={formato === '24h' ? 'es-AR' : 'en-US'}
-                        className={input}
+                      <TimeSelect
                         value={b.open_time}
-                        onChange={(e) => set(i, { open_time: e.target.value })}
+                        formato={formato}
+                        onChange={(v) => set(i, { open_time: v })}
+                        etiqueta={`${DIAS[wd]} apertura`}
                       />
                       <span className="text-[var(--color-muted-foreground)]">–</span>
-                      <input
-                        type="time"
-                        lang={formato === '24h' ? 'es-AR' : 'en-US'}
-                        className={input}
+                      <TimeSelect
                         value={b.close_time}
-                        onChange={(e) => set(i, { close_time: e.target.value })}
+                        formato={formato}
+                        onChange={(v) => set(i, { close_time: v })}
+                        etiqueta={`${DIAS[wd]} cierre`}
                       />
-                      {formato === '12h' && (
-                        <span className="text-[11px] text-[var(--color-muted-foreground)] tabular-nums whitespace-nowrap">
-                          ({formatHora12(b.open_time)} – {formatHora12(b.close_time)})
-                        </span>
-                      )}
                       <button
                         onClick={() => setBloques((bs) => bs.filter((_, j) => j !== i))}
                         aria-label="Quitar franja"
