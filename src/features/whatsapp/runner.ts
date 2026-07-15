@@ -104,22 +104,27 @@ async function handleMedico(db: Db, canal: CanalResuelto, incoming: IncomingMess
   try {
     const turno = await runAgentTurn({ systemPrompt, historial, tools })
     reply = turno.text
-    await registrarUsoIa(db, {
-      medicoId: canal.medicoId,
-      origen: 'whatsapp',
-      modelo: turno.modelo,
-      usage: turno.usage,
-      conversacionId,
-    })
-    if (turno.resumen.tools.length > 0) {
-      await registrarEvento(db, {
+    // Telemetría best-effort: un fallo acá NO debe descartar la respuesta ya generada.
+    try {
+      await registrarUsoIa(db, {
         medicoId: canal.medicoId,
-        origen: 'agente',
-        nivel: 'info',
-        evento: 'agente_medico_turno',
-        detalle: { ...turno.resumen },
+        origen: 'whatsapp',
+        modelo: turno.modelo,
+        usage: turno.usage,
         conversacionId,
       })
+      if (turno.resumen.tools.length > 0) {
+        await registrarEvento(db, {
+          medicoId: canal.medicoId,
+          origen: 'agente',
+          nivel: 'info',
+          evento: 'agente_medico_turno',
+          detalle: { ...turno.resumen },
+          conversacionId,
+        })
+      }
+    } catch (telemetriaErr) {
+      console.error('[wa] telemetría médico (best-effort):', telemetriaErr)
     }
   } catch (e) {
     console.error('[wa] agente médico error:', e)
@@ -290,25 +295,30 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
     const turno = await runAgentTurn({ systemPrompt, historial, tools })
     // Barrera de plata: solo pueden salir links que devolvió cobrar_receta.
     reply = sanitizarReplyCobro(turno.text, turno.cobros)
-    // Costo de IA (spec §5.1): registramos los tokens del turno. Best-effort.
-    await registrarUsoIa(db, {
-      medicoId: canal.medicoId,
-      origen: 'whatsapp',
-      modelo: turno.modelo,
-      usage: turno.usage,
-      conversacionId,
-    })
-    // Bitácora (spec §10): registramos el turno cuando el agente HIZO algo
-    // (usó tools). Los turnos de pura charla no ensucian la traza. Best-effort.
-    if (turno.resumen.tools.length > 0) {
-      await registrarEvento(db, {
+    // Telemetría best-effort: un fallo acá NO debe descartar la respuesta ya generada.
+    try {
+      // Costo de IA (spec §5.1): registramos los tokens del turno. Best-effort.
+      await registrarUsoIa(db, {
         medicoId: canal.medicoId,
-        origen: 'agente',
-        nivel: 'info',
-        evento: 'agente_turno',
-        detalle: { ...turno.resumen },
+        origen: 'whatsapp',
+        modelo: turno.modelo,
+        usage: turno.usage,
         conversacionId,
       })
+      // Bitácora (spec §10): registramos el turno cuando el agente HIZO algo
+      // (usó tools). Los turnos de pura charla no ensucian la traza. Best-effort.
+      if (turno.resumen.tools.length > 0) {
+        await registrarEvento(db, {
+          medicoId: canal.medicoId,
+          origen: 'agente',
+          nivel: 'info',
+          evento: 'agente_turno',
+          detalle: { ...turno.resumen },
+          conversacionId,
+        })
+      }
+    } catch (telemetriaErr) {
+      console.error('[wa] telemetría paciente (best-effort):', telemetriaErr)
     }
   } catch (e) {
     console.error('[wa] agent error:', e)
