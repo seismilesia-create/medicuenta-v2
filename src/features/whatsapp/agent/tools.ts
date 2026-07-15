@@ -29,6 +29,8 @@ function resumenMedicamento(r: RecetaRow): string {
 /** Tools del agente que atiende pacientes. medico_id INYECTADO (el webhook no tiene sesión). */
 export function buildPacienteTools(ctx: PacienteToolsCtx) {
   return {
+    // ⚠️ Identifica al paciente solo por nombre+DNI (sin factor de posesión). Trade-off de
+    // privacidad ASUMIDO y documentado en recetasService.buscarPendientesPorIdentidad.
     buscar_receta_paciente: tool({
       description:
         'Busca recetas pendientes de pago del paciente por su nombre completo y DNI. Usala apenas el paciente dé sus datos.',

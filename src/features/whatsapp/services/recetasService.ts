@@ -90,7 +90,26 @@ export async function getPendientesPorDni(
   return rows.filter((r) => new Date(r.created_at).getTime() >= limite)
 }
 
-/** Busca recetas cobrables por identidad (DNI exacto + nombre tolerante). Marca vencidas lazy. */
+/**
+ * Busca recetas cobrables por identidad (DNI exacto + nombre tolerante). Marca vencidas lazy.
+ *
+ * ⚠️ SEGURIDAD / PRIVACIDAD — trade-off ASUMIDO (severidad baja-media, decidido 2026-07-15):
+ * La identificación del paciente es SOLO conocimiento (nombre + DNI), sin factor de posesión.
+ * Cualquiera que sepa ambos datos puede, desde su WhatsApp: (a) enumerar las recetas pendientes
+ * del paciente viendo medicamento y monto, y (b) pagar una y recibir el PDF (con medicación y
+ * diagnóstico) en su propio celular.
+ *
+ * Mitigación EXISTENTE (candado anti-secuestro, `vincularPago` + el check en tools.ts
+ * `cobrar_receta`): la receta queda atada al PRIMER teléfono que genera el link; otro número no
+ * puede DESVIAR la entrega de una receta ya reclamada. NO impide que un primero-en-llegar que
+ * conozca nombre+DNI sea ese primer teléfono y reciba el PDF.
+ *
+ * Por qué se acepta hoy: nombre+DNI es semi-privado; el médico controla a quién le dice que
+ * escriba; el atacante tiene que PAGAR dinero real para recibir el PDF; y exigir un factor extra
+ * (código por-receta que el médico le pasa al paciente, o pre-atar la receta al teléfono del
+ * paciente al subirla) le mete fricción al camino feliz —el paciente solo escribe y paga—, que es
+ * el valor central del producto. Revisar si aparece abuso. Ver [[reference_medicuenta_bot_recetas_flow]].
+ */
 export async function buscarPendientesPorIdentidad(
   db: SupabaseClient,
   medicoId: string,
