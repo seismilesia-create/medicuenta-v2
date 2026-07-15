@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { hoyArgentina } from '@/shared/lib/fechas'
+import { siteUrl } from '@/lib/site-url'
 import { Activity, FileText, CheckCircle2, Clock, AlertTriangle } from 'lucide-react'
 import {
   DashboardTrendChart,
@@ -67,7 +68,7 @@ export default async function DashboardPage() {
   const apellido = (perfilRes.data?.apellido ?? null) as string | null
   const especialidad = (perfilRes.data?.especialidad ?? null) as string | null
   const slug = asignacionRes.data?.slug_publico ?? null
-  const linkAsistente = slug ? `${process.env.PUBLIC_BASE_URL ?? ''}/c/${slug}` : null
+  const linkAsistente = slug ? `${siteUrl()}/c/${slug}` : null
   const trendData = computeTrendData(ordenes, debitos)
   const alerts = computeAlerts(ordenes, debitos, liquidaciones, cirugias)
   const greeting = getGreeting()
