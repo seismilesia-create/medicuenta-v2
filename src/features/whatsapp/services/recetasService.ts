@@ -56,11 +56,15 @@ export async function crearRecetaDesdeOcr(
   return data as RecetaRow
 }
 
-/** Busca recetas cobrables por identidad (DNI exacto + nombre tolerante). Marca vencidas lazy. */
-export async function buscarPendientesPorIdentidad(
+/**
+ * Recetas `pendiente_pago` de un DNI (identidad exacta), marcando vencidas lazy.
+ * Núcleo compartido: el bot lo usa confirmando además por nombre (anti-secuestro),
+ * y el panel de la secretaria lo usa directo (la secretaria confirma visualmente al
+ * cotejar la persona del chat). Filtra por medico_id → nunca cruza consultorios.
+ */
+export async function getPendientesPorDni(
   db: SupabaseClient,
   medicoId: string,
-  nombre: string,
   dni: string,
 ): Promise<RecetaRow[]> {
   const dniNorm = normalizarDni(dni)
@@ -83,9 +87,18 @@ export async function buscarPendientesPorIdentidad(
       .eq('medico_id', medicoId)
       .in('id', vencidas.map((r) => r.id))
   }
-  return rows
-    .filter((r) => new Date(r.created_at).getTime() >= limite)
-    .filter((r) => nombresCoinciden(r.paciente_nombre, nombre))
+  return rows.filter((r) => new Date(r.created_at).getTime() >= limite)
+}
+
+/** Busca recetas cobrables por identidad (DNI exacto + nombre tolerante). Marca vencidas lazy. */
+export async function buscarPendientesPorIdentidad(
+  db: SupabaseClient,
+  medicoId: string,
+  nombre: string,
+  dni: string,
+): Promise<RecetaRow[]> {
+  const vigentes = await getPendientesPorDni(db, medicoId, dni)
+  return vigentes.filter((r) => nombresCoinciden(r.paciente_nombre, nombre))
 }
 
 export async function listarPagadasSinEntregar(
@@ -261,22 +274,6 @@ export async function resumenRecetas(db: SupabaseClient, medicoId: string): Prom
     )
     .join('\n')
   return `📋 Tus recetas:\n${resumen}\n\nÚltimas:\n${ultimas}`
-}
-
-/** Recetas pendientes de pago de un paciente (por su teléfono normalizado), para el panel. */
-export async function getRecetasPendientesPorTelefono(
-  db: SupabaseClient,
-  medicoId: string,
-  telefono: string,
-): Promise<RecetaRow[]> {
-  const { data } = await db
-    .from('recetas')
-    .select(COLS)
-    .eq('medico_id', medicoId)
-    .eq('paciente_telefono', telefono)
-    .eq('estado', 'pendiente_pago')
-    .order('created_at', { ascending: true })
-  return (data as RecetaRow[] | null) ?? []
 }
 
 /**
