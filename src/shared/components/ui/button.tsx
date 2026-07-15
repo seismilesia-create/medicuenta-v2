@@ -11,29 +11,32 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   rightIcon?: React.ReactNode
 }
 
+// Tokens semánticos (cableados en tailwind.config + globals.css para claro/oscuro).
+// Antes usaban la escala `-500/-600` que NO existe en el theme → no pintaban fondo y
+// el botón quedaba texto-blanco-sobre-fondo (invisible). Ver globals.css `--primary-raw`.
 const variantStyles: Record<ButtonVariant, string> = {
   primary: `
-    bg-primary-500 text-white
-    hover:bg-primary-600 active:bg-primary-700
+    bg-primary text-primary-foreground
+    hover:bg-primary/90 active:bg-primary/80
     shadow-sm hover:shadow-md
   `,
   secondary: `
-    bg-secondary-500 text-white
-    hover:bg-secondary-600 active:bg-secondary-700
+    bg-secondary text-secondary-foreground
+    hover:bg-secondary/80 active:bg-secondary/70
     shadow-sm hover:shadow-md
   `,
   outline: `
-    bg-transparent text-primary-500
-    border-2 border-primary-500
-    hover:bg-primary-50 active:bg-primary-100
+    bg-transparent text-primary
+    border-2 border-primary
+    hover:bg-primary/10 active:bg-primary/20
   `,
   ghost: `
     bg-transparent text-foreground
-    hover:bg-gray-100 active:bg-gray-200
+    hover:bg-accent active:bg-accent/70
   `,
   danger: `
-    bg-error-500 text-white
-    hover:bg-error-600 active:bg-error-700
+    bg-destructive text-destructive-foreground
+    hover:bg-destructive/90 active:bg-destructive/80
     shadow-sm hover:shadow-md
   `,
 }
@@ -69,7 +72,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           inline-flex items-center justify-center
           font-medium rounded-xl
           transition-all duration-200
-          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2
           disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
           ${variantStyles[variant]}
           ${sizeStyles[size]}

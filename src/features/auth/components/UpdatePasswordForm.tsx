@@ -63,8 +63,8 @@ export function UpdatePasswordForm() {
           name="password"
           type={showPassword ? 'text' : 'password'}
           label="Nueva contraseña"
-          placeholder="Mínimo 6 caracteres"
-          hint="Elige una contraseña segura"
+          placeholder="••••••••"
+          hint="Mínimo 6 caracteres. Elegí una segura que no hayas usado antes."
           required
           minLength={6}
         />
