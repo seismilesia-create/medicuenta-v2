@@ -16,6 +16,9 @@ import {
 } from '@/actions/consultorio-config'
 import { desbloquearDias, bloquearDias } from '@/actions/consultorio-agenda'
 import { invitarSecretaria, revocarSecretaria } from '@/actions/consultorio-secretaria'
+import { getCatalogoOs } from '@/actions/catalogo'
+import { OsAutocomplete } from '@/features/catalogo/components/OsAutocomplete'
+import type { OsCatalogoItem } from '@/lib/catalogo/obras-sociales'
 import { HorariosEditor } from './horarios-editor'
 import { ActividadAsistente } from './actividad-asistente'
 
@@ -47,6 +50,7 @@ function BloqueOs(props: {
   estado: { nombre: string; nota: string }
   setEstado: (v: { nombre: string; nota: string }) => void
   cfg: ConfigConsultorio
+  catalogo: OsCatalogoItem[]
   input: string
   onAccion: (fn: () => Promise<{ error?: string } | { ok: true }>) => Promise<boolean>
 }) {
@@ -66,12 +70,18 @@ function BloqueOs(props: {
         ))}
       </div>
       <div className="flex gap-2">
-        <input
-          placeholder="OSEP"
-          className={props.input + ' !w-36'}
-          value={props.estado.nombre}
-          onChange={(e) => props.setEstado({ ...props.estado, nombre: e.target.value })}
-        />
+        {/* Autocomplete contra el catálogo canónico (aranceles_os) en vez de texto libre:
+            el médico elige una OS real → el nombre normalizado que se guarda matchea el del
+            paciente. La `key` remonta el autocomplete tras agregar/quitar para limpiar su input. */}
+        <div className="w-44 shrink-0">
+          <OsAutocomplete
+            key={`${props.motivo}-${items.length}`}
+            catalogo={props.catalogo}
+            valor={props.estado.nombre}
+            onSelect={(sel) => props.setEstado({ ...props.estado, nombre: sel.nombre_os })}
+            inputClassName={props.input}
+          />
+        </div>
         <input
           placeholder="Nota (opcional)"
           className={props.input}
@@ -106,6 +116,11 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
   const [emailSec, setEmailSec] = useState('')
   const [secretariaUrl, setSecretariaUrl] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [catalogoOs, setCatalogoOs] = useState<OsCatalogoItem[]>([])
+
+  useEffect(() => {
+    getCatalogoOs().then(setCatalogoOs).catch(() => {})
+  }, [])
 
   const refetch = useCallback(async () => {
     const supabase = createClient()
@@ -343,6 +358,7 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
         estado={osSusp}
         setEstado={setOsSusp}
         cfg={cfg}
+        catalogo={catalogoOs}
         input={input}
         onAccion={onAccion}
       />
@@ -353,6 +369,7 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
         estado={osNoAt}
         setEstado={setOsNoAt}
         cfg={cfg}
+        catalogo={catalogoOs}
         input={input}
         onAccion={onAccion}
       />
