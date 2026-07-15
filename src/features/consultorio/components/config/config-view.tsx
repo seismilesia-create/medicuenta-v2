@@ -124,9 +124,14 @@ export function ConfigView({ esDueño }: { esDueño: boolean }) {
   }, [])
 
   const refetch = useCallback(async () => {
-    const r = await cargarConfigConsultorio()
-    if ('error' in r) { setError('No pude cargar la configuración. Recargá la página.'); return }
-    setCfg(r)
+    try {
+      const r = await cargarConfigConsultorio()
+      if ('error' in r) { setError('No pude cargar la configuración. Recargá la página.'); return }
+      setCfg(r)
+    } catch {
+      // Un error TIRADO por la server action (red, etc.) — no un { error } manejado.
+      setError('No pude cargar la configuración. Recargá la página.')
+    }
   }, [])
 
   useEffect(() => {
