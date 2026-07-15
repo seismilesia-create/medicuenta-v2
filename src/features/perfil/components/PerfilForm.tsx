@@ -27,7 +27,6 @@ export function PerfilForm({ perfil, email }: Props) {
       apellido: form.get('apellido') as string,
       matricula: (form.get('matricula') as string) || undefined,
       cuit: (form.get('cuit') as string) || undefined,
-      telefono: (form.get('telefono') as string) || undefined,
       especialidad: (form.get('especialidad') as string) || undefined,
     }
 
@@ -160,22 +159,6 @@ export function PerfilForm({ perfil, email }: Props) {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground-secondary)' }}>
-              Telefono
-            </label>
-            <input
-              name="telefono"
-              type="tel"
-              defaultValue={perfil.telefono ?? ''}
-              placeholder="Ej: 3834-123456"
-              className={inputClasses}
-              style={{
-                backgroundColor: 'var(--color-surface-elevated)',
-                color: 'var(--color-foreground)',
-              }}
-            />
-          </div>
         </div>
       </section>
 

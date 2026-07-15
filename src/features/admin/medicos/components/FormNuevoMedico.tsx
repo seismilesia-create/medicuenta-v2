@@ -44,7 +44,7 @@ export function FormNuevoMedico() {
       especialidad: String(form.get('especialidad') ?? ''),
       matricula: String(form.get('matricula') ?? ''),
       cuit: String(form.get('cuit') ?? ''),
-      telefono: String(form.get('telefono') ?? ''),
+      telefono: '', // campo quitado del form (redundante: el bot usa numero_personal)
       numeroWhatsapp: String(form.get('numeroWhatsapp') ?? ''),
       slug,
       categoria_arancel: (String(form.get('categoria_arancel') ?? '') || undefined) as 'medica' | 'especialista' | 'oftalmologica' | 'oftalmologica_recertificado' | undefined,
@@ -91,7 +91,6 @@ export function FormNuevoMedico() {
         <input name="matricula" placeholder="Matrícula" className={input} />
         <input name="cuit" placeholder="CUIT" className={input} />
       </div>
-      <input name="telefono" placeholder="Teléfono" className={input} />
       <WhatsappInput required />
       <div>
         <input

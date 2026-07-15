@@ -23,7 +23,7 @@ export function FormEditarMedico({ medicoId, inicial }: { medicoId: string; inic
       especialidad: String(form.get('especialidad') ?? ''),
       matricula: String(form.get('matricula') ?? ''),
       cuit: String(form.get('cuit') ?? ''),
-      telefono: String(form.get('telefono') ?? ''),
+      telefono: '', // campo quitado del form (redundante: el bot usa numero_personal)
       numeroWhatsapp: String(form.get('numeroWhatsapp') ?? ''),
       categoria_arancel: (String(form.get('categoria_arancel') ?? '') || undefined) as 'medica' | 'especialista' | 'oftalmologica' | 'oftalmologica_recertificado' | undefined,
       atiende_interior: form.get('atiende_interior') === 'on',
@@ -59,7 +59,6 @@ export function FormEditarMedico({ medicoId, inicial }: { medicoId: string; inic
         <input name="matricula" defaultValue={inicial.matricula} placeholder="Matrícula" className={input} />
         <input name="cuit" defaultValue={inicial.cuit} placeholder="CUIT" className={input} />
       </div>
-      <input name="telefono" defaultValue={inicial.telefono} placeholder="Teléfono" className={input} />
       <WhatsappInput required defaultValue={inicial.numeroWhatsapp} />
       {error && <p className="text-sm text-destructive">{error}</p>}
       {ok && <p className="text-sm text-primary">✓ Cambios guardados.</p>}

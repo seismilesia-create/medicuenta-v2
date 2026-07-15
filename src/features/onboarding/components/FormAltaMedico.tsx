@@ -23,7 +23,6 @@ export function FormAltaMedico({ token }: { token: string }) {
       especialidad: String(form.get('especialidad') ?? ''),
       matricula: String(form.get('matricula') ?? ''),
       cuit: String(form.get('cuit') ?? ''),
-      telefono: String(form.get('telefono') ?? ''),
       email: String(form.get('email') ?? ''),
       numeroWhatsapp: String(form.get('numeroWhatsapp') ?? ''),
       password: String(form.get('password') ?? ''),
@@ -51,7 +50,6 @@ export function FormAltaMedico({ token }: { token: string }) {
         <input name="matricula" placeholder="Matrícula" className={input} />
         <input name="cuit" placeholder="CUIT" className={input} />
       </div>
-      <input name="telefono" placeholder="Teléfono" className={input} />
       <WhatsappInput required />
       <input name="email" type="email" required placeholder="Email" className={input} />
       <div className="relative">
