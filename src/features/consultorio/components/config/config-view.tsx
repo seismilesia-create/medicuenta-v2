@@ -114,7 +114,6 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
   const [agenteSaving, setAgenteSaving] = useState(false)
   const [agenteOk, setAgenteOk] = useState(false)
   const [emailSec, setEmailSec] = useState('')
-  const [secretariaUrl, setSecretariaUrl] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [catalogoOs, setCatalogoOs] = useState<OsCatalogoItem[]>([])
 
@@ -143,19 +142,13 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
     return !fallo
   }
 
-  // No usa onAccion: necesitamos leer `url` de la rama 'pendiente' de la respuesta,
-  // no solo si hubo error (onAccion normaliza todo a boolean).
   async function invitarSecretariaSubmit() {
     const email = emailSec.trim()
     if (!email) return
     const r = await invitarSecretaria(email)
-    if ('error' in r) {
-      setError(r.error)
-    } else {
-      setError(null)
-      setEmailSec('')
-      setSecretariaUrl(r.estado === 'pendiente' ? r.url : null)
-    }
+    if ('error' in r) setError(r.error)
+    else { setError(null); setEmailSec('') }
+    // refetch: la nueva invitación aparece en la lista con su enlace persistente (s.url).
     refetch()
   }
 
@@ -476,34 +469,49 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
           nunca tu facturación ni las recetas. Si todavía no tiene cuenta, queda «pendiente» y se activa
           cuando se registre con ese email. <strong>Revocar corta el acceso al instante.</strong>
         </p>
-        <div className="space-y-1 text-sm">
+        <div className="space-y-2 text-sm">
           {cfg.secretarias.map((s) => (
-            <div key={s.id} className="flex items-center gap-2">
-              <span className="flex-1 truncate">{s.email}</span>
-              <span
-                className={`text-[11px] px-2 py-0.5 rounded-full border ${
-                  s.estado === 'activa'
-                    ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
-                    : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
-                }`}
-              >
-                {s.estado === 'activa' ? 'activa' : 'pendiente'}
-              </span>
-              {s.estado === 'pendiente' && s.url && (
-                <button className="text-xs underline" onClick={() => copiarEnlace(s.id, s.url as string)}>
-                  {copiedId === s.id ? '¡Copiado!' : 'Copiar enlace'}
+            <div key={s.id} className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="flex-1 truncate">{s.email}</span>
+                <span
+                  className={`text-[11px] px-2 py-0.5 rounded-full border ${
+                    s.estado === 'activa'
+                      ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                      : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                  }`}
+                >
+                  {s.estado === 'activa' ? 'activa' : 'pendiente'}
+                </span>
+                <button
+                  className="text-xs underline text-red-500"
+                  onClick={() => {
+                    if (window.confirm(`¿Revocar el acceso de ${s.email}? El corte es inmediato.`)) {
+                      onAccion(() => revocarSecretaria(s.id))
+                    }
+                  }}
+                >
+                  Revocar
                 </button>
+              </div>
+              {/* Enlace persistente de la invitación pendiente: sobrevive al recargar (viene de
+                  s.url en getConfig), así la médica lo re-copia cuando quiera. */}
+              {s.estado === 'pendiente' && s.url && (
+                <div className="space-y-2 rounded-lg border border-border p-3">
+                  <p className="break-all">
+                    <a href={s.url} className="text-primary underline">{s.url}</a>
+                  </p>
+                  <button
+                    onClick={() => copiarEnlace(s.id, s.url as string)}
+                    className="rounded-lg border border-border px-3 py-1 text-xs"
+                  >
+                    {copiedId === s.id ? '¡Copiado!' : 'Copiar enlace'}
+                  </button>
+                  <p className="text-[11px] text-[var(--color-muted-foreground)]">
+                    Mandale este enlace a tu secretaria por WhatsApp. Vence en 72 hs.
+                  </p>
+                </div>
               )}
-              <button
-                className="text-xs underline text-red-500"
-                onClick={() => {
-                  if (window.confirm(`¿Revocar el acceso de ${s.email}? El corte es inmediato.`)) {
-                    onAccion(() => revocarSecretaria(s.id))
-                  }
-                }}
-              >
-                Revocar
-              </button>
             </div>
           ))}
           {cfg.secretarias.length === 0 && (
@@ -522,24 +530,6 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
             Invitar
           </button>
         </div>
-        {secretariaUrl && (
-          <div className="space-y-2 rounded-lg border border-border p-3">
-            <p className="text-sm break-all">
-              <a href={secretariaUrl} className="text-primary underline">
-                {secretariaUrl}
-              </a>
-            </p>
-            <button
-              onClick={() => copiarEnlace('nueva', secretariaUrl)}
-              className="rounded-lg border border-border px-3 py-1 text-xs"
-            >
-              {copiedId === 'nueva' ? '¡Copiado!' : 'Copiar enlace'}
-            </button>
-            <p className="text-[11px] text-[var(--color-muted-foreground)]">
-              Mandale este enlace a tu secretaria por WhatsApp. Vence en 72 hs.
-            </p>
-          </div>
-        )}
       </Seccion>
 
       <Seccion titulo="Actividad del asistente">
