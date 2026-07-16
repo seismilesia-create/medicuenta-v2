@@ -123,13 +123,19 @@ La conversación **sigue existiendo**: el agente necesita el historial para el m
 ALTER TABLE wa_conversaciones ADD COLUMN es_medico BOOLEAN NOT NULL DEFAULT false;
 
 -- Backfill: marcar las conversaciones cuyo contacto es el numero_personal del médico.
--- Comparación por dígitos: los formatos guardados pueden diferir (+54 / 9 / 0 / 15).
+-- Comparación por los ÚLTIMOS 10 DÍGITOS (= número nacional argentino), NO por el string
+-- completo: `wa_contactos.telefono` llega crudo del webhook (`549…`, 13 dígitos) y
+-- `wa_asignaciones.numero_personal` pasa por `normalizarWhatsappAr` (`54…`, 12 dígitos, SIN
+-- el 9 de móvil). Comparar los strings enteros matchea 0 filas SIEMPRE — el 9 es un dígito,
+-- así que `regexp_replace(…, '\D', …)` no lo saca. Los últimos 10 son inmunes a las variantes
+-- de prefijo (54 / 549 / 0 / 15), igual que hace `normalizeRecipient` en el código.
 UPDATE wa_conversaciones c
 SET es_medico = true
 FROM wa_contactos ct, wa_asignaciones a
 WHERE c.contacto_id = ct.id
   AND c.medico_id = a.medico_id
-  AND regexp_replace(ct.telefono, '\D', '', 'g') = regexp_replace(a.numero_personal, '\D', '', 'g');
+  AND right(regexp_replace(ct.telefono, '\D', '', 'g'), 10)
+    = right(regexp_replace(a.numero_personal, '\D', '', 'g'), 10);
 ```
 
 ### Escritura — `handleMedico` marca la conversación
@@ -150,7 +156,7 @@ El default preserva la rama paciente byte-idéntica — mismo patrón que el `us
 - **Rango muy amplio** ("todo el año") → se trunca a 30 líneas con el aviso que ya existe ("… mostrando los primeros 30"). El agente puede sugerir achicar el rango. No se agrega un cap (YAGNI).
 - **Fecha pasada explícita** → permitida (piso = 00:00 de ese día). Es la lectura honesta de "¿qué turnos tuve el lunes?".
 - **Zona horaria** → todo ancla a hora AR vía `armarStartsAtISO`. Argentina no tiene DST y `AR_OFFSET` ya es la convención del repo.
-- **Backfill y normalización** → si un `numero_personal` estuviera guardado con formato raro, el `regexp_replace` por dígitos lo cubre. Si aun así fallara, el efecto es cosmético (la conversación de prueba sigue en la bandeja) y se corrige a mano.
+- **Backfill y normalización** → los dos lados se guardan en formatos distintos por diseño (`wa_contactos.telefono` crudo del webhook = `549…`; `numero_personal` normalizado = `54…` sin el 9), así que la comparación DEBE ser por los últimos 10 dígitos. Comparar los strings completos matchea 0 filas y falla **en silencio** — es la misma clase de bug que arregló el #6 de la tanda anterior, y el docstring de `normalizarWhatsappAr` ya la narra. **Verificado contra la base real** (read-only): con la comparación completa → 0 filas; con los últimos 10 → 1 fila (la conversación médico↔bot que existe hoy). Si a futuro fallara igual, el efecto es cosmético (esa conversación sigue en la bandeja) y se corrige a mano.
 - **Alucinación de fechas** → si el agente arma un `desde`/`hasta` inválido, la validación devuelve `{ error }` legible en vez de una query rara.
 
 ## Testing
