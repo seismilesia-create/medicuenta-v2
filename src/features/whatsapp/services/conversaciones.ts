@@ -32,6 +32,7 @@ export async function ensureConversacion(
   db: SupabaseClient,
   medicoId: string,
   contactoId: string,
+  esMedico = false,
 ): Promise<string> {
   const { data: abierta } = await db
     .from('wa_conversaciones')
@@ -45,7 +46,7 @@ export async function ensureConversacion(
   if (abierta) return (abierta as { id: string }).id
   const { data, error } = await db
     .from('wa_conversaciones')
-    .insert({ medico_id: medicoId, contacto_id: contactoId, estado: 'abierta' })
+    .insert({ medico_id: medicoId, contacto_id: contactoId, estado: 'abierta', es_medico: esMedico })
     .select('id')
     .single()
   if (error) throw error

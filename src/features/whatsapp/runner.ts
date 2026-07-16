@@ -79,7 +79,7 @@ async function handleMedico(db: Db, canal: CanalResuelto, incoming: IncomingMess
 
   // Rama texto = agente de IA administrativo (espejo del paciente, sin toma-humana ni entrega).
   const contactoId = await ensureContacto(db, canal.medicoId, incoming.from, incoming.contactName)
-  const conversacionId = await ensureConversacion(db, canal.medicoId, contactoId)
+  const conversacionId = await ensureConversacion(db, canal.medicoId, contactoId, true)
   await addMensaje(db, {
     medicoId: canal.medicoId,
     conversacionId,
