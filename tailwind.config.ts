@@ -1,4 +1,14 @@
 import type { Config } from 'tailwindcss'
+import colors from 'tailwindcss/colors'
+
+// Escalas 50–900 mapeadas a las variables CSS de globals.css (theme-aware light/dark).
+// Sin estas, clases como `bg-primary-500` no generan CSS → el fondo queda transparente.
+const cssScale = (name: string, steps: number[]) =>
+  Object.fromEntries(steps.map((s) => [String(s), `var(--color-${name}-${s})`]))
+
+const primaryScale = cssScale('primary', [50, 100, 200, 300, 400, 500, 600, 700, 800, 900])
+const secondaryScale = cssScale('secondary', [50, 100, 200, 300, 400, 500, 600, 700, 800, 900])
+const accentScale = cssScale('accent', [50, 100, 200, 300, 400, 500, 600, 700])
 
 const config: Config = {
   darkMode: 'class',
@@ -16,10 +26,12 @@ const config: Config = {
         primary: {
           DEFAULT: 'oklch(var(--primary-raw) / <alpha-value>)',
           foreground: 'oklch(var(--primary-foreground-raw) / <alpha-value>)',
+          ...primaryScale,
         },
         secondary: {
           DEFAULT: 'oklch(var(--secondary-raw) / <alpha-value>)',
           foreground: 'oklch(var(--secondary-foreground-raw) / <alpha-value>)',
+          ...secondaryScale,
         },
         muted: {
           DEFAULT: 'oklch(var(--muted-raw) / <alpha-value>)',
@@ -28,7 +40,15 @@ const config: Config = {
         accent: {
           DEFAULT: 'oklch(var(--accent-raw) / <alpha-value>)',
           foreground: 'oklch(var(--accent-foreground-raw) / <alpha-value>)',
+          ...accentScale,
         },
+        // Escalas semánticas / neutrales usadas por badges, inputs y estados de error.
+        // Los componentes las asumían (error-100, gray-50, success-700…) pero no existían.
+        gray: colors.gray,
+        error: colors.red,
+        success: colors.emerald,
+        warning: colors.amber,
+        info: colors.sky,
         destructive: {
           DEFAULT: 'oklch(var(--destructive-raw) / <alpha-value>)',
           foreground: 'oklch(var(--destructive-foreground-raw) / <alpha-value>)',
