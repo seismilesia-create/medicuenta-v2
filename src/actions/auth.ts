@@ -4,6 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { type EmailOtpType } from '@supabase/supabase-js'
 import { siteUrl } from '@/lib/site-url'
+import { traducirErrorAuth } from '@/lib/auth/errores'
+
+/** Loguea el error crudo de GoTrue (trazabilidad) y devuelve el mensaje en español. */
+function errorAuth(contexto: string, mensaje: string): { error: string } {
+  console.error(`[auth] ${contexto}:`, mensaje)
+  return { error: traducirErrorAuth(mensaje) }
+}
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
@@ -17,7 +24,7 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    return errorAuth('login', error.message)
   }
 
   redirect('/')
@@ -41,7 +48,7 @@ export async function signup(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    return errorAuth('signup', error.message)
   }
 
   redirect('/check-email')
@@ -61,7 +68,7 @@ export async function resetPassword(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    return errorAuth('resetPassword', error.message)
   }
 
   return { success: true }
@@ -77,7 +84,7 @@ export async function updatePassword(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    return errorAuth('updatePassword', error.message)
   }
 
   redirect('/login')

@@ -44,8 +44,8 @@ export function SignupForm() {
       />
 
       {error && (
-        <div className="rounded-lg bg-error-50 border border-error-500 p-3">
-          <p className="text-sm text-error-700">{error}</p>
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+          <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
 

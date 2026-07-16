@@ -2,22 +2,26 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Loader2, Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { ConfirmDialog } from '@/shared/components/ui'
 import { parseMontoArs } from '@/lib/recetas/normalizar'
-import { getConfig, type ConfigConsultorio } from '@/features/consultorio/services/panelService'
 import {
   guardarDuracionConsulta,
   agregarOsSuspendida,
   quitarOsSuspendida,
   guardarAsistente,
+  guardarPrecioReceta,
   agregarDiaSemanalParticular,
   agregarFechaParticular,
   quitarDiaParticular,
   desconectarMercadoPago,
+  cargarConfigConsultorio,
+  type ConfigVista,
 } from '@/actions/consultorio-config'
 import { desbloquearDias, bloquearDias } from '@/actions/consultorio-agenda'
 import { invitarSecretaria, revocarSecretaria } from '@/actions/consultorio-secretaria'
+import { getCatalogoOs } from '@/actions/catalogo'
+import { OsAutocomplete } from '@/features/catalogo/components/OsAutocomplete'
+import type { OsCatalogoItem } from '@/lib/catalogo/obras-sociales'
 import { HorariosEditor } from './horarios-editor'
 import { ActividadAsistente } from './actividad-asistente'
 
@@ -74,7 +78,8 @@ function BloqueOs(props: {
   motivo: 'suspendida' | 'no_atiende'
   estado: { nombre: string; nota: string }
   setEstado: (v: { nombre: string; nota: string }) => void
-  cfg: ConfigConsultorio
+  cfg: ConfigVista
+  catalogo: OsCatalogoItem[]
   input: string
   onAccion: (fn: () => Promise<{ error?: string } | { ok: true }>) => Promise<boolean>
 }) {
@@ -94,12 +99,18 @@ function BloqueOs(props: {
         ))}
       </div>
       <div className="flex gap-2">
-        <input
-          placeholder="OSEP"
-          className={props.input + ' !w-36'}
-          value={props.estado.nombre}
-          onChange={(e) => props.setEstado({ ...props.estado, nombre: e.target.value })}
-        />
+        {/* Autocomplete contra el catálogo canónico (aranceles_os) en vez de texto libre:
+            el médico elige una OS real → el nombre normalizado que se guarda matchea el del
+            paciente. La `key` remonta el autocomplete tras agregar/quitar para limpiar su input. */}
+        <div className="w-44 shrink-0">
+          <OsAutocomplete
+            key={`${props.motivo}-${items.length}`}
+            catalogo={props.catalogo}
+            valor={props.estado.nombre}
+            onSelect={(sel) => props.setEstado({ ...props.estado, nombre: sel.nombre_os })}
+            inputClassName={props.input}
+          />
+        </div>
         <input
           placeholder="Nota (opcional)"
           className={props.input}
@@ -122,8 +133,8 @@ function BloqueOs(props: {
   )
 }
 
-export function ConfigView({ medicoId }: { medicoId: string }) {
-  const [cfg, setCfg] = useState<ConfigConsultorio | null>(null)
+export function ConfigView({ esDueño }: { esDueño: boolean }) {
+  const [cfg, setCfg] = useState<ConfigVista | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [osSusp, setOsSusp] = useState({ nombre: '', nota: '' })
   const [osNoAt, setOsNoAt] = useState({ nombre: '', nota: '' })
@@ -131,9 +142,10 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
   const [fechaPart, setFechaPart] = useState('')
   const [agenteSaving, setAgenteSaving] = useState(false)
   const [agenteOk, setAgenteOk] = useState(false)
+  const [precioOk, setPrecioOk] = useState(false)
   const [emailSec, setEmailSec] = useState('')
-  const [secretariaUrl, setSecretariaUrl] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [catalogoOs, setCatalogoOs] = useState<OsCatalogoItem[]>([])
   const [mpAviso, setMpAviso] = useState<{ ok: boolean; texto: string } | null>(null)
   // Confirmación de acciones destructivas (in-app, no window.confirm).
   const [confirmar, setConfirmar] = useState<{
@@ -142,6 +154,10 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
     confirmLabel: string
     accion: () => Promise<{ error?: string } | { ok: true }>
   } | null>(null)
+
+  useEffect(() => {
+    getCatalogoOs().then(setCatalogoOs).catch(() => {})
+  }, [])
 
   // Resultado de la vuelta del OAuth de MercadoPago (?mp=ok | ?mp=error&motivo=…).
   // Se lee de la URL y se limpia, para que no reaparezca al recargar. Sin useSearchParams:
@@ -157,6 +173,7 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
       canje: 'MercadoPago rechazó la conexión. Probá de nuevo en unos minutos.',
       guardado: 'No pude guardar la conexión. Probá de nuevo.',
       config: 'Falta terminar de configurar MercadoPago. Avisale al equipo de MediCuenta.',
+      no_dueno: 'Solo el médico titular puede conectar la cuenta de cobro.',
     }
     setMpAviso(
       mp === 'ok'
@@ -167,13 +184,15 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
   }, [])
 
   const refetch = useCallback(async () => {
-    const supabase = createClient()
     try {
-      setCfg(await getConfig(supabase, medicoId))
+      const r = await cargarConfigConsultorio()
+      if ('error' in r) { setError('No pude cargar la configuración. Recargá la página.'); return }
+      setCfg(r)
     } catch {
+      // Un error TIRADO por la server action (red, etc.) — no un { error } manejado.
       setError('No pude cargar la configuración. Recargá la página.')
     }
-  }, [medicoId])
+  }, [])
 
   useEffect(() => {
     refetch()
@@ -187,19 +206,13 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
     return !fallo
   }
 
-  // No usa onAccion: necesitamos leer `url` de la rama 'pendiente' de la respuesta,
-  // no solo si hubo error (onAccion normaliza todo a boolean).
   async function invitarSecretariaSubmit() {
     const email = emailSec.trim()
     if (!email) return
     const r = await invitarSecretaria(email)
-    if ('error' in r) {
-      setError(r.error)
-    } else {
-      setError(null)
-      setEmailSec('')
-      setSecretariaUrl(r.estado === 'pendiente' ? r.url : null)
-    }
+    if ('error' in r) setError(r.error)
+    else { setError(null); setEmailSec('') }
+    // refetch: la nueva invitación aparece en la lista con su enlace persistente (s.url).
     refetch()
   }
 
@@ -219,7 +232,6 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
     setAgenteSaving(true)
     setAgenteOk(false)
     const fd = new FormData(e.currentTarget)
-    const precio = String(fd.get('precio_receta') ?? '').trim()
     const ok = await onAccion(() =>
       guardarAsistente({
         nombre_medico: String(fd.get('nombre_medico') ?? ''),
@@ -227,12 +239,20 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
         tono: String(fd.get('tono') ?? ''),
         saludo: String(fd.get('saludo') ?? ''),
         faqs: cfg?.agente?.faqs ?? [], // edición de FAQs: v2 del panel — hoy se preservan
-        precio_receta: precio ? parseMontoArs(precio) : null,
       }),
     )
     setAgenteSaving(false)
     setAgenteOk(ok)
     if (ok) setTimeout(() => setAgenteOk(false), 3000)
+  }
+
+  async function guardarPrecio(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    const raw = String(fd.get('precio_receta') ?? '').trim()
+    const ok = await onAccion(() => guardarPrecioReceta(raw ? parseMontoArs(raw) : null))
+    setPrecioOk(ok)
+    if (ok) setTimeout(() => setPrecioOk(false), 3000)
   }
 
   if (!cfg)
@@ -247,7 +267,8 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
     )
 
   const input = 'w-full rounded-lg border border-border bg-[var(--color-background)] px-3 py-2 text-sm'
-  const mp = cfg.conexiones.mercadopago
+  // null también cuando el que mira es la secretaria: cargarConfigConsultorio no le manda conexiones.
+  const mp = cfg.conexiones?.mercadopago ?? null
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-3xl">
@@ -403,6 +424,7 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
         estado={osSusp}
         setEstado={setOsSusp}
         cfg={cfg}
+        catalogo={catalogoOs}
         input={input}
         onAccion={onAccion}
       />
@@ -413,11 +435,26 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
         estado={osNoAt}
         setEstado={setOsNoAt}
         cfg={cfg}
+        catalogo={catalogoOs}
         input={input}
         onAccion={onAccion}
       />
 
-      <Seccion titulo="El asistente">
+      <Seccion titulo="Precio de la receta">
+        <p className="text-xs text-[var(--color-muted-foreground)]">
+          Monto que el asistente informa cuando un paciente pide una receta. Dejalo vacío si no cobrás la gestión.
+        </p>
+        <form onSubmit={guardarPrecio} className="flex items-end gap-2">
+          <Campo label="Monto en pesos" ayuda="Ej: 5.000">
+            <input name="precio_receta" defaultValue={cfg.precioReceta ?? ''} placeholder="5.000" className={input + ' !w-36'} />
+          </Campo>
+          <button className="rounded-xl bg-primary text-white px-4 py-2 text-sm font-medium">Guardar precio</button>
+        </form>
+        {precioOk && <p className="text-sm text-emerald-600 font-medium">Guardado ✓</p>}
+      </Seccion>
+
+      {esDueño && (
+        <Seccion titulo="El asistente">
         <p className="text-xs text-[var(--color-muted-foreground)]">
           Así se presenta y habla el asistente de WhatsApp con tus pacientes. Lo que cambies acá rige desde el
           próximo mensaje.
@@ -464,17 +501,6 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
               className={input}
             />
           </Campo>
-          <Campo
-            label="Precio de la receta"
-            ayuda="Monto en pesos que el asistente informa cuando un paciente pide una receta."
-          >
-            <input
-              name="precio_receta"
-              defaultValue={cfg.agente?.precio_receta_default ?? ''}
-              placeholder="5.000"
-              className={input + ' !w-36'}
-            />
-          </Campo>
           <p className="text-[11px] text-[var(--color-muted-foreground)]">
             Las preguntas frecuentes (FAQs) se editan por ahora con el equipo técnico.
           </p>
@@ -487,9 +513,13 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
           </button>
           {agenteOk && <p className="text-sm text-emerald-600 font-medium">Guardado ✓</p>}
         </form>
-      </Seccion>
+        </Seccion>
+      )}
 
-      <Seccion titulo="Conexiones">
+      {/* Conexiones = solo el médico dueño (#13). La secretaria ni siquiera recibe los datos:
+          cargarConfigConsultorio le manda conexiones: null. */}
+      {esDueño && (
+        <Seccion titulo="Conexiones">
         {mpAviso && (
           <p className={`text-sm font-medium ${mpAviso.ok ? 'text-emerald-600' : 'text-red-500'}`}>
             {mpAviso.texto}
@@ -499,14 +529,14 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
         <div className="rounded-xl border border-border divide-y divide-border">
           <FilaConexion
             icono={
-              cfg.conexiones.whatsapp ? (
+              cfg.conexiones?.whatsapp ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               ) : (
                 <XCircle className="w-4 h-4 text-red-500" />
               )
             }
             nombre="WhatsApp"
-            estado={cfg.conexiones.whatsapp ? 'conectado' : 'sin conectar'}
+            estado={cfg.conexiones?.whatsapp ? 'conectado' : 'sin conectar'}
           />
 
           {mp === null && (
@@ -575,48 +605,65 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
             atenuada
           />
         </div>
-      </Seccion>
+        </Seccion>
+      )}
 
-      <Seccion titulo="Secretaria">
+      {esDueño && (
+        <Seccion titulo="Secretaria">
         <p className="text-xs text-[var(--color-muted-foreground)]">
           Invitá a tu secretaria con su email. Solo verá la agenda, las conversaciones y los pacientes —
           nunca tu facturación ni las recetas. Si todavía no tiene cuenta, queda «pendiente» y se activa
           cuando se registre con ese email. <strong>Revocar corta el acceso al instante.</strong>
         </p>
-        <div className="space-y-1 text-sm">
-          {cfg.secretarias.map((s) => (
-            <div key={s.id} className="flex items-center gap-2">
-              <span className="flex-1 truncate">{s.email}</span>
-              <span
-                className={`text-[11px] px-2 py-0.5 rounded-full border ${
-                  s.estado === 'activa'
-                    ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
-                    : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
-                }`}
-              >
-                {s.estado === 'activa' ? 'activa' : 'pendiente'}
-              </span>
-              {s.estado === 'pendiente' && s.url && (
-                <button className="text-xs underline" onClick={() => copiarEnlace(s.id, s.url as string)}>
-                  {copiedId === s.id ? '¡Copiado!' : 'Copiar enlace'}
+        <div className="space-y-2 text-sm">
+          {(cfg.secretarias ?? []).map((s) => (
+            <div key={s.id} className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="flex-1 truncate">{s.email}</span>
+                <span
+                  className={`text-[11px] px-2 py-0.5 rounded-full border ${
+                    s.estado === 'activa'
+                      ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                      : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                  }`}
+                >
+                  {s.estado === 'activa' ? 'activa' : 'pendiente'}
+                </span>
+                <button
+                  className="text-xs underline text-red-500"
+                  onClick={() =>
+                    setConfirmar({
+                      titulo: 'Revocar acceso',
+                      mensaje: `${s.email} va a perder el acceso al consultorio de inmediato.`,
+                      confirmLabel: 'Revocar',
+                      accion: () => revocarSecretaria(s.id),
+                    })
+                  }
+                >
+                  Revocar
                 </button>
+              </div>
+              {/* Enlace persistente de la invitación pendiente: sobrevive al recargar (viene de
+                  s.url en getConfig), así la médica lo re-copia cuando quiera. */}
+              {s.estado === 'pendiente' && s.url && (
+                <div className="space-y-2 rounded-lg border border-border p-3">
+                  <p className="break-all">
+                    <a href={s.url} className="text-primary underline">{s.url}</a>
+                  </p>
+                  <button
+                    onClick={() => copiarEnlace(s.id, s.url as string)}
+                    className="rounded-lg border border-border px-3 py-1 text-xs"
+                  >
+                    {copiedId === s.id ? '¡Copiado!' : 'Copiar enlace'}
+                  </button>
+                  <p className="text-[11px] text-[var(--color-muted-foreground)]">
+                    Mandale este enlace a tu secretaria por WhatsApp. Vence en 72 hs.
+                  </p>
+                </div>
               )}
-              <button
-                className="text-xs underline text-red-500"
-                onClick={() =>
-                  setConfirmar({
-                    titulo: 'Revocar acceso',
-                    mensaje: `${s.email} va a perder el acceso al consultorio de inmediato.`,
-                    confirmLabel: 'Revocar',
-                    accion: () => revocarSecretaria(s.id),
-                  })
-                }
-              >
-                Revocar
-              </button>
             </div>
           ))}
-          {cfg.secretarias.length === 0 && (
+          {(cfg.secretarias ?? []).length === 0 && (
             <p className="text-[var(--color-muted-foreground)]">Todavía no invitaste a nadie.</p>
           )}
         </div>
@@ -632,28 +679,11 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
             Invitar
           </button>
         </div>
-        {secretariaUrl && (
-          <div className="space-y-2 rounded-lg border border-border p-3">
-            <p className="text-sm break-all">
-              <a href={secretariaUrl} className="text-primary underline">
-                {secretariaUrl}
-              </a>
-            </p>
-            <button
-              onClick={() => copiarEnlace('nueva', secretariaUrl)}
-              className="rounded-lg border border-border px-3 py-1 text-xs"
-            >
-              {copiedId === 'nueva' ? '¡Copiado!' : 'Copiar enlace'}
-            </button>
-            <p className="text-[11px] text-[var(--color-muted-foreground)]">
-              Mandale este enlace a tu secretaria por WhatsApp. Vence en 72 hs.
-            </p>
-          </div>
-        )}
-      </Seccion>
+        </Seccion>
+      )}
 
       <Seccion titulo="Actividad del asistente">
-        <ActividadAsistente medicoId={medicoId} />
+        <ActividadAsistente medicoId={cfg.medicoId} />
       </Seccion>
 
       {confirmar && (

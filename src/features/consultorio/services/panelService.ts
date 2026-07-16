@@ -306,6 +306,7 @@ export async function getBandeja(db: SupabaseClient, medicoId: string): Promise<
     .from('wa_conversaciones')
     .select('id, bot_pausado, necesita_humano, last_message_at, last_paciente_at, contacto:wa_contactos(nombre, telefono)')
     .eq('medico_id', medicoId)
+    .eq('es_medico', false)
     .order('last_message_at', { ascending: false })
     .limit(50))
   const rows =

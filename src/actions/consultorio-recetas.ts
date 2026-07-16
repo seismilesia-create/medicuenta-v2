@@ -4,8 +4,9 @@ import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
 import { resolverConsultorio } from '@/features/consultorio/access/contexto'
 import { resolverSaliente } from '@/features/whatsapp/services/nodos'
-import { getRecetasPendientesPorTelefono, liberarPorOrdenConsulta } from '@/features/whatsapp/services/recetasService'
+import { getPendientesPorDni, liberarPorOrdenConsulta } from '@/features/whatsapp/services/recetasService'
 import { entregarReceta } from '@/features/whatsapp/services/entrega'
+import { normalizarDni } from '@/lib/recetas/normalizar'
 
 /** Autoriza: médico operado (dueño o secretaria) + user que firma. null si no autorizado. */
 async function ctxConsultorio() {
@@ -15,30 +16,31 @@ async function ctxConsultorio() {
 }
 
 /**
- * Lista las recetas `pendiente_pago` del paciente de esta conversación, para que la
- * secretaria elija cuál liberar por orden de consulta. La conversación se lee con el
- * client del usuario (RLS delegada) filtrando por medico_id = médico operado: esa es la
- * autorización — una secretaria no puede pedir recetas de una conversación ajena.
+ * Lista las recetas `pendiente_pago` de un DNI (el que la secretaria lee en el chat), para
+ * liberarla por orden de consulta. Se busca por DNI y NO por el teléfono de la conversación:
+ * en la vía de orden de consulta la receta no tiene pago, así que `paciente_telefono` es NULL
+ * (solo se llena al generar el link de pago) — buscar por teléfono devolvía siempre 0.
+ * Autorización: la conversación debe pertenecer al médico operado (RLS delegada del user
+ * client) y `getPendientesPorDni` filtra por ese mismo medico_id → nunca cruza consultorios.
  * `recetas` está bloqueada para la secretaria por RLS: se toca con service-role RECIÉN
  * después de ese check.
  */
-export async function getRecetasPendientesConversacion(conversacionId: string) {
+export async function getRecetasPendientesConversacion(conversacionId: string, dni: string) {
   const c = await ctxConsultorio()
   if (!c) return { error: 'No autenticado' }
   // Autorización: la conversación debe pertenecer al médico operado (RLS delegada del user client).
   const { data: conv } = await c.supabase
     .from('wa_conversaciones')
-    .select('id, contacto:wa_contactos(telefono)')
+    .select('id')
     .eq('medico_id', c.medicoId)
     .eq('id', conversacionId)
     .maybeSingle()
   if (!conv) return { error: 'Conversación no encontrada' }
-  const cv = conv as unknown as { contacto: { telefono: string } | { telefono: string }[] | null }
-  const contacto = Array.isArray(cv.contacto) ? cv.contacto[0] : cv.contacto
-  if (!contacto?.telefono) return { error: 'La conversación no tiene teléfono asociado' }
+
+  if (normalizarDni(dni).length < 7) return { error: 'Ingresá el DNI del paciente (mínimo 7 dígitos).' }
 
   const db = createServiceClient()
-  const recetas = await getRecetasPendientesPorTelefono(db, c.medicoId, contacto.telefono)
+  const recetas = await getPendientesPorDni(db, c.medicoId, dni)
   return {
     recetas: recetas.map((r) => ({
       id: r.id, paciente_nombre: r.paciente_nombre, nro_receta: r.nro_receta, monto: r.monto, created_at: r.created_at,

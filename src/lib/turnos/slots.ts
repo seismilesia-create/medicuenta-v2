@@ -190,3 +190,25 @@ export function estaDentroDelHorario(params: {
     return params.ahoraMs >= open && params.ahoraMs < close
   })
 }
+
+/**
+ * Como estaDentroDelHorario pero con una gracia (en minutos) DESPUÉS del cierre: sigue
+ * "dentro" hasta `graciaMin` pasado el close_time. Se usa para la disponibilidad de la
+ * secretaria: si el médico cerró hace poco pero la secretaria sigue en la compu, que el bot
+ * la siga derivando en vez de rebotar al paciente al instante.
+ *
+ * La ventana efectiva es [apertura, cierre+gracia]: unión de `ahora` y `ahora-gracia` contra
+ * el horario. El shift usa un timestamp real, así que si `ahora` pasó a la medianoche del día
+ * siguiente, `ahora-gracia` cae correctamente en el día anterior. (Con una ventana más corta
+ * que la gracia habría un hueco, pero un horario de atención así de corto no existe.)
+ */
+export function estaDentroConGracia(params: {
+  ahoraMs: number
+  weekly: { weekday: number; open_time: string; close_time: string }[]
+  exceptions: ScheduleExceptionLite[]
+  graciaMin: number
+}): boolean {
+  const dentro = (ms: number) =>
+    estaDentroDelHorario({ ahoraMs: ms, weekly: params.weekly, exceptions: params.exceptions })
+  return dentro(params.ahoraMs) || dentro(params.ahoraMs - params.graciaMin * 60_000)
+}

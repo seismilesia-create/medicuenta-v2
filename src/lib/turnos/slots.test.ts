@@ -7,6 +7,7 @@ import {
   resolveDayHours,
   esSlotOfrecido,
   estaDentroDelHorario,
+  estaDentroConGracia,
   type ScheduleExceptionLite,
   type DayAvailability,
 } from './slots'
@@ -215,5 +216,31 @@ describe('estaDentroDelHorario', () => {
       weekly: bloque(ahoraMs, '09:00', '13:00'),
       exceptions: [{ start_date: date, end_date: date, kind: 'closed', ranges: [] }],
     })).toBe(false)
+  })
+})
+
+describe('estaDentroConGracia', () => {
+  const bloque = (ahoraMs: number, open: string, close: string) => [{
+    weekday: weekdayOf(arDateString(ahoraMs)), open_time: open, close_time: close,
+  }]
+  // 2026-07-06: bloque 09:00–13:00 AR. 13:00 AR = 16:00 UTC.
+  const conGracia = (ahoraMs: number) =>
+    estaDentroConGracia({ ahoraMs, weekly: bloque(ahoraMs, '09:00', '13:00'), exceptions: [], graciaMin: 15 })
+
+  it('dentro del horario → true (igual que sin gracia)', () => {
+    expect(conGracia(new Date('2026-07-06T14:00:00Z').getTime())).toBe(true) // 11:00 AR
+  })
+
+  it('justo al cierre y dentro de la gracia → true', () => {
+    expect(conGracia(new Date('2026-07-06T16:00:00Z').getTime())).toBe(true) // 13:00 AR (cierre exacto)
+    expect(conGracia(new Date('2026-07-06T16:10:00Z').getTime())).toBe(true) // 13:10 AR (10 min pasado)
+  })
+
+  it('pasada la gracia → false', () => {
+    expect(conGracia(new Date('2026-07-06T16:20:00Z').getTime())).toBe(false) // 13:20 AR (20 min pasado)
+  })
+
+  it('antes de abrir NO se adelanta la ventana → false', () => {
+    expect(conGracia(new Date('2026-07-06T11:50:00Z').getTime())).toBe(false) // 08:50 AR
   })
 })

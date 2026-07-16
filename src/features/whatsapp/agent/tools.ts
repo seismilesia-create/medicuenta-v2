@@ -29,6 +29,8 @@ function resumenMedicamento(r: RecetaRow): string {
 /** Tools del agente que atiende pacientes. medico_id INYECTADO (el webhook no tiene sesión). */
 export function buildPacienteTools(ctx: PacienteToolsCtx) {
   return {
+    // ⚠️ Identifica al paciente solo por nombre+DNI (sin factor de posesión). Trade-off de
+    // privacidad ASUMIDO y documentado en recetasService.buscarPendientesPorIdentidad.
     buscar_receta_paciente: tool({
       description:
         'Busca recetas pendientes de pago del paciente por su nombre completo y DNI. Usala apenas el paciente dé sus datos.',
@@ -98,10 +100,12 @@ export function buildPacienteTools(ctx: PacienteToolsCtx) {
           pacienteTelefono: normalizeRecipient(ctx.telefonoPaciente),
           contactoId: ctx.contactoId,
         })
-        if (!vinculado) {
+        if (!vinculado.ok) {
           return {
             error:
-              'Esa receta ya está siendo gestionada desde otro número de WhatsApp. Si sos el paciente, avisale a tu médico para que lo verifique.',
+              vinculado.motivo === 'conflicto'
+                ? 'Esa receta ya está siendo gestionada desde otro número de WhatsApp. Si sos el paciente, avisale a tu médico para que lo verifique.'
+                : 'No pude generar el link de pago. Pedile que intente de nuevo en unos minutos.',
           }
         }
         return { link: pref.initPoint, monto: Number(receta.monto) }

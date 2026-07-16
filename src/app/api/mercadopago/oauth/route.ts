@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { resolverConsultorio, esDueño } from '@/features/consultorio/access/contexto'
 import { siteUrl } from '@/lib/site-url'
 import { buildAuthorizationUrl } from '@/lib/mercadopago/oauth'
 
@@ -15,11 +15,12 @@ export async function GET() {
   // interno (https://localhost:3000) y el redirect quedaría roto.
   const origin = siteUrl()
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.redirect(`${origin}/login`)
+  // Solo el DUEÑO conecta su cuenta de cobro — mismo guard que desconectarMercadoPago().
+  // Con sesión sola no alcanza: la secretaria también tiene una y entra a /consultorio/config;
+  // si llegara acá, ataría una conexión MP a SU id (fila basura, y la UI le mentiría).
+  const r = await resolverConsultorio()
+  if (!r) return NextResponse.redirect(`${origin}/login`)
+  if (!esDueño(r.ctx)) return NextResponse.redirect(`${origin}${CONFIG}?mp=error&motivo=no_dueno`)
 
   const clientId = process.env.MP_CLIENT_ID
   const redirectUri = process.env.MP_REDIRECT_URI

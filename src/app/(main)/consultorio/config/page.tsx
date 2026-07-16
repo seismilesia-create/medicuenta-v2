@@ -10,7 +10,7 @@ export default async function ConfigPage() {
   const r = await resolverConsultorio()
   if (!r) redirect('/login')
   if (r.ctx.plan !== 'full') redirect('/dashboard') // candado §3: consultorio = Full
-  // Config = médico-only (spec §8): la secretaria (o un médico operando otro consultorio) no entra.
-  if (!esDueño(r.ctx)) redirect('/agenda')
-  return <ConfigView medicoId={r.ctx.userId} />
+  // Config operativa: entra el médico dueño O la secretaria vinculada. Sin vínculo activo → afuera.
+  if (!r.ctx.medicoActivoId) redirect('/agenda')
+  return <ConfigView esDueño={esDueño(r.ctx)} />
 }

@@ -3,8 +3,8 @@
 
 import { resolverSuperadmin } from '@/features/admin/access/superadmin'
 import { createServiceClient } from '@/lib/supabase/server'
-import { normalizeRecipient } from '@/lib/whatsapp/client'
-import { onboardMedicoSchema, type OnboardMedicoInput, type MedicoFila, type OnboardMedicoResult, editarMedicoSchema, type EditarMedicoInput, type MedicoDetalle } from '@/features/admin/medicos/types'
+import { normalizarWhatsappAr } from '@/lib/whatsapp/numeroAr'
+import { type MedicoFila, type OnboardMedicoResult, editarMedicoSchema, type EditarMedicoInput, type MedicoDetalle } from '@/features/admin/medicos/types'
 import { siteUrl } from '@/lib/site-url'
 import { generarTokenInvitacion, invitacionVigente } from '@/features/onboarding/token'
 import type { InvitacionFila } from '@/features/onboarding/invitaciones-types'
@@ -38,92 +38,12 @@ export async function listarMedicos(): Promise<{ data: MedicoFila[] } | { error:
   return { data: filas }
 }
 
-/** ¿El slug está libre? (para el check en vivo del formulario) */
-export async function chequearSlugDisponible(slug: string): Promise<{ disponible: boolean } | { error: string }> {
-  const guard = await requireSuperadmin()
-  if ('error' in guard) return guard
-
-  const service = createServiceClient()
-  const { count, error } = await service
-    .from('wa_asignaciones')
-    .select('id', { head: true, count: 'exact' })
-    .eq('slug_publico', slug)
-  if (error) return { error: error.message }
-  return { disponible: (count ?? 0) === 0 }
-}
-
 /** Traduce los errores de la RPC a mensajes para el admin. */
 function traducirErrorCableado(message: string): string {
   if (message.includes('sin_cupo_nodos')) return 'No hay nodos con cupo. Hay que registrar un nodo nuevo.'
   if (message.includes('23505') || message.toLowerCase().includes('duplicate')) return 'Ese slug se usó recién, probá otro.'
   if (message.includes('perfil_inexistente')) return 'La cuenta se creó pero el perfil no está listo todavía. Reintentá el cableado.'
   return message
-}
-
-/** Onboarding completo: cuenta + identidad + servicio + cableado WhatsApp. */
-export async function onboardMedico(input: OnboardMedicoInput): Promise<OnboardMedicoResult | { error: string }> {
-  const guard = await requireSuperadmin()
-  if ('error' in guard) return guard
-
-  const parsed = onboardMedicoSchema.safeParse(input)
-  if (!parsed.success) return { error: parsed.error.issues[0].message }
-  const d = parsed.data
-
-  const service = createServiceClient()
-
-  // Pre-check de slug (UX; la autoridad es el UNIQUE de la DB).
-  const yaUsado = await service.from('wa_asignaciones').select('id').eq('slug_publico', d.slug).maybeSingle()
-  if (yaUsado.data) return { error: 'Ese slug ya está en uso, elegí otro.' }
-
-  const numeroPersonal = normalizeRecipient(d.numeroWhatsapp)
-
-  // Crear la cuenta + invitar. Pasamos TODA la identidad en data: el trigger lee
-  // nombre/apellido/rol; el resto queda como "memoria del intento" para reintentar.
-  const redirectTo = `${siteUrl()}/api/auth/callback?next=/update-password`
-  const invited = await service.auth.admin.inviteUserByEmail(d.email, {
-    data: {
-      nombre: d.nombre,
-      apellido: d.apellido,
-      rol: 'medico',
-      especialidad: d.especialidad,
-      matricula: d.matricula,
-      cuit: d.cuit,
-      telefono: d.telefono,
-      numero_personal: numeroPersonal,
-      slug: d.slug,
-    },
-    redirectTo,
-  })
-  if (invited.error) return { error: `No se pudo invitar: ${invited.error.message}` }
-  const medicoId = invited.data.user.id
-
-  // Cableado atómico.
-  const rpc = await service.rpc('onboard_medico_cablear', {
-    p_medico_id: medicoId,
-    p_nombre: d.nombre,
-    p_apellido: d.apellido,
-    p_especialidad: d.especialidad,
-    p_matricula: d.matricula,
-    p_cuit: d.cuit,
-    p_telefono: d.telefono,
-    p_slug: d.slug,
-    p_numero_personal: numeroPersonal,
-  })
-  if (rpc.error) return { error: traducirErrorCableado(rpc.error.message) }
-
-  // Categoría arancelaria (admin-only) — se setea al onboardear.
-  // No crítico (el cableado ya pasó; se puede corregir desde editar), pero
-  // alimenta el cálculo de honorario → al menos dejar rastro si falla.
-  const { error: eCategoria } = await service
-    .from('perfiles')
-    .update({
-      categoria_arancel: d.categoria_arancel ?? null,
-      atiende_interior: d.atiende_interior,
-    })
-    .eq('id', medicoId)
-  if (eCategoria) console.error('[onboardMedico] no se pudo guardar la categoría arancelaria:', eCategoria.message)
-
-  return { slug: d.slug, link: `${siteUrl()}/c/${d.slug}`, medicoId }
 }
 
 /** Trae los datos editables de un médico (para precargar el form de edición). */
@@ -187,7 +107,8 @@ export async function actualizarMedico(medicoId: string, input: EditarMedicoInpu
     .eq('id', medicoId)
   if (e1) return { error: e1.message }
 
-  const numeroPersonal = normalizeRecipient(d.numeroWhatsapp)
+  const numeroPersonal = normalizarWhatsappAr(d.numeroWhatsapp)
+  if (!numeroPersonal) return { error: 'Número de WhatsApp inválido (ej: 383 4222049)' }
   const { error: e2 } = await service
     .from('wa_asignaciones')
     .update({ numero_personal: numeroPersonal })

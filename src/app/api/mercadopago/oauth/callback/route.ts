@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { resolverConsultorio, esDueño } from '@/features/consultorio/access/contexto'
 import { siteUrl } from '@/lib/site-url'
 import { cifrar } from '@/lib/crypto/encryption'
 import { intercambiarCode } from '@/lib/mercadopago/oauth'
@@ -23,11 +23,11 @@ export async function GET(request: Request) {
     return res
   }
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return NextResponse.redirect(`${origin}/login`)
+  // Mismo guard que la ruta que inicia el flujo: solo el DUEÑO ata una cuenta de cobro.
+  const r = await resolverConsultorio()
+  if (!r) return NextResponse.redirect(`${origin}/login`)
+  if (!esDueño(r.ctx)) return volverA('?mp=error&motivo=no_dueno')
+  const { supabase, ctx } = r
 
   // El médico canceló en la pantalla de MercadoPago.
   if (searchParams.get('error')) return volverA('?mp=error&motivo=denegado')
@@ -59,7 +59,7 @@ export async function GET(request: Request) {
 
   const { error } = await supabase.from('mp_conexiones').upsert(
     {
-      medico_id: user.id,
+      medico_id: ctx.userId,
       mp_user_id: token.mpUserId,
       access_token_cifrado: cifrar(token.accessToken),
       refresh_token_cifrado: token.refreshToken ? cifrar(token.refreshToken) : null,

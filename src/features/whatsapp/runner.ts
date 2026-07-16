@@ -9,34 +9,26 @@ import {
   isBotPausado,
   addMensaje,
   loadHistorial,
-  conAvisoAtencion,
 } from '@/features/whatsapp/services/conversaciones'
-import { getPrecioReceta, setPrecioReceta } from '@/features/whatsapp/services/configAgente'
-import { crearRecetaDesdeOcr, resumenRecetas } from '@/features/whatsapp/services/recetasService'
-import { resumenTurnos } from '@/features/whatsapp/services/turnosService'
+import { getPrecioReceta } from '@/features/whatsapp/services/configAgente'
+import { crearRecetaDesdeOcr } from '@/features/whatsapp/services/recetasService'
 import { buildTurnosTools } from '@/features/whatsapp/agent/toolsTurnos'
 import { entregarPendientes } from '@/features/whatsapp/services/entrega'
 import { subirPdfReceta } from '@/features/whatsapp/services/storageRecetas'
 import { extraerRecetaDePdf, validarIdentidadExtraida } from '@/lib/ai/ocr-receta'
-import { normalizarDni, parseMontoArs } from '@/lib/recetas/normalizar'
+import { normalizarDni } from '@/lib/recetas/normalizar'
 import { buildSystemPromptPaciente, type ConfigAgente } from '@/features/whatsapp/agent/systemPrompt'
 import { runAgentTurn } from '@/features/whatsapp/agent/runAgentTurn'
 import { sanitizarReplyCobro, scrubLinksMP } from '@/features/whatsapp/agent/sanitizarReply'
 import { buildPacienteTools } from '@/features/whatsapp/agent/tools'
 import { buildConsultorioTools } from '@/features/whatsapp/agent/toolsConsultorio'
+import { buildMedicoTools } from '@/features/whatsapp/agent/toolsMedico'
+import { buildSystemPromptMedico } from '@/features/whatsapp/agent/systemPromptMedico'
 import { registrarEvento } from '@/features/whatsapp/services/bitacora'
 import { registrarUsoIa } from '@/lib/ai/usoIa'
 import { secretariaDisponibleAhora } from '@/features/whatsapp/services/horarioSecretaria'
 
 type Db = ReturnType<typeof createServiceClient>
-
-const AYUDA_MEDICO = [
-  '🩺 Soy su asistente. Comandos:',
-  '• Reenvíeme el PDF de una receta para cargarla al cobro',
-  "• 'precio 5000' — fija cuánto cobra cada receta",
-  "• 'recetas' — estado de sus recetas",
-  "• 'turnos' (o 'agenda') — su agenda de los próximos 7 días",
-].join('\n')
 
 /**
  * Procesa un webhook entrante de WhatsApp re-keyeado a medico_id.
@@ -78,38 +70,85 @@ async function responder(canal: CanalResuelto, to: string, text: string): Promis
   await sendWhatsAppText({ phoneNumberId: canal.phoneNumberId, accessToken: canal.accessToken, to, text })
 }
 
-// ── Rama MÉDICO: carga de recetas (PDF) + comandos de texto ──────────────────
+// ── Rama MÉDICO: carga de recetas (PDF) + agente de IA administrativo ────────
 async function handleMedico(db: Db, canal: CanalResuelto, incoming: IncomingMessage): Promise<void> {
   if (incoming.type === 'document') {
     await cargarRecetaDesdePdf(db, canal, incoming)
     return
   }
 
-  const texto = (incoming.text ?? '').trim()
-  const matchPrecio = /^precio\s+\$?\s*([\d.,]+)\s*$/i.exec(texto)
-  if (matchPrecio) {
-    const monto = parseMontoArs(matchPrecio[1])
-    if (!monto) {
-      await responder(canal, incoming.from, "No entendí el monto. Probá: precio 5000")
-      return
+  // Rama texto = agente de IA administrativo (espejo del paciente, sin toma-humana ni entrega).
+  const contactoId = await ensureContacto(db, canal.medicoId, incoming.from, incoming.contactName)
+  const conversacionId = await ensureConversacion(db, canal.medicoId, contactoId, true)
+  await addMensaje(db, {
+    medicoId: canal.medicoId,
+    conversacionId,
+    direccion: 'entrante',
+    origen: 'medico',
+    contenido: incoming.text ?? '',
+    wamid: incoming.messageId,
+  })
+
+  const { data: cfgRow } = await db
+    .from('wa_config_agente')
+    .select('nombre_medico')
+    .eq('medico_id', canal.medicoId)
+    .maybeSingle()
+  const nombreMedico = (cfgRow as { nombre_medico: string | null } | null)?.nombre_medico ?? null
+
+  const historial = await loadHistorial(db, canal.medicoId, conversacionId, 12, 'medico')
+  const tools = buildMedicoTools({ db, medicoId: canal.medicoId })
+  const systemPrompt = buildSystemPromptMedico({ nombreMedico })
+
+  let reply: string
+  try {
+    const turno = await runAgentTurn({ systemPrompt, historial, tools })
+    reply = turno.text
+    // Telemetría best-effort: un fallo acá NO debe descartar la respuesta ya generada.
+    try {
+      await registrarUsoIa(db, {
+        medicoId: canal.medicoId,
+        origen: 'whatsapp',
+        modelo: turno.modelo,
+        usage: turno.usage,
+        conversacionId,
+      })
+      if (turno.resumen.tools.length > 0) {
+        await registrarEvento(db, {
+          medicoId: canal.medicoId,
+          origen: 'agente',
+          nivel: 'info',
+          evento: 'agente_medico_turno',
+          detalle: { ...turno.resumen },
+          conversacionId,
+        })
+      }
+    } catch (telemetriaErr) {
+      console.error('[wa] telemetría médico (best-effort):', telemetriaErr)
     }
-    await setPrecioReceta(db, canal.medicoId, monto)
-    await responder(
-      canal,
-      incoming.from,
-      `✅ Listo: cada receta se cobra $${monto.toLocaleString('es-AR')}. Ya puede reenviarme los PDFs.`,
-    )
+  } catch (e) {
+    console.error('[wa] agente médico error:', e)
+    await registrarEvento(db, {
+      medicoId: canal.medicoId,
+      origen: 'agente',
+      nivel: 'error',
+      evento: 'agente_medico_error',
+      detalle: { error: String(e) },
+      conversacionId,
+    })
+    await responder(canal, incoming.from, 'Perdoná, tuve un problema para procesar tu mensaje 🙏 Probá de nuevo en un ratito.')
     return
   }
-  if (/^(recetas|estado)$/i.test(texto)) {
-    await responder(canal, incoming.from, await conAvisoAtencion(db, canal.medicoId, await resumenRecetas(db, canal.medicoId)))
-    return
-  }
-  if (/^(turnos|agenda)$/i.test(texto)) {
-    await responder(canal, incoming.from, await conAvisoAtencion(db, canal.medicoId, await resumenTurnos(db, canal.medicoId)))
-    return
-  }
-  await responder(canal, incoming.from, AYUDA_MEDICO)
+
+  if (!reply) return
+  await responder(canal, incoming.from, reply)
+  await addMensaje(db, {
+    medicoId: canal.medicoId,
+    conversacionId,
+    direccion: 'saliente',
+    origen: 'ia',
+    contenido: reply,
+  })
 }
 
 async function cargarRecetaDesdePdf(db: Db, canal: CanalResuelto, incoming: IncomingMessage): Promise<void> {
@@ -256,25 +295,30 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
     const turno = await runAgentTurn({ systemPrompt, historial, tools })
     // Barrera de plata: solo pueden salir links que devolvió cobrar_receta.
     reply = sanitizarReplyCobro(turno.text, turno.cobros)
-    // Costo de IA (spec §5.1): registramos los tokens del turno. Best-effort.
-    await registrarUsoIa(db, {
-      medicoId: canal.medicoId,
-      origen: 'whatsapp',
-      modelo: turno.modelo,
-      usage: turno.usage,
-      conversacionId,
-    })
-    // Bitácora (spec §10): registramos el turno cuando el agente HIZO algo
-    // (usó tools). Los turnos de pura charla no ensucian la traza. Best-effort.
-    if (turno.resumen.tools.length > 0) {
-      await registrarEvento(db, {
+    // Telemetría best-effort: un fallo acá NO debe descartar la respuesta ya generada.
+    try {
+      // Costo de IA (spec §5.1): registramos los tokens del turno. Best-effort.
+      await registrarUsoIa(db, {
         medicoId: canal.medicoId,
-        origen: 'agente',
-        nivel: 'info',
-        evento: 'agente_turno',
-        detalle: { ...turno.resumen },
+        origen: 'whatsapp',
+        modelo: turno.modelo,
+        usage: turno.usage,
         conversacionId,
       })
+      // Bitácora (spec §10): registramos el turno cuando el agente HIZO algo
+      // (usó tools). Los turnos de pura charla no ensucian la traza. Best-effort.
+      if (turno.resumen.tools.length > 0) {
+        await registrarEvento(db, {
+          medicoId: canal.medicoId,
+          origen: 'agente',
+          nivel: 'info',
+          evento: 'agente_turno',
+          detalle: { ...turno.resumen },
+          conversacionId,
+        })
+      }
+    } catch (telemetriaErr) {
+      console.error('[wa] telemetría paciente (best-effort):', telemetriaErr)
     }
   } catch (e) {
     console.error('[wa] agent error:', e)

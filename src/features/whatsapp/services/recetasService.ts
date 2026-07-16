@@ -56,11 +56,15 @@ export async function crearRecetaDesdeOcr(
   return data as RecetaRow
 }
 
-/** Busca recetas cobrables por identidad (DNI exacto + nombre tolerante). Marca vencidas lazy. */
-export async function buscarPendientesPorIdentidad(
+/**
+ * Recetas `pendiente_pago` de un DNI (identidad exacta), marcando vencidas lazy.
+ * Núcleo compartido: el bot lo usa confirmando además por nombre (anti-secuestro),
+ * y el panel de la secretaria lo usa directo (la secretaria confirma visualmente al
+ * cotejar la persona del chat). Filtra por medico_id → nunca cruza consultorios.
+ */
+export async function getPendientesPorDni(
   db: SupabaseClient,
   medicoId: string,
-  nombre: string,
   dni: string,
 ): Promise<RecetaRow[]> {
   const dniNorm = normalizarDni(dni)
@@ -83,9 +87,37 @@ export async function buscarPendientesPorIdentidad(
       .eq('medico_id', medicoId)
       .in('id', vencidas.map((r) => r.id))
   }
-  return rows
-    .filter((r) => new Date(r.created_at).getTime() >= limite)
-    .filter((r) => nombresCoinciden(r.paciente_nombre, nombre))
+  return rows.filter((r) => new Date(r.created_at).getTime() >= limite)
+}
+
+/**
+ * Busca recetas cobrables por identidad (DNI exacto + nombre tolerante). Marca vencidas lazy.
+ *
+ * ⚠️ SEGURIDAD / PRIVACIDAD — trade-off ASUMIDO (severidad baja-media, decidido 2026-07-15):
+ * La identificación del paciente es SOLO conocimiento (nombre + DNI), sin factor de posesión.
+ * Cualquiera que sepa ambos datos puede, desde su WhatsApp: (a) enumerar las recetas pendientes
+ * del paciente viendo medicamento y monto, y (b) pagar una y recibir el PDF (con medicación y
+ * diagnóstico) en su propio celular.
+ *
+ * Mitigación EXISTENTE (candado anti-secuestro, `vincularPago` + el check en tools.ts
+ * `cobrar_receta`): la receta queda atada al PRIMER teléfono que genera el link; otro número no
+ * puede DESVIAR la entrega de una receta ya reclamada. NO impide que un primero-en-llegar que
+ * conozca nombre+DNI sea ese primer teléfono y reciba el PDF.
+ *
+ * Por qué se acepta hoy: nombre+DNI es semi-privado; el médico controla a quién le dice que
+ * escriba; el atacante tiene que PAGAR dinero real para recibir el PDF; y exigir un factor extra
+ * (código por-receta que el médico le pasa al paciente, o pre-atar la receta al teléfono del
+ * paciente al subirla) le mete fricción al camino feliz —el paciente solo escribe y paga—, que es
+ * el valor central del producto. Revisar si aparece abuso. Ver [[reference_medicuenta_bot_recetas_flow]].
+ */
+export async function buscarPendientesPorIdentidad(
+  db: SupabaseClient,
+  medicoId: string,
+  nombre: string,
+  dni: string,
+): Promise<RecetaRow[]> {
+  const vigentes = await getPendientesPorDni(db, medicoId, dni)
+  return vigentes.filter((r) => nombresCoinciden(r.paciente_nombre, nombre))
 }
 
 export async function listarPagadasSinEntregar(
@@ -127,6 +159,11 @@ export async function getRecetaDelMedico(
   return (data as RecetaRow | null) ?? null
 }
 
+/** Distingue el CONFLICTO real (otro teléfono ya gestiona la receta) de un FALLO
+ *  TÉCNICO: antes ambos volvían `false` y al paciente se le reportaba el conflicto,
+ *  tapando el error de verdad. */
+export type VinculoPago = { ok: true } | { ok: false; motivo: 'conflicto' | 'error' }
+
 /**
  * Al generar el link: asocia preferencia + teléfono + contacto del paciente (§6.2:
  * se capturan al escribir). Condicional anti-TOCTOU: solo escribe si el teléfono
@@ -137,22 +174,36 @@ export async function vincularPago(
   medicoId: string,
   recetaId: string,
   args: { mpPreferenceId: string; pacienteTelefono: string; contactoId: string | null },
-): Promise<boolean> {
-  const { data } = await db
-    .from('recetas')
-    .update({
-      mp_preference_id: args.mpPreferenceId,
-      paciente_telefono: args.pacienteTelefono,
-      contacto_id: args.contactoId,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('medico_id', medicoId)
-    .eq('id', recetaId)
-    .or(`paciente_telefono.is.null,paciente_telefono.eq.${args.pacienteTelefono}`)
-    .select('id')
-  // true solo si el UPDATE condicional afectó la fila: el que pierde la carrera
-  // (otro teléfono ya gestionando la receta) recibe false y NO un link válido.
-  return (data?.length ?? 0) > 0
+): Promise<VinculoPago> {
+  const patch = {
+    mp_preference_id: args.mpPreferenceId,
+    paciente_telefono: args.pacienteTelefono,
+    contacto_id: args.contactoId,
+    updated_at: new Date().toISOString(),
+  }
+  const update = () => db.from('recetas').update(patch).eq('medico_id', medicoId).eq('id', recetaId)
+
+  // El condicional va en DOS pasos y NO con un `.or()`: PostgREST rompe al aplicar
+  // `or=` sobre un UPDATE (42703 "column recetas.paciente_telefono does not exist")
+  // y el link de pago no se generaba nunca. Cada paso sigue siendo atómico.
+  // 1) Reclamarla si está libre — de dos solicitantes simultáneos, solo uno gana acá.
+  const libre = await update().is('paciente_telefono', null).select('id')
+  if (libre.error) {
+    console.error('[wa] vincularPago (reclamar):', libre.error.message)
+    return { ok: false, motivo: 'error' }
+  }
+  if ((libre.data?.length ?? 0) > 0) return { ok: true }
+
+  // 2) Ya estaba tomada: solo sigue si es de ESTE teléfono (re-generar su link).
+  const propia = await update().eq('paciente_telefono', args.pacienteTelefono).select('id')
+  if (propia.error) {
+    console.error('[wa] vincularPago (re-generar):', propia.error.message)
+    return { ok: false, motivo: 'error' }
+  }
+  if ((propia.data?.length ?? 0) > 0) return { ok: true }
+
+  // Ni libre ni suya: la gestiona otro número. El que pierde la carrera no recibe link.
+  return { ok: false, motivo: 'conflicto' }
 }
 
 /** Condicional por estado: reduce la ventana de carrera entre webhooks concurrentes. */
@@ -242,22 +293,6 @@ export async function resumenRecetas(db: SupabaseClient, medicoId: string): Prom
     )
     .join('\n')
   return `📋 Tus recetas:\n${resumen}\n\nÚltimas:\n${ultimas}`
-}
-
-/** Recetas pendientes de pago de un paciente (por su teléfono normalizado), para el panel. */
-export async function getRecetasPendientesPorTelefono(
-  db: SupabaseClient,
-  medicoId: string,
-  telefono: string,
-): Promise<RecetaRow[]> {
-  const { data } = await db
-    .from('recetas')
-    .select(COLS)
-    .eq('medico_id', medicoId)
-    .eq('paciente_telefono', telefono)
-    .eq('estado', 'pendiente_pago')
-    .order('created_at', { ascending: true })
-  return (data as RecetaRow[] | null) ?? []
 }
 
 /**
