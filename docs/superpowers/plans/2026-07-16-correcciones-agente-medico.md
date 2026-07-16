@@ -375,14 +375,25 @@ Crear `supabase/migrations/20260716_conversacion_medico.sql`:
 ALTER TABLE wa_conversaciones ADD COLUMN es_medico BOOLEAN NOT NULL DEFAULT false;
 
 -- Backfill: marcar las que ya existen (creadas antes de este flag).
--- Comparación por dígitos: los formatos guardados pueden diferir (+54 / 9 / 0 / 15).
+-- Comparación por los ÚLTIMOS 10 DÍGITOS (= número nacional argentino). NO compares los
+-- strings completos: `wa_contactos.telefono` llega crudo del webhook (`549…`, 13 dígitos) y
+-- `wa_asignaciones.numero_personal` pasa por normalizarWhatsappAr (`54…`, 12 dígitos, SIN el 9
+-- de móvil). El 9 es un dígito, así que `regexp_replace(…, '\D', …)` NO lo saca → comparar
+-- los strings enteros matchea 0 filas SIEMPRE, en silencio. Los últimos 10 son inmunes a las
+-- variantes de prefijo (54 / 549 / 0 / 15), igual que `normalizeRecipient` en el código.
 UPDATE wa_conversaciones c
 SET es_medico = true
 FROM wa_contactos ct, wa_asignaciones a
 WHERE c.contacto_id = ct.id
   AND c.medico_id = a.medico_id
-  AND regexp_replace(ct.telefono, '\D', '', 'g') = regexp_replace(a.numero_personal, '\D', '', 'g');
+  AND right(regexp_replace(ct.telefono, '\D', '', 'g'), 10)
+    = right(regexp_replace(a.numero_personal, '\D', '', 'g'), 10);
 ```
+
+> **Corregido post-review (2026-07-16).** La versión original de este plan comparaba los strings
+> completos y matcheaba **0 filas siempre**. Verificado contra la base real: viejo → 0 filas,
+> arreglado → 1 fila (la conversación médico↔bot que existe hoy). Misma clase de bug que arregló
+> el #6 de la tanda anterior.
 
 - [ ] **Step 2: `ensureConversacion` marca la conversación**
 
@@ -461,7 +472,8 @@ La segunda query (preview de `wa_mensajes`) filtra por los `conversacion_id` ya 
 - [ ] **Step 5: Typecheck + suite + build**
 
 Run: `npm run typecheck && npm run test`
-Expected: sin errores, `398 passed`.
+Expected: sin errores, `399 passed`. (El review de la Task 2 agregó un test al prompt, así que
+el baseline subió de 398 a 399. Esta task no agrega tests.)
 
 Run: `npm run build`
 Expected: build limpio.
