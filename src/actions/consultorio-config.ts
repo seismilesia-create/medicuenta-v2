@@ -150,6 +150,17 @@ export async function quitarDiaParticular(id: string) {
   return { ok: true as const }
 }
 
+/** Corta la conexión con MercadoPago: el médico deja de poder cobrar recetas hasta reconectar.
+ *  No revoca el permiso del lado de MP (eso lo hace él desde su cuenta); acá borramos el token. */
+export async function desconectarMercadoPago() {
+  const c = await ctxDueño()
+  if ('error' in c) return c
+  const { supabase, medicoId } = c
+  const { error } = await supabase.from('mp_conexiones').delete().eq('medico_id', medicoId)
+  if (error) return { error: error.message }
+  return { ok: true as const }
+}
+
 const agenteSchema = z.object({
   nombre_medico: z.string().trim(),
   especialidad: z.string().trim(),

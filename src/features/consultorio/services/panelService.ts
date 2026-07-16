@@ -546,7 +546,12 @@ export interface ConfigConsultorio {
     faqs: { pregunta: string; respuesta: string }[]
     precio_receta_default: number | null
   } | null
-  conexiones: { whatsapp: boolean; mercadopago: boolean }
+  // MercadoPago no es un booleano: 'reconectar' (se venció el permiso, el cobro está pausado)
+  // se vería igual que "nunca conectó" y el médico no entendería por qué dejó de cobrar.
+  conexiones: {
+    whatsapp: boolean
+    mercadopago: { estado: 'conectado' | 'reconectar' } | null
+  }
   secretarias: {
     id: string
     email: string
@@ -577,7 +582,8 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
       .maybeSingle()
       .then(ok),
     db.from('wa_canales').select('id').eq('medico_id', medicoId).eq('estado', 'conectado').maybeSingle().then(ok),
-    db.from('mp_conexiones').select('id').eq('medico_id', medicoId).eq('estado', 'conectado').maybeSingle().then(ok),
+    // Sin filtrar por estado: necesitamos distinguir 'reconectar' de "sin conexión".
+    db.from('mp_conexiones').select('estado').eq('medico_id', medicoId).maybeSingle().then(ok),
     db
       .from('equipo_consultorio')
       .select('id, secretaria_email, estado, invited_at, token')
@@ -599,7 +605,14 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
     agente: agente
       ? { ...agente, precio_receta_default: agente.precio_receta_default != null ? Number(agente.precio_receta_default) : null }
       : null,
-    conexiones: { whatsapp: !!canalRes.data, mercadopago: !!mpRes.data },
+    conexiones: {
+      whatsapp: !!canalRes.data,
+      mercadopago: (() => {
+        const mp = mpRes.data as { estado: string } | null
+        if (!mp) return null
+        return { estado: mp.estado === 'reconectar' ? ('reconectar' as const) : ('conectado' as const) }
+      })(),
+    },
     secretarias: (
       (secretariasRes.data as
         | { id: string; secretaria_email: string; estado: 'pendiente' | 'activa' | 'revocada'; invited_at: string; token: string | null }[]

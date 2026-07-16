@@ -3,3 +3,4 @@ export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 export { Input } from './input'
 export { Select } from './select'
 export { Badge } from './badge'
+export { ConfirmDialog } from './confirm-dialog'

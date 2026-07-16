@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Loader2, Trash2, CheckCircle2, XCircle } from 'lucide-react'
+import { Loader2, Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { ConfirmDialog } from '@/shared/components/ui'
 import { parseMontoArs } from '@/lib/recetas/normalizar'
 import { getConfig, type ConfigConsultorio } from '@/features/consultorio/services/panelService'
 import {
@@ -13,6 +14,7 @@ import {
   agregarDiaSemanalParticular,
   agregarFechaParticular,
   quitarDiaParticular,
+  desconectarMercadoPago,
 } from '@/actions/consultorio-config'
 import { desbloquearDias, bloquearDias } from '@/actions/consultorio-agenda'
 import { invitarSecretaria, revocarSecretaria } from '@/actions/consultorio-secretaria'
@@ -35,6 +37,32 @@ function Campo({ label, ayuda, children }: { label: string; ayuda: string; child
       {children}
       <span className="block text-[11px] text-[var(--color-muted-foreground)]">{ayuda}</span>
     </label>
+  )
+}
+
+/** Fila de la sección Conexiones: las tres se ven igual (nombre + ayuda | estado + acción). */
+function FilaConexion(props: {
+  icono: React.ReactNode
+  nombre: string
+  ayuda?: string
+  estado: string
+  accion?: React.ReactNode
+  atenuada?: boolean
+}) {
+  return (
+    <div className={'flex items-start justify-between gap-3 p-3' + (props.atenuada ? ' opacity-50' : '')}>
+      <div className="space-y-0.5 min-w-0">
+        <p className="flex items-center gap-1.5 text-sm font-medium">
+          {props.icono}
+          {props.nombre}
+        </p>
+        {props.ayuda && <p className="text-[11px] text-[var(--color-muted-foreground)]">{props.ayuda}</p>}
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        <span className="text-xs text-[var(--color-muted-foreground)]">{props.estado}</span>
+        {props.accion}
+      </div>
+    </div>
   )
 }
 
@@ -106,6 +134,37 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
   const [emailSec, setEmailSec] = useState('')
   const [secretariaUrl, setSecretariaUrl] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [mpAviso, setMpAviso] = useState<{ ok: boolean; texto: string } | null>(null)
+  // Confirmación de acciones destructivas (in-app, no window.confirm).
+  const [confirmar, setConfirmar] = useState<{
+    titulo: string
+    mensaje: string
+    confirmLabel: string
+    accion: () => Promise<{ error?: string } | { ok: true }>
+  } | null>(null)
+
+  // Resultado de la vuelta del OAuth de MercadoPago (?mp=ok | ?mp=error&motivo=…).
+  // Se lee de la URL y se limpia, para que no reaparezca al recargar. Sin useSearchParams:
+  // obligaría a envolver la página en un <Suspense>.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const mp = params.get('mp')
+    if (!mp) return
+
+    const motivos: Record<string, string> = {
+      denegado: 'Cancelaste la conexión con MercadoPago.',
+      state: 'El enlace de conexión venció. Probá de nuevo.',
+      canje: 'MercadoPago rechazó la conexión. Probá de nuevo en unos minutos.',
+      guardado: 'No pude guardar la conexión. Probá de nuevo.',
+      config: 'Falta terminar de configurar MercadoPago. Avisale al equipo de MediCuenta.',
+    }
+    setMpAviso(
+      mp === 'ok'
+        ? { ok: true, texto: '¡Listo! Tu cuenta de MercadoPago quedó conectada.' }
+        : { ok: false, texto: motivos[params.get('motivo') ?? ''] ?? 'No pude conectar MercadoPago.' },
+    )
+    window.history.replaceState({}, '', window.location.pathname)
+  }, [])
 
   const refetch = useCallback(async () => {
     const supabase = createClient()
@@ -188,6 +247,7 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
     )
 
   const input = 'w-full rounded-lg border border-border bg-[var(--color-background)] px-3 py-2 text-sm'
+  const mp = cfg.conexiones.mercadopago
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-3xl">
@@ -430,26 +490,90 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
       </Seccion>
 
       <Seccion titulo="Conexiones">
-        <div className="flex gap-4 text-sm">
-          <span className="flex items-center gap-1">
-            {cfg.conexiones.whatsapp ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            ) : (
-              <XCircle className="w-4 h-4 text-red-500" />
-            )}
-            WhatsApp
-          </span>
-          <span className="flex items-center gap-1">
-            {cfg.conexiones.mercadopago ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            ) : (
-              <XCircle className="w-4 h-4 text-red-500" />
-            )}
-            MercadoPago
-          </span>
-          <span className="flex items-center gap-1 opacity-50">
-            <XCircle className="w-4 h-4" /> Google Calendar (llega en 3C)
-          </span>
+        {mpAviso && (
+          <p className={`text-sm font-medium ${mpAviso.ok ? 'text-emerald-600' : 'text-red-500'}`}>
+            {mpAviso.texto}
+          </p>
+        )}
+
+        <div className="rounded-xl border border-border divide-y divide-border">
+          <FilaConexion
+            icono={
+              cfg.conexiones.whatsapp ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              ) : (
+                <XCircle className="w-4 h-4 text-red-500" />
+              )
+            }
+            nombre="WhatsApp"
+            estado={cfg.conexiones.whatsapp ? 'conectado' : 'sin conectar'}
+          />
+
+          {mp === null && (
+            <FilaConexion
+              icono={<XCircle className="w-4 h-4 text-red-500" />}
+              nombre="MercadoPago"
+              ayuda="Conectá tu cuenta para que el asistente pueda cobrar las recetas. El dinero entra directo a tu cuenta: MediCuenta no toca la plata."
+              estado="sin conectar"
+              accion={
+                <a
+                  href="/api/mercadopago/oauth"
+                  className="inline-flex rounded-xl bg-primary text-white px-4 py-2 text-sm font-medium"
+                >
+                  Conectar
+                </a>
+              }
+            />
+          )}
+
+          {mp?.estado === 'conectado' && (
+            <FilaConexion
+              icono={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+              nombre="MercadoPago"
+              ayuda="Los pagos de las recetas entran a tu cuenta."
+              estado="conectado"
+              accion={
+                <button
+                  onClick={() =>
+                    setConfirmar({
+                      titulo: 'Desconectar MercadoPago',
+                      mensaje:
+                        'El asistente va a dejar de cobrar las recetas hasta que vuelvas a conectar tu cuenta. Podés reconectarla cuando quieras.',
+                      confirmLabel: 'Desconectar',
+                      accion: desconectarMercadoPago,
+                    })
+                  }
+                  className="text-sm font-medium text-red-500"
+                >
+                  Desconectar
+                </button>
+              }
+            />
+          )}
+
+          {mp?.estado === 'reconectar' && (
+            <FilaConexion
+              icono={<AlertTriangle className="w-4 h-4 text-amber-500" />}
+              nombre="MercadoPago"
+              ayuda="Se venció el permiso de tu cuenta y el cobro de recetas está pausado. Reconectá para que el asistente vuelva a cobrar."
+              estado="hay que reconectar"
+              accion={
+                <a
+                  href="/api/mercadopago/oauth"
+                  className="inline-flex rounded-xl bg-primary text-white px-4 py-2 text-sm font-medium"
+                >
+                  Reconectar
+                </a>
+              }
+            />
+          )}
+
+          <FilaConexion
+            icono={<XCircle className="w-4 h-4" />}
+            nombre="Google Calendar"
+            estado="llega en 3C"
+            atenuada
+          />
         </div>
       </Seccion>
 
@@ -479,11 +603,14 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
               )}
               <button
                 className="text-xs underline text-red-500"
-                onClick={() => {
-                  if (window.confirm(`¿Revocar el acceso de ${s.email}? El corte es inmediato.`)) {
-                    onAccion(() => revocarSecretaria(s.id))
-                  }
-                }}
+                onClick={() =>
+                  setConfirmar({
+                    titulo: 'Revocar acceso',
+                    mensaje: `${s.email} va a perder el acceso al consultorio de inmediato.`,
+                    confirmLabel: 'Revocar',
+                    accion: () => revocarSecretaria(s.id),
+                  })
+                }
               >
                 Revocar
               </button>
@@ -528,6 +655,21 @@ export function ConfigView({ medicoId }: { medicoId: string }) {
       <Seccion titulo="Actividad del asistente">
         <ActividadAsistente medicoId={medicoId} />
       </Seccion>
+
+      {confirmar && (
+        <ConfirmDialog
+          titulo={confirmar.titulo}
+          mensaje={confirmar.mensaje}
+          confirmLabel={confirmar.confirmLabel}
+          peligroso
+          onCancel={() => setConfirmar(null)}
+          onConfirm={() => {
+            const accion = confirmar.accion
+            setConfirmar(null)
+            onAccion(accion)
+          }}
+        />
+      )}
     </div>
   )
 }
