@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildSystemPromptMedico } from './systemPromptMedico'
+import { DIAS_DEFAULT } from '@/lib/turnos/rangoAgenda'
 
 describe('buildSystemPromptMedico', () => {
   const prompt = buildSystemPromptMedico({ nombreMedico: 'Juan Pérez' })
@@ -26,5 +27,10 @@ describe('buildSystemPromptMedico', () => {
 
   it('incluye el nombre del médico', () => {
     expect(prompt).toContain('Juan Pérez')
+  })
+
+  it('anuncia el default REAL de consultar_agenda y que acepta rango (no un número hardcodeado que se pudra)', () => {
+    expect(prompt).toContain(`próximos ${DIAS_DEFAULT} días`)
+    expect(prompt).toMatch(/consultar_agenda[^\n]*desde\/hasta/i)
   })
 })

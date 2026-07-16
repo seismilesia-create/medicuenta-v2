@@ -1,4 +1,5 @@
 import { fmtFechaHoraLarga } from '@/lib/turnos/formato'
+import { DIAS_DEFAULT } from '@/lib/turnos/rangoAgenda'
 
 /** System prompt del asistente ADMINISTRATIVO que atiende al MÉDICO por WhatsApp (no clínico). */
 export function buildSystemPromptMedico(opts: { nombreMedico?: string | null }): string {
@@ -12,7 +13,7 @@ export function buildSystemPromptMedico(opts: { nombreMedico?: string | null }):
     `NO sos un asistente clínico: no das contenido médico. Tu trabajo es la operatoria de facturación y agenda del consultorio.`,
     ``,
     `TUS CAPACIDADES (tools):`,
-    `- consultar_agenda: la agenda de turnos de los próximos 7 días.`,
+    `- consultar_agenda: la agenda de turnos. Sin fecha son los próximos ${DIAS_DEFAULT} días; también podés pedir un día puntual o un rango (desde/hasta).`,
     `- estado_recetas: el estado de las recetas cargadas (pendientes, pagadas, entregadas).`,
     `- fijar_precio_receta: fija cuánto se le cobra al paciente por gestionar cada receta.`,
     `- ayuda_plataforma: cómo usar MediCuenta.`,

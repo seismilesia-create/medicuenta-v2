@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { resumenTurnos } from '@/features/whatsapp/services/turnosService'
 import { resumenRecetas } from '@/features/whatsapp/services/recetasService'
 import { setPrecioReceta } from '@/features/whatsapp/services/configAgente'
+import { DIAS_DEFAULT } from '@/lib/turnos/rangoAgenda'
 import { PLATFORM_KNOWLEDGE } from '@/features/assistant/config/platformKnowledge'
 
 export interface MedicoToolsCtx {
@@ -15,9 +16,15 @@ export interface MedicoToolsCtx {
 export function buildMedicoTools(ctx: MedicoToolsCtx) {
   return {
     consultar_agenda: tool({
-      description: 'Muestra la agenda de turnos de los próximos 7 días del médico.',
-      inputSchema: z.object({}),
-      execute: async () => ({ resumen: await resumenTurnos(ctx.db, ctx.medicoId) }),
+      description:
+        'Agenda de turnos del médico. Pasá desde/hasta (YYYY-MM-DD, hora argentina) para una fecha o ' +
+        'rango puntual ("el jueves 23", "la otra semana", "septiembre"). Para UN SOLO día, mandá el mismo ' +
+        `valor en desde y en hasta. Sin argumentos devuelve los próximos ${DIAS_DEFAULT} días.`,
+      inputSchema: z.object({
+        desde: z.string().optional().describe('Fecha AR YYYY-MM-DD. Inicio del rango.'),
+        hasta: z.string().optional().describe('Fecha AR YYYY-MM-DD. Fin del rango, inclusive.'),
+      }),
+      execute: async ({ desde, hasta }) => ({ resumen: await resumenTurnos(ctx.db, ctx.medicoId, { desde, hasta }) }),
     }),
 
     estado_recetas: tool({

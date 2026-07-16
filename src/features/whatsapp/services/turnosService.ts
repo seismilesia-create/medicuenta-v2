@@ -9,6 +9,7 @@ import {
   type DayAvailability,
 } from '@/lib/turnos/slots'
 import { fmtFechaCorta, fmtHora } from '@/lib/turnos/formato'
+import { resolverRangoAgenda, type RangoAgenda } from '@/lib/turnos/rangoAgenda'
 import type { ServicioLite } from '@/lib/turnos/resolverServicio'
 import { upsertPacienteDesdeIdentidad } from '@/features/whatsapp/services/pacientesService'
 import { registrarEvento } from '@/features/whatsapp/services/bitacora'
@@ -16,8 +17,6 @@ import type { DiaParticular } from '@/lib/consultorio/diasParticulares'
 
 /** Cuántos días hacia adelante se busca disponibilidad (el origen usaba 60: ruido). */
 const DIAS_A_OFRECER = 14
-/** Ventana del resumen de agenda del médico (comando 'turnos'). */
-const DIAS_RESUMEN_MEDICO = 7
 /** Tope de líneas del resumen (el texto de WhatsApp corta en 4096 chars; con motivo, 30 entra holgado). */
 const MAX_LINEAS_RESUMEN = 30
 
@@ -322,14 +321,20 @@ export async function getDiasParticulares(db: SupabaseClient, medicoId: string):
 }
 
 /** Agenda compacta para el comando 'turnos' del médico (visibilidad mínima, como 'recetas'). */
-export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promise<string> {
+export async function resumenTurnos(
+  db: SupabaseClient,
+  medicoId: string,
+  rango?: RangoAgenda,
+): Promise<string> {
+  const r = resolverRangoAgenda(rango, Date.now())
+  if ('error' in r) return r.error
   const { data, error } = await db
     .from('wa_turnos')
     .select('starts_at, paciente_nombre, paciente_apellido, paciente_telefono, paciente_dni, paciente_obra_social, estado, notas, servicio:wa_servicios(nombre)')
     .eq('medico_id', medicoId)
     .in('estado', ['reservado', 'confirmado'])
-    .gt('starts_at', new Date().toISOString())
-    .lte('starts_at', new Date(Date.now() + DIAS_RESUMEN_MEDICO * 86_400_000).toISOString())
+    .gt('starts_at', r.desdeISO)
+    .lte('starts_at', r.hastaISO)
     .order('starts_at')
     .limit(MAX_LINEAS_RESUMEN)
   if (error) {
@@ -351,7 +356,7 @@ export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promi
         }[]
       | null) ?? []
 
-  if (rows.length === 0) return `No hay turnos agendados para los próximos ${DIAS_RESUMEN_MEDICO} días.`
+  if (rows.length === 0) return `📅 No hay turnos — ${r.descriptor}.`
 
   // Truncados: 30 líneas × ~130 chars quedan bajo el tope de 4096 de WhatsApp.
   const motivoCorto = (n: string | null) => {
@@ -372,5 +377,5 @@ export async function resumenTurnos(db: SupabaseClient, medicoId: string): Promi
     .join('\n')
   const corto = rows.length === MAX_LINEAS_RESUMEN ? `\n… (mostrando los primeros ${MAX_LINEAS_RESUMEN})` : ''
   const cuenta = rows.length === MAX_LINEAS_RESUMEN ? `${rows.length}+` : `${rows.length}`
-  return `📅 Turnos de los próximos ${DIAS_RESUMEN_MEDICO} días (${cuenta}):\n${lineas}${corto}`
+  return `📅 Turnos — ${r.descriptor} (${cuenta}):\n${lineas}${corto}`
 }
