@@ -1,4 +1,4 @@
-# Nota para Gaby — mergeá `main` a `feat/pagos-mp` antes de seguir
+# Nota para Gabriel — mergeá `main` a `feat/pagos-mp` antes de seguir
 
 **Fecha:** 2026-07-16 · **Escrito por:** Claude (sesión de Héctor) · **Tu rama:** `feat/pagos-mp` @ `d6f656b`
 
