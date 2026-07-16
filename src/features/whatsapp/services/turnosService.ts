@@ -320,7 +320,8 @@ export async function getDiasParticulares(db: SupabaseClient, medicoId: string):
   return (data as DiaParticular[] | null) ?? []
 }
 
-/** Agenda compacta para el comando 'turnos' del médico (visibilidad mínima, como 'recetas'). */
+/** Agenda del médico para la tool `consultar_agenda` del agente: rango pedido (o los próximos
+ *  DIAS_DEFAULT días), resuelto por día calendario AR. Tope de MAX_LINEAS_RESUMEN líneas. */
 export async function resumenTurnos(
   db: SupabaseClient,
   medicoId: string,
