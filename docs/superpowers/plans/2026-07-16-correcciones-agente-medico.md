@@ -497,6 +497,8 @@ no tiene por qué verla. La conversación sigue existiendo: el agente necesita e
 ## Cierre
 
 Pendiente después de las 3 tasks (NO es parte del plan):
-1. **Aplicar la migración a prod** (`20260716_conversacion_medico.sql`) — Héctor decide cuándo.
+1. **Aplicar la migración a prod** (`20260716_conversacion_medico.sql`) — **ANTES de mergear a main**, no "cuando se pueda". Ver el punto 3: es una precondición dura, no una tarea suelta.
 2. **E2E manual**: preguntarle al agente por "el jueves 23", "la otra semana", "septiembre" y una fecha inválida; y verificar que la conversación del médico desapareció de Conversaciones (y que las de pacientes siguen ahí).
-3. Deploy: la rama `fix/agente-medico-post-e2e` mergea a `main` → dispara prod. **La migración tiene que estar aplicada ANTES del deploy**: sin la columna, `getBandeja` rompe con 42703 (columna inexistente) y la bandeja queda muerta.
+3. Deploy: la rama `fix/agente-medico-post-e2e` mergea a `main` → dispara prod. **La migración tiene que estar aplicada ANTES del merge**, y nada lo automatiza (no hay CI, ni step de migración en `package.json`, y `vercel.json` solo tiene un cron) → depende 100% de la disciplina del operador.
+   Sin la columna, `getBandeja` no se degrada: **explota**. `ok()` (`panelService.ts:12`) hace `throw new Error(res.error.message)`, así que el 42703 tira la página de Conversaciones entera. La ventana entre el merge y la migración es una caída en vivo del espacio de trabajo de la secretaria.
+   Aplicar la migración PRIMERO es seguro hacia atrás: la columna es `NOT NULL DEFAULT false` y el código hoy deployado nunca la selecciona ni la inserta → la ventana se cierra a cero.

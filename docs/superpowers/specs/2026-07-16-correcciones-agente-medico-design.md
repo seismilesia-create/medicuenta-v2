@@ -88,11 +88,12 @@ El `descriptor` se decide sobre el **rango ya resuelto** — así los cuatro cas
 |---|---|
 | No se pidió ni `desde` ni `hasta` | `los próximos 14 días` |
 | Piso y techo caen en el **mismo día AR** | `el jueves 23 de julio` |
-| Cualquier otro caso | `del 20 al 26 de julio` |
+| Cualquier otro caso | `del lunes 20 de julio al domingo 26 de julio` |
 
-Ejemplos de salida: `📅 Turnos del jueves 23 de julio (2):` · `📅 Turnos de los próximos 14 días (3):`
+**Las dos frases usan guion, no preposición.** El mismo `descriptor` tiene que servir en el encabezado y en el caso vacío, y en español una preposición fija no funciona en ambos: "Turnos de **el** jueves" pediría contracción ("del") mientras "para **de** los próximos" no. El guion evita la preposición en los dos lugares:
 
-El caso vacío usa el mismo descriptor: `No hay turnos agendados para <descriptor>.` (ej. *"No hay turnos agendados para el jueves 23 de julio."*).
+- Encabezado: `📅 Turnos — ${descriptor} (${cuenta}):` → *"📅 Turnos — el jueves 23 de julio (2):"* · *"📅 Turnos — los próximos 14 días (3):"*
+- Caso vacío: `📅 No hay turnos — ${descriptor}.` → *"📅 No hay turnos — el jueves 23 de julio."*
 
 ### Tool `consultar_agenda`
 
