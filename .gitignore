@@ -72,3 +72,4 @@ tsconfig.tsbuildinfo
 
 # Visual companion del brainstorming (mockups temporales)
 .superpowers/
+.env*
