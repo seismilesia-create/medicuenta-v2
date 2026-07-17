@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Clock, AlertTriangle, X } from 'lucide-react'
-import { ConfirmDialog } from '@/shared/components/ui/confirm-dialog'
-import { debeMostrarModalPrueba, type Acceso } from '@/lib/admin/planes'
+import { debeMostrarModalSuscripcion, type Acceso } from '@/lib/admin/planes'
 
 /**
  * Avisos de suscripción del médico (spec F4.3 §8, R3/R5). Escala solo:
@@ -40,7 +39,7 @@ export function AvisosSuscripcion({ acceso }: { acceso: Acceso }) {
       // Incógnito o storage bloqueado: seguimos como si nunca lo hubiera visto.
       // Preferimos avisarle de más a que se le venza la prueba sin enterarse.
     }
-    setModalAbierto(debeMostrarModalPrueba(acceso, ultimoVisto, hoyISO()))
+    setModalAbierto(debeMostrarModalSuscripcion(acceso, ultimoVisto, hoyISO()))
   }, [acceso])
 
   function cerrarModal() {
@@ -103,18 +102,128 @@ export function AvisosSuscripcion({ acceso }: { acceso: Acceso }) {
       )}
 
       {modalAbierto && (
-        <ConfirmDialog
-          titulo={dias === 1 ? '¡Último día de prueba gratis!' : `¡Últimos ${dias} días de prueba gratuitos!`}
-          mensaje="Contratá tu plan para no perder tus funcionalidades premium: la agenda, el asistente de WhatsApp, tus pacientes y las recetas."
-          confirmLabel="Ver planes"
-          cancelLabel="Ahora no"
-          onConfirm={() => {
+        <ModalSuscripcion
+          rojo={esMorosa || dias === 1}
+          Icono={esMorosa ? AlertTriangle : Clock}
+          destacado={esMorosa ? null : dias === 1 ? '¡Último día!' : `${dias} días`}
+          titulo={
+            esMorosa
+              ? 'No pudimos cobrar tu suscripción'
+              : dias === 1
+                ? 'Hoy se termina tu prueba gratis'
+                : 'Te queda de prueba gratis'
+          }
+          cuerpo={
+            esMorosa
+              ? 'Estamos reintentando el cobro. Si no lo logramos, vas a perder el acceso a MediCuenta. Revisá tu tarjeta y actualizá el medio de pago.'
+              : 'Después perdés la agenda, el asistente de WhatsApp, tus pacientes y las recetas. Tus datos quedan guardados.'
+          }
+          cta={esMorosa ? 'Actualizar pago' : 'Ver planes'}
+          onCta={() => {
             cerrarModal()
             router.push('/plan')
           }}
-          onCancel={cerrarModal}
+          onCerrar={cerrarModal}
         />
       )}
     </>
+  )
+}
+
+/**
+ * El modal de "estás por perder el acceso": últimos días de prueba (R3) o cobro
+ * fallido (R5).
+ *
+ * No usa ConfirmDialog a propósito, aunque sea "un modal con dos botones": ese es un
+ * dialogo NEUTRO (mismo gris y mismo boton azul que "¿desconectar MercadoPago?"), y
+ * dejaba toda la urgencia en el texto. Un modal se escanea antes de leerse, asi que
+ * el mensaje tiene que entrar por el ojo: el color y el numero hacen el trabajo.
+ *
+ * `destacado` es el numero grande de la prueba. El moroso no lleva: no sabemos
+ * cuantos reintentos le quedan hasta que lo diga el webhook (fase 5), y poner un
+ * numero inventado seria mentirle.
+ */
+function ModalSuscripcion({
+  rojo,
+  Icono,
+  destacado,
+  titulo,
+  cuerpo,
+  cta,
+  onCta,
+  onCerrar,
+}: {
+  rojo: boolean
+  Icono: typeof Clock
+  destacado: string | null
+  titulo: string
+  cuerpo: string
+  cta: string
+  onCta: () => void
+  onCerrar: () => void
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCerrar()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onCerrar])
+
+  const tono = rojo
+    ? { ring: 'ring-red-500/30', bg: 'bg-red-500/10', texto: 'text-red-500', boton: 'bg-red-500 hover:bg-red-600' }
+    : { ring: 'ring-amber-500/30', bg: 'bg-amber-500/10', texto: 'text-amber-500', boton: 'bg-amber-500 hover:bg-amber-600' }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={onCerrar}
+      role="dialog"
+      aria-modal="true"
+      aria-label={titulo}
+    >
+      <div
+        className={`w-full max-w-xs rounded-2xl border border-border bg-card p-6 text-center ring-4 ${tono.ring}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${tono.bg}`}>
+          <Icono className={`h-7 w-7 ${tono.texto}`} strokeWidth={2} />
+        </div>
+
+        {/* El dato entra por el ojo: primero el numero, despues la explicacion. */}
+        {destacado && (
+          <p className={`mt-4 text-4xl font-bold leading-none tracking-tight ${tono.texto}`}>
+            {destacado}
+          </p>
+        )}
+        <p
+          className={
+            destacado
+              ? 'mt-2 text-sm font-medium text-foreground'
+              : `mt-4 text-lg font-bold leading-tight ${tono.texto}`
+          }
+        >
+          {titulo}
+        </p>
+
+        <p className="mt-3 text-xs text-muted-foreground">{cuerpo}</p>
+
+        <div className="mt-5 space-y-2">
+          <button
+            autoFocus
+            onClick={onCta}
+            className={`w-full rounded-xl px-4 py-2.5 text-sm font-semibold text-white ${tono.boton}`}
+          >
+            {cta}
+          </button>
+          <button
+            onClick={onCerrar}
+            className="w-full rounded-xl px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+          >
+            Ahora no
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

@@ -5,7 +5,7 @@ import {
   normalizarPlan,
   normalizarEstado,
   resolverAcceso,
-  debeMostrarModalPrueba,
+  debeMostrarModalSuscripcion,
   TRIAL_DIAS,
 } from './planes'
 
@@ -168,27 +168,34 @@ describe('resolverAcceso', () => {
   })
 })
 
-describe('debeMostrarModalPrueba', () => {
+describe('debeMostrarModalSuscripcion', () => {
   const HOY = '2026-07-16'
   const urgente = { acceso: 'aviso', motivo: 'trial_urgente', diasRestantes: 3 } as const
   const pasivo = { acceso: 'aviso', motivo: 'trial_pasivo', diasRestantes: 9 } as const
+  const morosa = { acceso: 'aviso', motivo: 'morosa' } as const
 
-  it('en los últimos días, si todavía no lo vio hoy', () => {
-    expect(debeMostrarModalPrueba(urgente, null, HOY)).toBe(true)
-    expect(debeMostrarModalPrueba(urgente, '2026-07-15', HOY)).toBe(true)
+  it('en los últimos días de prueba, si todavía no lo vio hoy', () => {
+    expect(debeMostrarModalSuscripcion(urgente, null, HOY)).toBe(true)
+    expect(debeMostrarModalSuscripcion(urgente, '2026-07-15', HOY)).toBe(true)
   })
 
-  it('una sola vez por día', () => {
-    expect(debeMostrarModalPrueba(urgente, HOY, HOY)).toBe(false)
+  it('tambien cuando el cobro fallo: es plata que ya estaba entrando', () => {
+    expect(debeMostrarModalSuscripcion(morosa, null, HOY)).toBe(true)
+    expect(debeMostrarModalSuscripcion(morosa, '2026-07-15', HOY)).toBe(true)
   })
 
-  it('nunca cuando el aviso todavía es pasivo', () => {
-    expect(debeMostrarModalPrueba(pasivo, null, HOY)).toBe(false)
+  it('una sola vez por día, en los dos casos', () => {
+    expect(debeMostrarModalSuscripcion(urgente, HOY, HOY)).toBe(false)
+    expect(debeMostrarModalSuscripcion(morosa, HOY, HOY)).toBe(false)
   })
 
-  it('nunca fuera de la prueba: ni al día, ni moroso, ni bloqueado', () => {
-    expect(debeMostrarModalPrueba({ acceso: 'total' }, null, HOY)).toBe(false)
-    expect(debeMostrarModalPrueba({ acceso: 'aviso', motivo: 'morosa' }, null, HOY)).toBe(false)
-    expect(debeMostrarModalPrueba({ acceso: 'bloqueado', motivo: 'suspendida' }, null, HOY)).toBe(false)
+  it('nunca cuando el aviso todavía es pasivo: para eso está el chip', () => {
+    expect(debeMostrarModalSuscripcion(pasivo, null, HOY)).toBe(false)
+  })
+
+  it('nunca al día ni bloqueado (bloqueado ya ve /plan, no un modal)', () => {
+    expect(debeMostrarModalSuscripcion({ acceso: 'total' }, null, HOY)).toBe(false)
+    expect(debeMostrarModalSuscripcion({ acceso: 'bloqueado', motivo: 'suspendida' }, null, HOY)).toBe(false)
+    expect(debeMostrarModalSuscripcion({ acceso: 'bloqueado', motivo: 'prueba_vencida' }, null, HOY)).toBe(false)
   })
 })

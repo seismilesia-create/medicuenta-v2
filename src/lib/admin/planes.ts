@@ -74,9 +74,16 @@ export type Acceso =
  * fase 2 hace el backfill y el alta automática; recién ahí deja de existir el caso.
  */
 /**
- * ¿Le tiramos el modal insistente de la prueba (R3)? Solo en los últimos días, y
+ * ¿Le tiramos el modal? Solo en los dos casos donde está por perder el acceso, y
  * UNA VEZ POR DÍA: uno por navegación sería intolerable, y uno por día insiste sin
  * volverse hostil.
+ *
+ *  - `trial_urgente`: se le vence la prueba en ≤4 días (R3).
+ *  - `morosa`: no le pudimos cobrar y MP está reintentando (R5). Es MÁS urgente que
+ *    la prueba, no menos: el de la prueba capaz nunca iba a pagar; el moroso ya
+ *    estaba pagando y se está por caer por una tarjeta vencida.
+ *
+ * `trial_pasivo` no lleva modal: para eso está el chip.
  *
  * Puro a propósito: la regla se testea acá y el componente solo la obedece, así no
  * queda escondida adentro de un useEffect que nadie puede probar.
@@ -84,12 +91,13 @@ export type Acceso =
  * @param ultimoVistoISO fecha 'YYYY-MM-DD' en que ya lo vio (null = nunca).
  * @param hoyISO fecha 'YYYY-MM-DD' de hoy.
  */
-export function debeMostrarModalPrueba(
+export function debeMostrarModalSuscripcion(
   acceso: Acceso,
   ultimoVistoISO: string | null,
   hoyISO: string,
 ): boolean {
-  if (acceso.acceso !== 'aviso' || acceso.motivo !== 'trial_urgente') return false
+  if (acceso.acceso !== 'aviso') return false
+  if (acceso.motivo !== 'trial_urgente' && acceso.motivo !== 'morosa') return false
   return ultimoVistoISO !== hoyISO
 }
 
