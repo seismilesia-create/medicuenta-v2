@@ -75,6 +75,27 @@ export async function contratarPlan(
     return { error: 'El precio configurado no es válido. Escribinos.' }
   }
 
+  // ⚠ Si ya tenía una suscripción, hay que CANCELARLA antes de crear la nueva. Sin esto,
+  // contratar dos veces (o cambiar de plan) deja la vieja viva en MP cobrando todos los
+  // meses, y encima le pisamos el id acá → doble cobro que no podemos ni deshacer desde
+  // la app. Es también el flujo de "cambiar de plan": MP no deja cambiar la frecuencia
+  // por PUT, así que cancelar + crear es el camino (D5).
+  const { data: previa } = await service
+    .from('suscripciones')
+    .select('mp_subscription_id')
+    .eq('medico_id', c.medicoId)
+    .maybeSingle<{ mp_subscription_id: string | null }>()
+
+  if (previa?.mp_subscription_id) {
+    const ok = await cancelarPreapproval(token, previa.mp_subscription_id)
+    if (!ok) {
+      // Si no podemos cancelar la anterior NO creamos otra: mejor que no pueda contratar
+      // a que le salgan dos débitos por mes.
+      console.error(`[suscripcion] no se pudo cancelar la previa ${previa.mp_subscription_id}`)
+      return { error: 'No pudimos cerrar tu suscripción anterior. Escribinos antes de reintentar.' }
+    }
+  }
+
   const creado = await crearPreapproval(
     token,
     buildPreapprovalBody({
