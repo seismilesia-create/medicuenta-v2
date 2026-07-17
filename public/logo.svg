@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 212 48" width="212" height="48" role="img" aria-label="MediCuenta">
+  <defs>
+    <linearGradient id="mc" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1189DE"/>
+      <stop offset="1" stop-color="#0A63AA"/>
+    </linearGradient>
+  </defs>
+  <path d="M14 4H34C36.2 4 38 5.8 38 8V44L33.3 40.7L28.7 44L24 40.7L19.3 44L14.7 40.7L10 44V8C10 5.8 11.8 4 14 4Z" fill="url(#mc)"/>
+  <path d="M15 24.5H18.5L21.5 17L25.5 31L28.5 24.5H33" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="52" y="32" font-family="Inter, system-ui, sans-serif" font-weight="700" font-size="26" letter-spacing="-0.5"><tspan fill="#0D1526">Medi</tspan><tspan fill="#0E7DD1">Cuenta</tspan></text>
+</svg>
