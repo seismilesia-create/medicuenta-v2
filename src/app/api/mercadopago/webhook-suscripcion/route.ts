@@ -10,6 +10,7 @@ import {
   decidirPorCuota,
   type AccionSuscripcion,
 } from '@/lib/mercadopago/decidirSuscripcion'
+import { tokenPlataforma } from '@/lib/mercadopago/tokenPlataforma'
 
 export const runtime = 'nodejs' // service-role + crypto para la firma
 
@@ -62,11 +63,8 @@ export async function POST(req: Request) {
   }
   if (!dataId) return new Response('OK', { status: 200 })
 
-  const token = process.env.MP_PLATAFORMA_ACCESS_TOKEN?.trim()
-  if (!token) {
-    console.error('[mp/sub] falta MP_PLATAFORMA_ACCESS_TOKEN')
-    return new Response('OK', { status: 200 })
-  }
+  const token = await tokenPlataforma()
+  if (!token) return new Response('OK', { status: 200 })
 
   try {
     const db = createServiceClient()

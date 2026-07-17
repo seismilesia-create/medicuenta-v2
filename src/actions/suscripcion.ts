@@ -11,6 +11,7 @@ import {
   cancelarPreapproval,
   MONTO_MINIMO_ARS,
 } from '@/lib/mercadopago/preapproval'
+import { tokenPlataforma } from '@/lib/mercadopago/tokenPlataforma'
 
 /**
  * La suscripción es del MÉDICO DUEÑO y de nadie más: ni la secretaria, ni un médico
@@ -22,12 +23,6 @@ async function ctxDueño(): Promise<{ error: string } | { medicoId: string }> {
   if (!r) return { error: 'No autenticado' }
   if (!esDueño(r.ctx)) return { error: 'Solo el médico puede cambiar su plan' }
   return { medicoId: r.ctx.userId }
-}
-
-function tokenPlataforma(): string | null {
-  // El token de la cuenta de MediCuenta, NO el del médico (ese vive cifrado en
-  // mp_conexiones y sirve para lo contrario: que él le cobre al paciente).
-  return process.env.MP_PLATAFORMA_ACCESS_TOKEN?.trim() || null
 }
 
 const contratarSchema = z.object({
@@ -55,9 +50,8 @@ export async function contratarPlan(
   if (!parsed.success) return { error: parsed.error.issues[0].message }
   const { plan, payerEmail } = parsed.data
 
-  const token = tokenPlataforma()
+  const token = await tokenPlataforma()
   if (!token) {
-    console.error('[suscripcion] falta MP_PLATAFORMA_ACCESS_TOKEN')
     return { error: 'El pago online todavía no está habilitado. Escribinos y lo activamos.' }
   }
 
@@ -132,7 +126,7 @@ export async function darDeBaja(): Promise<{ error: string } | { ok: true }> {
   // Cancelamos en MP PRIMERO: si marcáramos la baja de nuestro lado y el cancel fallara,
   // le seguiríamos cobrando todos los meses a alguien que ya se fue.
   if (sub?.mp_subscription_id) {
-    const token = tokenPlataforma()
+    const token = await tokenPlataforma()
     if (!token) return { error: 'No pudimos dar de baja. Escribinos.' }
     const ok = await cancelarPreapproval(token, sub.mp_subscription_id)
     if (!ok) return { error: 'MercadoPago no pudo cancelar el débito. Probá de nuevo.' }
