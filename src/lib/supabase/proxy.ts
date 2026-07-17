@@ -1,10 +1,27 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { resolverAcceso, normalizarEstado, normalizarPlan, puedeAcceder } from '@/lib/admin/planes'
 
 type CookieToSet = {
   name: string
   value: string
   options: CookieOptions
+}
+
+/**
+ * El área privada del médico. Acá aplica el candado de suscripción (spec F4.3 §5).
+ * Va en el middleware y no en las páginas porque es el ÚNICO punto que corre en cada
+ * request: de las 26 páginas de (main), solo 4 pasan por `resolverConsultorio()`, y un
+ * layout no se re-ejecuta en la navegación del cliente.
+ */
+const RUTAS_APP = [
+  '/dashboard', '/ordenes', '/liquidaciones', '/debitos', '/cirugias', '/nomenclador',
+  '/reportes', '/perfil', '/asistente', '/agenda', '/conversaciones', '/pacientes', '/consultorio',
+]
+
+function esRutaApp(pathname: string): boolean {
+  // '/' es el home = asistente. `/plan` queda AFUERA a propósito: es la salida del bloqueo.
+  return pathname === '/' || RUTAS_APP.some((p) => pathname === p || pathname.startsWith(p + '/'))
 }
 
 export async function updateSession(request: NextRequest) {
@@ -36,7 +53,7 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
   // Rutas protegidas (todas las del area main)
-  const protectedPaths = ['/dashboard', '/ordenes', '/liquidaciones', '/debitos', '/perfil', '/nomenclador', '/cirugias']
+  const protectedPaths = ['/dashboard', '/ordenes', '/liquidaciones', '/debitos', '/perfil', '/nomenclador', '/cirugias', '/plan']
   const isProtectedRoute = protectedPaths.some(path => pathname.startsWith(path))
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/signup')
 
@@ -61,6 +78,36 @@ export async function updateSession(request: NextRequest) {
     const esRutaSoloMedico = pathname === '/' || soloMedico.some((p) => pathname.startsWith(p))
     if (esRutaSoloMedico) {
       return NextResponse.redirect(new URL('/agenda', request.url))
+    }
+  }
+
+  // Candado de SUSCRIPCIÓN (spec F4.3 §5). El plan dice qué ve; el estado dice si entra.
+  // Solo aplica al médico: la secretaria no tiene suscripción propia, y sus rutas (que son
+  // todas Full) ya resuelven el plan/estado del médico activo en `resolverConsultorio()`.
+  //
+  // A diferencia del rol, esto NO sale del claim del JWT: cuesta un query por request, pero
+  // el claim quedaría viejo hasta el refresh del token y eso cae para el lado malo — el
+  // médico paga y sigue bloqueado. Ver la nota de optimización en el spec (§5, D2).
+  if (user && !esSecretaria && esRutaApp(pathname)) {
+    const { data: sub } = await supabase
+      .from('suscripciones')
+      .select('plan, estado, trial_ends_at')
+      .eq('medico_id', user.id)
+      .maybeSingle<{ plan: string | null; estado: string | null; trial_ends_at: string | null }>()
+
+    // Sin fila = médico anterior a F4.3 → pasa. La fase 2 hace el backfill (ver resolverAcceso).
+    const acceso = resolverAcceso(
+      sub ? { estado: normalizarEstado(sub.estado), trialEndsAt: sub.trial_ends_at } : null,
+      Date.now(),
+    )
+    if (acceso.acceso === 'bloqueado') {
+      return NextResponse.redirect(new URL('/plan', request.url))
+    }
+
+    // Candado por plan, cuarta capa. Las páginas Full ya lo chequean una por una; acá
+    // cubrimos también sus subrutas y cualquier página nueva que se olviden de guardar.
+    if (sub && !puedeAcceder(normalizarPlan(sub.plan), pathname)) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
     }
   }
 

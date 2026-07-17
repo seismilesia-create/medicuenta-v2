@@ -9,6 +9,7 @@ export const metadata = {
 export default async function ConfigPage() {
   const r = await resolverConsultorio()
   if (!r) redirect('/login')
+  if (r.ctx.acceso.acceso === 'bloqueado') redirect('/plan') // candado F4.3 §5: suscripción
   if (r.ctx.plan !== 'full') redirect('/dashboard') // candado §3: consultorio = Full
   // Config operativa: entra el médico dueño O la secretaria vinculada. Sin vínculo activo → afuera.
   if (!r.ctx.medicoActivoId) redirect('/agenda')

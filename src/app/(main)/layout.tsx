@@ -21,7 +21,8 @@ export default async function MainLayout({
         rol={ctx?.rol ?? 'medico'}
         medicos={ctx?.medicos ?? []}
         medicoActivoId={ctx?.medicoActivoId ?? null}
-        plan={ctx?.plan ?? 'full'}
+        // Sin contexto NO se asume Full: fallaba abierto y el menú mostraba el consultorio.
+        plan={ctx?.plan ?? 'basico'}
         esSuperadmin={ctx?.esSuperadmin ?? false}
       />
       <MainShell>{children}</MainShell>

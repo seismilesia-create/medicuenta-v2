@@ -2,7 +2,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
-import { normalizarPlan, type Plan } from '@/lib/admin/planes'
+import { normalizarPlan, normalizarEstado, resolverAcceso, type Plan, type Acceso } from '@/lib/admin/planes'
 
 export type RolConsultorio = 'medico' | 'secretaria'
 
@@ -22,6 +22,12 @@ export interface ConsultorioContexto {
   medicos: MedicoOpcion[]
   /** Plan del consultorio activo: canda el acceso al asistente/WhatsApp (Full). */
   plan: Plan
+  /**
+   * Estado de la suscripción del consultorio activo: si entra, y con qué aviso (F4.3 §5).
+   * Para el médico el candado real es el middleware; esto lo cubre a él igual (defensa en
+   * profundidad), cubre a la SECRETARIA — que el middleware no mira — y alimenta los avisos.
+   */
+  acceso: Acceso
   /** El dueño de la plataforma: muestra el acceso de vuelta a /admin. */
   esSuperadmin: boolean
 }
@@ -65,19 +71,27 @@ export async function resolverConsultorio(): Promise<{
   else if (rol === 'medico' && permitidos.has(user.id)) medicoActivoId = user.id
   else medicoActivoId = medicos[0]?.id ?? null
 
-  // Plan del consultorio activo (candado §3). RLS delegada deja leerlo también a
-  // la secretaria del médico. Sin fila = básico.
+  // Plan y estado del consultorio activo (candados §3 y F4.3 §5). RLS delegada deja leerlo
+  // también a la secretaria del médico. Sin fila = básico, y sin bloqueo (ver resolverAcceso).
   let plan: Plan = 'basico'
+  let acceso: Acceso = { acceso: 'total' }
   if (medicoActivoId) {
     const { data: sub } = await supabase
       .from('suscripciones')
-      .select('plan')
+      .select('plan, estado, trial_ends_at')
       .eq('medico_id', medicoActivoId)
-      .maybeSingle()
-    plan = normalizarPlan(sub?.plan as string | null)
+      .maybeSingle<{ plan: string | null; estado: string | null; trial_ends_at: string | null }>()
+    plan = normalizarPlan(sub?.plan ?? null)
+    acceso = resolverAcceso(
+      sub ? { estado: normalizarEstado(sub.estado), trialEndsAt: sub.trial_ends_at } : null,
+      Date.now(),
+    )
   }
 
-  return { supabase, ctx: { userId: user.id, rol, nombre, medicoActivoId, medicos, plan, esSuperadmin } }
+  return {
+    supabase,
+    ctx: { userId: user.id, rol, nombre, medicoActivoId, medicos, plan, acceso, esSuperadmin },
+  }
 }
 
 /** Solo el dueño del consultorio (ni la secretaria ni un médico operando otro consultorio).
