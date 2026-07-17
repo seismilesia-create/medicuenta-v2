@@ -18,7 +18,6 @@ import {
   User,
   KeyRound,
   LogOut,
-  Activity,
   ChevronRight,
   Sparkles,
   Menu,
@@ -32,6 +31,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logout } from '@/actions/auth'
+import { LogoMark } from '@/shared/components/logo'
 import { ConsultorioSelector } from './consultorio-selector'
 import {
   DropdownMenu,
@@ -116,14 +116,15 @@ export function Sidebar({ nombre, rol = 'medico', medicos = [], medicoActivoId =
       <div className="relative flex h-20 items-center justify-between gap-4 px-6">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <div className="absolute inset-0 bg-primary/30 rounded-xl blur-lg" />
-            <div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg">
-              <Activity className="h-6 w-6 text-primary-foreground" strokeWidth={2.5} />
-            </div>
+            <div className="absolute inset-0 bg-primary/25 rounded-xl blur-lg" />
+            <LogoMark className="relative h-12 w-12 drop-shadow-lg" />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-bold tracking-tight text-foreground">MediCuenta</span>
-            <span className="text-xs font-medium text-muted-foreground">Facturacion Medica</span>
+            <span className="text-lg font-bold tracking-tight leading-none">
+              <span className="text-foreground">Medi</span>
+              <span className="text-primary">Cuenta</span>
+            </span>
+            <span className="mt-1 text-xs font-medium text-muted-foreground">Facturacion Medica</span>
           </div>
         </div>
         {/* Close button - mobile only */}
@@ -245,10 +246,11 @@ export function Sidebar({ nombre, rol = 'medico', medicos = [], medicoActivoId =
           <Menu className="h-5 w-5" />
         </button>
         <div className="ml-3 flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80">
-            <Activity className="h-4 w-4 text-primary-foreground" strokeWidth={2.5} />
-          </div>
-          <span className="text-sm font-bold tracking-tight">MediCuenta</span>
+          <LogoMark className="h-7 w-7" />
+          <span className="text-sm font-bold tracking-tight leading-none">
+            <span className="text-foreground">Medi</span>
+            <span className="text-primary">Cuenta</span>
+          </span>
         </div>
       </div>
 
