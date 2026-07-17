@@ -1,7 +1,8 @@
 import { Sidebar } from '@/shared/components/layout/sidebar'
 import { BottomNav } from '@/shared/components/layout/bottom-nav'
 import { AssistantSidePanel, MainShell, AssistantHome } from '@/features/assistant/components'
-import { resolverConsultorio } from '@/features/consultorio/access/contexto'
+import { resolverConsultorio, esDueño } from '@/features/consultorio/access/contexto'
+import { AvisosSuscripcion } from '@/features/suscripcion/components/avisos-suscripcion'
 
 export default async function MainLayout({
   children,
@@ -34,6 +35,12 @@ export default async function MainLayout({
 
   return (
     <div className="min-h-screen bg-background">
+      {/*
+        Fuera del shell: el médico en celular no lo renderiza (ve el asistente a
+        pantalla completa) y se perdería el aviso. Solo al dueño: la secretaria no
+        puede contratar, y un médico operando OTRO consultorio no es quien paga.
+      */}
+      {ctx && esDueño(ctx) && <AvisosSuscripcion acceso={ctx.acceso} />}
       {shellWeb}
       {/*
         Médico en CELULAR = asistente puro a pantalla completa (sin nav: no puede

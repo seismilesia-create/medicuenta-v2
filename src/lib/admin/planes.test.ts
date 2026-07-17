@@ -5,6 +5,7 @@ import {
   normalizarPlan,
   normalizarEstado,
   resolverAcceso,
+  debeMostrarModalPrueba,
   TRIAL_DIAS,
 } from './planes'
 
@@ -164,5 +165,30 @@ describe('resolverAcceso', () => {
         motivo: 'prueba_vencida',
       })
     })
+  })
+})
+
+describe('debeMostrarModalPrueba', () => {
+  const HOY = '2026-07-16'
+  const urgente = { acceso: 'aviso', motivo: 'trial_urgente', diasRestantes: 3 } as const
+  const pasivo = { acceso: 'aviso', motivo: 'trial_pasivo', diasRestantes: 9 } as const
+
+  it('en los últimos días, si todavía no lo vio hoy', () => {
+    expect(debeMostrarModalPrueba(urgente, null, HOY)).toBe(true)
+    expect(debeMostrarModalPrueba(urgente, '2026-07-15', HOY)).toBe(true)
+  })
+
+  it('una sola vez por día', () => {
+    expect(debeMostrarModalPrueba(urgente, HOY, HOY)).toBe(false)
+  })
+
+  it('nunca cuando el aviso todavía es pasivo', () => {
+    expect(debeMostrarModalPrueba(pasivo, null, HOY)).toBe(false)
+  })
+
+  it('nunca fuera de la prueba: ni al día, ni moroso, ni bloqueado', () => {
+    expect(debeMostrarModalPrueba({ acceso: 'total' }, null, HOY)).toBe(false)
+    expect(debeMostrarModalPrueba({ acceso: 'aviso', motivo: 'morosa' }, null, HOY)).toBe(false)
+    expect(debeMostrarModalPrueba({ acceso: 'bloqueado', motivo: 'suspendida' }, null, HOY)).toBe(false)
   })
 })

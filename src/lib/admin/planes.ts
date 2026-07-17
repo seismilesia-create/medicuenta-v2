@@ -73,6 +73,26 @@ export type Acceso =
  * reales sin ella. Bloquearlos acá los dejaría afuera de un día para el otro. La
  * fase 2 hace el backfill y el alta automática; recién ahí deja de existir el caso.
  */
+/**
+ * ¿Le tiramos el modal insistente de la prueba (R3)? Solo en los últimos días, y
+ * UNA VEZ POR DÍA: uno por navegación sería intolerable, y uno por día insiste sin
+ * volverse hostil.
+ *
+ * Puro a propósito: la regla se testea acá y el componente solo la obedece, así no
+ * queda escondida adentro de un useEffect que nadie puede probar.
+ *
+ * @param ultimoVistoISO fecha 'YYYY-MM-DD' en que ya lo vio (null = nunca).
+ * @param hoyISO fecha 'YYYY-MM-DD' de hoy.
+ */
+export function debeMostrarModalPrueba(
+  acceso: Acceso,
+  ultimoVistoISO: string | null,
+  hoyISO: string,
+): boolean {
+  if (acceso.acceso !== 'aviso' || acceso.motivo !== 'trial_urgente') return false
+  return ultimoVistoISO !== hoyISO
+}
+
 export function resolverAcceso(sub: SuscripcionAcceso | null, nowMs: number): Acceso {
   if (!sub) return { acceso: 'total' }
 
