@@ -109,6 +109,39 @@ export function parsePreapproval(json: unknown): PreapprovalMP | null {
   }
 }
 
+/** La "cuota" de MP (`authorized_payment`): el intento de cobro de un período. */
+export interface CuotaMP {
+  /** scheduled | processed | recycling | canceled — conjunto ABIERTO, no confiar. */
+  status: string
+  /** El pago anidado. Sin esto NO se puede saber si la cuota salió bien (ver decidirPorCuota). */
+  paymentStatus: string | null
+  /** La fecha del débito. Es lo único parecido a un período que da MP. */
+  debitDate: string | null
+}
+
+export interface CuotaConsultada {
+  cuota: CuotaMP
+  preapprovalId: string | null
+  externalReference: string
+}
+
+export function parseAuthorizedPayment(json: unknown): CuotaConsultada | null {
+  if (!json || typeof json !== 'object') return null
+  const o = json as Record<string, unknown>
+  if (!String(o.id ?? '')) return null
+
+  const pago = (o.payment ?? {}) as Record<string, unknown>
+  return {
+    cuota: {
+      status: String(o.status ?? ''),
+      paymentStatus: pago?.status == null ? null : String(pago.status),
+      debitDate: typeof o.debit_date === 'string' ? o.debit_date : null,
+    },
+    preapprovalId: o.preapproval_id == null ? null : String(o.preapproval_id),
+    externalReference: String(o.external_reference ?? ''),
+  }
+}
+
 // ── Efectos ────────────────────────────────────────────────────────────────
 // El token SIEMPRE es el de MediCuenta (MP_PLATAFORMA_ACCESS_TOKEN), nunca el del médico.
 
@@ -148,6 +181,18 @@ export async function crearPreapproval(
     return null
   }
   return { id: json.id, initPoint: json.init_point }
+}
+
+/** La cuota que MP intentó cobrar. Trae el pago anidado, que es lo que dice si salió bien. */
+export async function consultarCuota(token: string, id: string): Promise<CuotaConsultada | null> {
+  const res = await fetch(`${MP_BASE}/authorized_payments/${encodeURIComponent(id)}`, {
+    headers: headers(token),
+  })
+  if (!res.ok) {
+    console.error('[mp/sub] consultarCuota:', res.status)
+    return null
+  }
+  return parseAuthorizedPayment(await res.json())
 }
 
 export async function consultarPreapproval(token: string, id: string): Promise<PreapprovalMP | null> {
