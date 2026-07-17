@@ -549,8 +549,11 @@ export interface ConfigConsultorio {
   } | null
   // MercadoPago no es un booleano: 'reconectar' (se venció el permiso, el cobro está pausado)
   // se vería igual que "nunca conectó" y el médico no entendería por qué dejó de cobrar.
+  //
+  // WhatsApp tampoco: lleva el `numero` con el que el bot reconoce al médico, porque la fila
+  // de Conexiones deja editarlo (cambió de celular → el bot lo trataría como paciente).
   conexiones: {
-    whatsapp: boolean
+    whatsapp: { numero: string } | null
     mercadopago: { estado: 'conectado' | 'reconectar' } | null
   }
   secretarias: {
@@ -565,7 +568,7 @@ export interface ConfigConsultorio {
 
 export async function getConfig(db: SupabaseClient, medicoId: string): Promise<ConfigConsultorio> {
   const hoy = arDateString(Date.now(), 0)
-  const [horariosRes, serviciosRes, excepcionesRes, osRes, agenteRes, canalRes, mpRes, secretariasRes, diasPartRes] = await Promise.all([
+  const [horariosRes, serviciosRes, excepcionesRes, osRes, agenteRes, asigRes, canalRes, mpRes, secretariasRes, diasPartRes] = await Promise.all([
     db.from('wa_horarios').select('id, weekday, open_time, close_time').eq('medico_id', medicoId).order('weekday').then(ok),
     db.from('wa_servicios').select('id, duracion_min').eq('medico_id', medicoId).eq('activo', true).limit(1).then(ok),
     db
@@ -582,7 +585,12 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
       .eq('medico_id', medicoId)
       .maybeSingle()
       .then(ok),
-    db.from('wa_canales').select('id').eq('medico_id', medicoId).eq('estado', 'conectado').maybeSingle().then(ok),
+    // El estado de WhatsApp espeja resolverSaliente (nodos.ts): la asignación al nodo manda y
+    // wa_canales es el fallback legacy del piloto. Preguntar SOLO por wa_canales (como hacía
+    // esta query) daba "sin conectar" a todo médico dado de alta por onboard_medico_cablear,
+    // que escribe únicamente en wa_asignaciones — con el bot andando perfecto.
+    db.from('wa_asignaciones').select('numero_personal').eq('medico_id', medicoId).eq('activo', true).maybeSingle().then(ok),
+    db.from('wa_canales').select('numero_personal').eq('medico_id', medicoId).eq('estado', 'conectado').maybeSingle().then(ok),
     // Sin filtrar por estado: necesitamos distinguir 'reconectar' de "sin conexión".
     db.from('mp_conexiones').select('estado').eq('medico_id', medicoId).maybeSingle().then(ok),
     db
@@ -607,7 +615,10 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
       ? { ...agente, precio_receta_default: agente.precio_receta_default != null ? Number(agente.precio_receta_default) : null }
       : null,
     conexiones: {
-      whatsapp: !!canalRes.data,
+      whatsapp: (() => {
+        const ficha = (asigRes.data ?? canalRes.data) as { numero_personal: string } | null
+        return ficha ? { numero: ficha.numero_personal } : null
+      })(),
       mercadopago: (() => {
         const mp = mpRes.data as { estado: string } | null
         if (!mp) return null

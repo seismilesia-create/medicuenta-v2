@@ -2,6 +2,7 @@
 
 import { z } from 'zod'
 import { normalizarOs } from '@/lib/consultorio/osSuspendidas'
+import { normalizarWhatsappAr } from '@/lib/whatsapp/numeroAr'
 import { resolverConsultorio, esDueño } from '@/features/consultorio/access/contexto'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getConfig, type ConfigConsultorio } from '@/features/consultorio/services/panelService'
@@ -166,6 +167,50 @@ export async function quitarDiaParticular(id: string) {
   const supabase = createServiceClient()
   const { error } = await supabase.from('wa_dias_particulares').delete().eq('medico_id', medicoId).eq('id', id)
   if (error) return { error: error.message }
+  return { ok: true as const }
+}
+
+/** Cambia el número con el que el bot reconoce al médico (cambió de celular / lo perdió).
+ *  Médico-only y sobre SÍ MISMO (ctxDueño → su propio userId): la secretaria no lo toca, y
+ *  no se puede editar el de otro consultorio.
+ *
+ *  Sin verificación por código a propósito: un dedazo se autodetecta en minutos (el médico
+ *  cambia el número justo para escribirle al bot; si no matchea, le contesta "¿a qué médico
+ *  le escribís?"), y lo único que sale a este número son avisos de MP sin datos de paciente.
+ *  La confirmación del número canónico en la UI es la red contra el dedazo. */
+export async function guardarNumeroWhatsapp(numeroWhatsapp: string) {
+  const c = await ctxDueño()
+  if ('error' in c) return c
+  const { medicoId } = c
+  // Canoniza a 54 + 10 dígitos, que es la forma con la que compara el ruteo. Revalidado
+  // server-side aunque la UI ya normalizó: la action es la frontera de confianza.
+  const numero = normalizarWhatsappAr(numeroWhatsapp)
+  if (!numero) return { error: 'Número de WhatsApp inválido (ej: 383 4222049)' }
+  const service = createServiceClient()
+
+  // Mismo orden que resolverSaliente: la asignación al nodo primero, wa_canales como fallback
+  // legacy. Se escribe en la ficha que el médico realmente tenga.
+  const { data: asig, error: e1 } = await service
+    .from('wa_asignaciones')
+    .update({ numero_personal: numero, updated_at: new Date().toISOString() })
+    .eq('medico_id', medicoId)
+    .eq('activo', true)
+    .select('id')
+  if (e1) {
+    // idx_wa_asignaciones_numero_por_nodo: otro médico del mismo nodo ya usa ese número.
+    if (e1.code === '23505') return { error: 'Ese número ya lo usa otro médico del mismo asistente.' }
+    return { error: e1.message }
+  }
+  if (asig && asig.length > 0) return { ok: true as const }
+
+  const { data: canal, error: e2 } = await service
+    .from('wa_canales')
+    .update({ numero_personal: numero, updated_at: new Date().toISOString() })
+    .eq('medico_id', medicoId)
+    .eq('estado', 'conectado')
+    .select('id')
+  if (e2) return { error: e2.message }
+  if (!canal || canal.length === 0) return { error: 'Tu asistente todavía no está activo. Escribinos y lo activamos.' }
   return { ok: true as const }
 }
 

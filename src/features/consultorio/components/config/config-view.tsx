@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Loader2, Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
 import { ConfirmDialog } from '@/shared/components/ui'
 import { parseMontoArs } from '@/lib/recetas/normalizar'
+import { normalizarWhatsappAr, nacionalDeWhatsappAr } from '@/lib/whatsapp/numeroAr'
+import { WhatsappInput } from '@/shared/components/WhatsappInput'
 import {
   guardarDuracionConsulta,
   agregarOsSuspendida,
@@ -14,6 +16,7 @@ import {
   agregarFechaParticular,
   quitarDiaParticular,
   desconectarMercadoPago,
+  guardarNumeroWhatsapp,
   cargarConfigConsultorio,
   type ConfigVista,
 } from '@/actions/consultorio-config'
@@ -147,11 +150,17 @@ export function ConfigView({ esDueño }: { esDueño: boolean }) {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [catalogoOs, setCatalogoOs] = useState<OsCatalogoItem[]>([])
   const [mpAviso, setMpAviso] = useState<{ ok: boolean; texto: string } | null>(null)
+  const [editandoWa, setEditandoWa] = useState(false)
+  // Aviso local del cambio de número, igual que mpAviso: el banner de `error` vive al tope de
+  // la página y Conexiones está fuera de pantalla, así que ahí el mensaje se pierde.
+  const [waAviso, setWaAviso] = useState<string | null>(null)
   // Confirmación de acciones destructivas (in-app, no window.confirm).
   const [confirmar, setConfirmar] = useState<{
     titulo: string
     mensaje: string
     confirmLabel: string
+    /** Default true: las que la usan son destructivas. El cambio de número no lo es. */
+    peligroso?: boolean
     accion: () => Promise<{ error?: string } | { ok: true }>
   } | null>(null)
 
@@ -244,6 +253,41 @@ export function ConfigView({ esDueño }: { esDueño: boolean }) {
     setAgenteSaving(false)
     setAgenteOk(ok)
     if (ok) setTimeout(() => setAgenteOk(false), 3000)
+  }
+
+  /** Cambio del número que el bot usa para reconocer al médico. Normaliza en el cliente para
+   *  poder mostrarle el número canónico y que confirme: es la red contra el dedazo (un dígito
+   *  mal apunta la ficha a un tercero hasta que el médico nota que el bot dejó de reconocerlo). */
+  function cambiarNumeroWa(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    const canonico = normalizarWhatsappAr(String(fd.get('numeroWhatsapp') ?? ''))
+    if (!canonico) {
+      setWaAviso('Número de WhatsApp inválido (ej: 383 4222049)')
+      return
+    }
+    if (canonico === cfg?.conexiones?.whatsapp?.numero) {
+      setEditandoWa(false)
+      setWaAviso(null)
+      return
+    }
+    setConfirmar({
+      titulo: 'Cambiar tu número de WhatsApp',
+      mensaje:
+        `El asistente va a reconocerte solo desde el +54 ${nacionalDeWhatsappAr(canonico)}, ` +
+        'y ahí te van a llegar los avisos de MercadoPago. Revisá que sea correcto.',
+      confirmLabel: 'Cambiar número',
+      peligroso: false,
+      accion: async () => {
+        const r = await guardarNumeroWhatsapp(canonico)
+        const fallo = 'error' in r && !!r.error
+        setWaAviso(fallo ? (r as { error: string }).error : null)
+        if (!fallo) setEditandoWa(false)
+        // Devolvemos ok aunque haya fallado: el aviso ya se muestra pegado al form (arriba),
+        // y onAccion lo repetiría en el banner global, que acá queda fuera de pantalla.
+        return { ok: true as const }
+      },
+    })
   }
 
   async function guardarPrecio(e: FormEvent<HTMLFormElement>) {
@@ -527,17 +571,54 @@ export function ConfigView({ esDueño }: { esDueño: boolean }) {
         )}
 
         <div className="rounded-xl border border-border divide-y divide-border">
-          <FilaConexion
-            icono={
-              cfg.conexiones?.whatsapp ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              ) : (
-                <XCircle className="w-4 h-4 text-red-500" />
-              )
-            }
-            nombre="WhatsApp"
-            estado={cfg.conexiones?.whatsapp ? 'conectado' : 'sin conectar'}
-          />
+          {/* El estado sale de la ficha que usa el ruteo del bot (wa_asignaciones, con fallback
+              legacy a wa_canales). "Sin activar" = el cableado no quedó hecho: el médico no
+              puede resolverlo solo, así que la ayuda le dice a quién escribirle en vez de
+              ofrecerle un botón que no haría nada. */}
+          {cfg.conexiones?.whatsapp ? (
+            <FilaConexion
+              icono={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+              nombre="WhatsApp"
+              ayuda={`Tu asistente te reconoce cuando le escribís desde el +54 ${nacionalDeWhatsappAr(cfg.conexiones.whatsapp.numero)}. Si cambiaste de celular, actualizalo acá.`}
+              estado="conectado"
+              accion={
+                !editandoWa && (
+                  <button
+                    onClick={() => { setEditandoWa(true); setWaAviso(null) }}
+                    className="text-sm font-medium text-primary whitespace-nowrap"
+                  >
+                    Cambiar número
+                  </button>
+                )
+              }
+            />
+          ) : (
+            <FilaConexion
+              icono={<XCircle className="w-4 h-4 text-red-500" />}
+              nombre="WhatsApp"
+              ayuda="Todavía no activamos tu asistente. Escribinos y lo dejamos andando."
+              estado="sin activar"
+            />
+          )}
+
+          {editandoWa && cfg.conexiones?.whatsapp && (
+            <form onSubmit={cambiarNumeroWa} className="p-3 space-y-2">
+              <WhatsappInput defaultValue={cfg.conexiones.whatsapp.numero} required />
+              {waAviso && <p className="text-sm font-medium text-red-500">{waAviso}</p>}
+              <div className="flex gap-2">
+                <button type="submit" className="rounded-xl bg-primary text-white px-4 py-2 text-sm font-medium">
+                  Guardar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setEditandoWa(false); setWaAviso(null) }}
+                  className="rounded-xl border border-border px-4 py-2 text-sm font-medium"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          )}
 
           {mp === null && (
             <FilaConexion
@@ -691,7 +772,7 @@ export function ConfigView({ esDueño }: { esDueño: boolean }) {
           titulo={confirmar.titulo}
           mensaje={confirmar.mensaje}
           confirmLabel={confirmar.confirmLabel}
-          peligroso
+          peligroso={confirmar.peligroso ?? true}
           onCancel={() => setConfirmar(null)}
           onConfirm={() => {
             const accion = confirmar.accion
