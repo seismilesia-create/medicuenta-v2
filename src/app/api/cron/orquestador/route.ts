@@ -1,4 +1,6 @@
 import { procesarYEnviarDigest } from '@/lib/admin/orquestadorEnvio'
+import { reconciliarPruebasVencidas } from '@/lib/admin/suscripciones'
+import { createServiceClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs' // service-role + fetch a Resend
 
@@ -6,6 +8,13 @@ export const runtime = 'nodejs' // service-role + fetch a Resend
  * Cron del orquestador (spec §6, v1b). Vercel Cron lo pega por GET a diario
  * (ver vercel.json) con `Authorization: Bearer ${CRON_SECRET}`. Calcula las
  * alertas y, si hay novedades, le manda el digest por email al dueño.
+ *
+ * Desde F4.3 también reconcilia las pruebas vencidas. Va ACÁ y no dentro de
+ * `procesarYEnviarDigest` por dos razones:
+ *  1. El orden importa: primero se pone al día la base, después se arman las alertas
+ *     — así el digest dice "suspendida" y no "prueba vencida, definir si pasa a pago".
+ *  2. `procesarYEnviarDigest` también lo llama el botón "Enviar ahora" del panel, y ese
+ *     botón NO debería cambiarle el estado a nadie como efecto colateral.
  */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET
@@ -15,8 +24,11 @@ export async function GET(req: Request) {
   }
 
   try {
+    // Si la reconciliación falla no se corta el digest: son independientes, y el dueño
+    // igual quiere sus alertas. El error queda logueado adentro.
+    const recon = await reconciliarPruebasVencidas(createServiceClient())
     const r = await procesarYEnviarDigest({})
-    return Response.json({ ok: true, ...r })
+    return Response.json({ ok: true, ...r, suspendidas: recon.suspendidas })
   } catch (e) {
     console.error('Cron orquestador error:', e)
     return Response.json({ ok: false, error: 'Error interno' }, { status: 500 })

@@ -53,16 +53,22 @@ export function detectarAlertas(medicos: MedicoMetricas[], nowMs: number): Alert
 
     // Prueba por vencer / vencida
     if (m.sub_estado === 'prueba' && m.trial_ends_at) {
-      const dias = Math.ceil((new Date(m.trial_ends_at).getTime() - nowMs) / DIA_MS)
-      if (dias < 0) {
-        alertas.push({ tipo: 'trial', severidad: 'warning', medico, mensaje: 'Prueba vencida — definir si pasa a pago' })
-      } else if (dias <= DIAS_TRIAL_AVISO) {
-        alertas.push({
-          tipo: 'trial',
-          severidad: 'info',
-          medico,
-          mensaje: dias === 0 ? 'La prueba vence hoy' : `La prueba vence en ${dias} día${dias === 1 ? '' : 's'}`,
-        })
+      const fin = new Date(m.trial_ends_at).getTime()
+      // Comparación directa contra el reloj, NO `ceil(dias) < 0`: ceil(-0.08) da -0, y
+      // `-0 < 0` es false → una prueba vencida hacía horas se anunciaba como "vence hoy".
+      if (nowMs >= fin) {
+        // Desde F4.3 el cron la pasa a 'suspendida' solo; ya no hay nada que decidir.
+        alertas.push({ tipo: 'trial', severidad: 'warning', medico, mensaje: 'Prueba vencida — el acceso queda suspendido' })
+      } else {
+        const dias = Math.ceil((fin - nowMs) / DIA_MS) // acá fin > nowMs ⇒ dias >= 1
+        if (dias <= DIAS_TRIAL_AVISO) {
+          alertas.push({
+            tipo: 'trial',
+            severidad: 'info',
+            medico,
+            mensaje: `La prueba vence en ${dias} día${dias === 1 ? '' : 's'}`,
+          })
+        }
       }
     }
 

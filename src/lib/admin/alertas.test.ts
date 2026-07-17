@@ -42,6 +42,15 @@ describe('detectarAlertas', () => {
     expect(detectarAlertas([lejos], NOW)).toHaveLength(0)
   })
 
+  it('una prueba vencida hace HORAS es vencida, no "vence hoy"', () => {
+    // Regresión: con `ceil(dias) < 0` esto daba -0, y `-0 < 0` es false → se anunciaba
+    // como si todavía estuviera viva.
+    const reciénVencida = med({ sub_estado: 'prueba', trial_ends_at: '2026-06-15T11:00:00.000Z' }) // NOW - 2h
+    const a = detectarAlertas([reciénVencida], NOW)[0]
+    expect(a).toMatchObject({ tipo: 'trial', severidad: 'warning' })
+    expect(a.mensaje).toContain('vencida')
+  })
+
   it('WhatsApp desconectado alerta solo en Full', () => {
     expect(detectarAlertas([med({ plan: 'full', canal_estado: 'pendiente' })], NOW)[0]).toMatchObject({ tipo: 'whatsapp' })
     expect(detectarAlertas([med({ plan: 'basico', canal_estado: 'pendiente' })], NOW)).toHaveLength(0)

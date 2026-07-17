@@ -45,11 +45,14 @@ function SubControl({ m }: { m: MedicoConFlags }) {
 
 /** "vence en X días" / "vencida" a partir de trial_ends_at. */
 function TrialLabel({ iso }: { iso: string }) {
-  const dias = Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000)
-  const vencida = dias < 0
+  const fin = new Date(iso).getTime()
+  // Contra el reloj y no `ceil(dias) < 0`: ceil(-0.08) da -0 y `-0 < 0` es false, así que
+  // una prueba vencida hacía horas se mostraba como "vence hoy".
+  const vencida = Date.now() >= fin
+  const dias = Math.ceil((fin - Date.now()) / 86_400_000) // si no venció ⇒ dias >= 1
   return (
     <span className={`text-[11px] ${vencida ? 'text-red-500' : 'text-[var(--color-muted-foreground)]'}`}>
-      {vencida ? 'prueba vencida' : dias === 0 ? 'vence hoy' : `vence en ${dias} día${dias === 1 ? '' : 's'}`}
+      {vencida ? 'prueba vencida' : `vence en ${dias} día${dias === 1 ? '' : 's'}`}
     </span>
   )
 }
