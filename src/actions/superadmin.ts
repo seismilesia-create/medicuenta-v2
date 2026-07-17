@@ -33,7 +33,9 @@ const precioSchema = z.object({
  * precio viejo: cambiarlas requiere un PUT al preapproval de cada una, y NO está
  * confirmado si MP le exige al médico re-autorizar cuando el monto sube (D6).
  */
-export async function setPrecioPlan(input: { plan: string; montoArs: number }) {
+export async function setPrecioPlan(
+  input: { plan: string; montoArs: number },
+): Promise<{ error: string } | { ok: true }> {
   const sa = await resolverSuperadmin()
   if (!sa) return { error: 'No autorizado' }
 

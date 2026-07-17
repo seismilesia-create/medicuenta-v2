@@ -7,6 +7,9 @@ import { MetricCard } from '@/features/dashboard/components'
 import { MedicosTabla } from '@/features/admin/components/medicos-tabla'
 import { AlertasPanel } from '@/features/admin/components/alertas-panel'
 import { EnviarDigestBoton } from '@/features/admin/components/enviar-digest-boton'
+import { PreciosPanel } from '@/features/admin/components/precios-panel'
+import { createServiceClient } from '@/lib/supabase/server'
+import type { Plan } from '@/lib/admin/planes'
 
 export const metadata = {
   title: 'Panel del dueño | MediCuenta',
@@ -23,10 +26,28 @@ const CHIPS: { key: keyof ReturnType<typeof resumenNegocio>; label: string; colo
   { key: 'suspendidos', label: 'Suspendidos', color: '#f59e0b' },
 ]
 
+/** Los precios de los planes (F4.3 R6). Por service-role: la página ya está detrás de
+ *  `resolverSuperadmin` en el layout de /admin. */
+async function getPrecios(): Promise<Record<Plan, number | null>> {
+  const { data } = await createServiceClient()
+    .from('precios_planes')
+    .select('plan, monto_ars')
+    .returns<{ plan: Plan; monto_ars: number | string | null }[]>()
+
+  const leer = (p: Plan) => {
+    const crudo = data?.find((f) => f.plan === p)?.monto_ars
+    if (crudo == null) return null
+    const n = Number(crudo)
+    return Number.isFinite(n) ? n : null
+  }
+  return { basico: leer('basico'), full: leer('full') }
+}
+
 export default async function AdminPage() {
   const { resumen, medicos } = await getMedicosConMetricas()
   const alertas = detectarAlertas(medicos, Date.now())
   const negocio = resumenNegocio(medicos)
+  const precios = await getPrecios()
 
   return (
     <div className="space-y-6">
@@ -51,6 +72,8 @@ export default async function AdminPage() {
           </span>
         ))}
       </div>
+
+      <PreciosPanel precios={precios} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard title="Médicos" value={resumen.totalMedicos} icon={Users} variant="default" valueFormat="integer" description="en la plataforma" />
