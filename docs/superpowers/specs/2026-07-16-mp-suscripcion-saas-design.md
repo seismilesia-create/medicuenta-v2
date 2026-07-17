@@ -316,13 +316,35 @@ Nueva `src/lib/mercadopago/firma.ts` (+tests).
 
 ## 11. Configuración externa
 
-| Variable | Para qué |
-|---|---|
-| `MP_PLATAFORMA_ACCESS_TOKEN` | Token de la cuenta MP **de MediCuenta**. Cobra la plataforma. **Nuevo.** |
-| `MP_WEBHOOK_SECRET` | Clave secreta de la firma (panel MP → Webhooks). **Nuevo.** |
-| `CRON_SECRET` | Ya existe (cron del orquestador). |
+> **Corregido 2026-07-17.** Este apartado decía que hacía falta un
+> `MP_PLATAFORMA_ACCESS_TOKEN` nuevo, y que `CRON_SECRET` "ya existe". **Las dos cosas
+> eran falsas.**
 
-Los precios **no** son env: viven en `precios_planes` para que el dueño los edite sin redeploy (R6).
+| Variable | Estado |
+|---|---|
+| `MP_CLIENT_ID` / `MP_CLIENT_SECRET` | **Ya estaban** (app del jefe, Production). Alcanzan: de acá sale el token que cobra. |
+| `MP_WEBHOOK_SECRET` | Cargada 2026-07-17 (panel MP → Webhooks → clave secreta). |
+| `CRON_SECRET` | Cargada 2026-07-17. **No existía**: el cron diario venía devolviendo 401 desde siempre y el digest del orquestador nunca se envió. |
+
+**No hace falta ningún token nuevo.** El access token de la cuenta de MediCuenta se
+**deriva** de `MP_CLIENT_ID`/`MP_CLIENT_SECRET` por `grant_type=client_credentials`.
+Verificado contra la API real: devuelve un `APP_USR-…` de la cuenta dueña de la app, con
+scope `subs-recurring:pre-approval/read-write`, y `GET /preapproval/search` responde 200.
+
+**Y no puede ser una env var: vence a las 6 h** (`expires_in: 21600`). Guardado a mano se
+vencería solo y el cobro dejaría de andar sin que nadie se entere — no falla al desplegar,
+falla seis horas después. Por eso `tokenPlataforma()` lo pide y lo cachea.
+
+Esto invalida el bloqueante que figuraba en §9 ("las credenciales TEST- no sirven, hace
+falta el token de producción de una cuenta de prueba vendedor"): **no hace falta nada de
+eso**. Con lo que ya está en Vercel se cobra.
+
+`MP_PLATAFORMA_ACCESS_TOKEN` queda como **override opcional** para probar contra otra
+cuenta vendedora sin tocar `MP_CLIENT_ID`/`SECRET`, que romperían el OAuth de las recetas
+(Pieza A) en ese mismo entorno.
+
+Los precios **no** son env: viven en `precios_planes` para que el dueño los edite sin
+redeploy (R6).
 
 ## 12. Decisiones abiertas (necesitan tu OK)
 
@@ -339,26 +361,32 @@ Los precios **no** son env: viven en `precios_planes` para que el dueño los edi
 - **D10 — Los montos en ARS.** Pendientes (R6). No bloquean el desarrollo: se construye con
   `precios_planes` y los cargás cuando los cierres. **Pero acordate de descontar el ~6,29% + IVA de
   comisión de MP** (§2) y de que el piso duro es **$100 ARS**.
-- **D11 — El email del pagador.** MP **rechaza el pago si el `payer_email` no coincide con el email
-  con el que el médico paga**. Si mandamos su email de MediCuenta y él tiene MP con otro (muy
-  probable: cuenta personal vieja), le rebota con un error que no explica nada, y la queja nos llega
-  a nosotros. Tres salidas:
-  1. **Preguntarle el email de MP al contratar** (campo aparte, precargado con el de MediCuenta y
-     editable, con una nota de "tiene que ser el de tu cuenta de Mercado Pago"). ← **propuesta**
-  2. Mandar el de MediCuenta y bancarse los rebotes.
-  3. Obligar a que el email de MediCuenta sea el de MP (fricción en el onboarding).
+- ✅ **D11 — El email del pagador. RESUELTA (Héctor, 2026-07-16): se le pregunta.** Campo aparte al
+  contratar, precargado con el de MediCuenta pero editable, con la razón a la vista. Implementado.
+- ✅ **D9 — `notification_url` vs panel. Camino elegido (2026-07-17): el panel.** El webhook quedó
+  configurado ahí (evento "Planes y suscripciones", modo productivo) porque el panel **sí** lo
+  ofrece, aunque la doc diga lo contrario. **Sigue sin confirmarse que dispare**: lo cierra la
+  prueba en producción. Plan B si no llega nada: mandar `notification_url` en el body aunque no
+  esté documentado.
+- ⬜ **D8 — `canceled` vs `cancelled`.** Ya no bloquea: `normalizarStatusPreapproval` acepta las dos.
 
 ## 13. Fases propuestas
 
-| Fase | Qué | Por qué en este orden |
+| Fase | Qué | Estado |
 |---|---|---|
-| **1** | Candado por estado + `resolverAcceso` + `contexto.ts` + guards + fix del fail-open | Sin esto, **nada** de lo demás tiene efecto. Es autónomo y testeable solo. |
-| **2** | Prueba al alta (R2) + migración + `TRIAL_DIAS=14` + cron de reconciliación | Cierra el ciclo de vida de la prueba sin tocar MP todavía. |
-| **3** | Avisos: banner pasivo + modal urgente + pantalla de bloqueo (R3/R4) | Ya hay estados reales que mostrar. |
-| **4** | `preapproval`: lib + firma + contratar + `/plan` + baja | Recién acá entra MP. |
-| **5** | Webhook + idempotencia + `precios_planes` en el panel | Cierra el lazo automático. |
+| **1** | Candado por estado + `resolverAcceso` + guards + fix del fail-open + **el middleware que nunca corrió** | ✅ `c85f673` |
+| **2** | Prueba al alta (trigger) + backfill + `TRIAL_DIAS=14` + cron de reconciliación | ✅ `852437d` |
+| **3** | Avisos: chip pasivo + modal urgente + chip rojo del moroso | ✅ `7dec93f`, `b79eaca` |
+| **4** | `preapproval`: lib + `precios_planes` + `/plan` + contratar + baja | ✅ `6bb7c3d`, `69f8a99`, `cc00360`, `fd7cf82` |
+| **5** | Webhook + firma + idempotencia + precio editable en el panel | ✅ `940a5eb` |
 
-Fases 1–3 **no dependen de MP** ni del precio → se puede avanzar hoy mismo.
+`precios_planes` se **movió de la fase 5 a la 4**: contratar necesita un precio sí o sí.
+
+**Todo verificado contra la base real** (los 8 estados del candado, el trigger creando la
+prueba, el cron reconciliando, los avisos, `/plan`, las defensas del webhook con la firma
+real). **Lo único sin ejercitar es el ida y vuelta con MP** — crear el preapproval real,
+pagar, y que el webhook reciba: eso lo cierra la prueba en producción (ver
+`docs/superpowers/2026-07-17-checklist-prueba-suscripcion-produccion.md`).
 
 ## 14. Criterio de terminado
 
