@@ -597,7 +597,7 @@ Ejemplos:
 - "Mostrame el dashboard" → navegar({ destino: 'dashboard' })
 - "Abrí el nomenclador" → navegar({ destino: 'nomenclador' })
 
-Después de navegar, el chat se achica a un panel lateral y la sección queda como pantalla principal. NO confirmes antes de navegar, hacelo directo. Sí podés agregar una frase corta de contexto al responder (ej: "Listo, te llevo a tus órdenes").`,
+Después de navegar se abre la sección: en escritorio el chat queda como panel lateral; en el celular la sección ocupa la pantalla en modo app (con el menú abajo y el asistente como botón flotante). NO confirmes antes de navegar, hacelo directo. Sí podés agregar una frase corta de contexto al responder (ej: "Listo, te llevo a tus órdenes").`,
   inputSchema: z.object({
     destino: z.enum(NAVIGATION_DESTINATIONS as unknown as [string, ...string[]]).describe('Sección destino. Usá uno de los valores válidos del enum.'),
   }),

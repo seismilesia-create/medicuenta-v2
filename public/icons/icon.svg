@@ -1,0 +1,28 @@
+<!-- Ícono TEMPORAL de MediCuenta (monograma médico azure). -->
+<!-- Reemplazar por el ícono definitivo: editar este SVG y correr scripts/generate-icons.mjs -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2E9BFF"/>
+      <stop offset="1" stop-color="#0057D9"/>
+    </linearGradient>
+    <linearGradient id="cross" x1="256" y1="140" x2="256" y2="372" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EAF3FF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fondo full-bleed (necesario para íconos maskable) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- Cruz médica centrada dentro de la safe-zone (para maskable) -->
+  <g fill="url(#cross)">
+    <rect x="212" y="140" width="88" height="232" rx="26"/>
+    <rect x="140" y="212" width="232" height="88" rx="26"/>
+  </g>
+
+  <!-- Línea de pulso sutil sobre la barra horizontal -->
+  <path d="M150 256 h44 l14 -30 20 60 16 -44 12 24 h58"
+        fill="none" stroke="#0057D9" stroke-width="10"
+        stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+</svg>
