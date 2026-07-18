@@ -74,6 +74,14 @@ export function usePushSubscription(): UsePushSubscriptionReturn {
       }
 
       const registration = await navigator.serviceWorker.ready
+
+      // Si ya existe una suscripción (p. ej. hecha con una VAPID key vieja), la damos
+      // de baja primero: subscribe() con una applicationServerKey distinta a la de la
+      // suscripción existente tira InvalidStateError. Esto hace la rotación de keys
+      // transparente para el usuario.
+      const existing = await registration.pushManager.getSubscription()
+      if (existing) await existing.unsubscribe()
+
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidKey),
