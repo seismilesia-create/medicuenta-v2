@@ -13,10 +13,9 @@ export const metadata: Metadata = {
     title: 'MediCuenta',
     statusBarStyle: 'black-translucent',
   },
-  icons: {
-    icon: '/icons/icon-192.png',
-    apple: '/apple-touch-icon.png',
-  },
+  // El favicon lo aporta el file-convention `src/app/icon.svg` (logo de marca).
+  // El apple-touch-icon lo detecta iOS solo en `/apple-touch-icon.png`. NO definir
+  // `icons.icon` acá: taparía el favicon de marca en la pestaña.
   openGraph: {
     title: 'MediCuenta | Facturacion Medica Inteligente',
     description: 'Control total de ordenes, liquidaciones y debitos para profesionales de la salud.',
@@ -27,7 +26,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#0071E3',
+  themeColor: '#1189DE',
 }
 
 export default function RootLayout({
