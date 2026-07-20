@@ -60,3 +60,20 @@ Portfolio destino **Seismiles IA**: `business_id = 1031852666067009`.
 - Token: **pendiente** — generar **system user token permanente** (Business Settings → Usuarios del sistema) cuando cableemos (Fase 2). El "Generar token" del API Setup es temporal (24 h).
 
 **Siguiente = Fase 1** (mover el bot). Prep antes: **resetear/desactivar el PIN de 2FA** del número del bot `+54 9 383 488-4384` en el WABA VIEJO (`Asistente MediCuenta`, id `27343280775302597`, portfolio Empresa). Luego: sacarlo del viejo → registrarlo en el WABA nuevo vía "Paso 2: Configuración de producción" de la app nueva.
+
+## Progreso Fase 1 (2026-07-19) — EN CURSO, atascado en "Registrar"
+
+Modo de trabajo NUEVO: **Héctor hace todos los clicks manuales**; Claude solo **mira** (screenshots vía claude-in-chrome, Browser 1) y **guía**. Tabs: `849495069` (WhatsApp Manager, WABA viejo, ya vacío) · `849495072` (app nueva → Paso 2 Configuración de producción).
+
+Hecho:
+- ✅ **2FA del número del bot estaba DESACTIVADA** en el WABA viejo → NO había PIN; ese temor quedó descartado.
+- ✅ **Número dado de baja del WABA viejo** (`Asistente MediCuenta`) → quedó sin números → el número quedó **LIBRE**. **Bot desconectado** (sin médicos, OK). *(La baja tardó unos min en propagar; reintentar antes daba #2388002 cacheado — mismo trace id.)*
+- ✅ **Número agregado al WABA NUEVO** `MediCuenta` (`waba_id 1012682971379646`) bajo Seismiles IA, estado **"No registrado"**. Se muestra `+54 383 15-488-4384` (el "15" = el "9", MISMO número).
+- ✅ **Nuevo `phone_number_id` del bot: `1216878824841256`** (viejo: `1110153015523184`).
+
+ATASCADO: al tocar **"Registrar"** → pide crear un **PIN de 6 dígitos** (2FA) → al confirmar da **"Se produjo un error durante el registro. Vuelve a intentarlo"**. Probó **varios PINs distintos** → NO es el PIN. Diagnóstico = **propagación/cooldown** post-baja. PLAN: **esperar ~15+ min, recargar (Cmd+R), reintentar "Registrar"** (poner PIN y **ANOTARLO**). FALLBACK: **borrar la entrada "No registrado" y re-agregar** con "Agregar número nuevo" (con el número libre debería mandar el **código por SMS** y verificar). El chip del bot está en un teléfono listo para SMS.
+
+Notas:
+- Toggle **"Suscribir webhooks"** → NO activar aún; va en **Fase 2** (tras configurar Callback URL + Verify Token).
+- Bajo Seismiles IA quedaron **2 WABAs**: `4350905665171500` (número de PRUEBA, Fase 0) + `1012682971379646` (`MediCuenta`, el del bot real). El de prueba se limpia en Fase 3.
+- El **PIN que ponga Héctor al registrar → GUARDARLO** (se necesita para futuras migraciones).
