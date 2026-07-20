@@ -19,6 +19,12 @@ import { rowsToUIMessages } from '../services/messages-mapper'
 interface Options {
   initialConversationId?: string
   initialMessages?: UIMessage[]
+  /**
+   * Si es false, NO restaura la conversación persistida en localStorage: la
+   * pantalla arranca limpia. Útil para el home del asistente, que debe abrir
+   * siempre en el mic-first y no saltar al historial viejo. Default: true.
+   */
+  restore?: boolean
 }
 
 interface ServerMessageMetadata {
@@ -43,17 +49,17 @@ function isMobileViewport(): boolean {
  * el mensaje colgado). Por eso usamos un ref a addToolResult dentro de onToolCall.
  */
 export function useAssistantChat(options: Options = {}) {
-  const { initialConversationId, initialMessages } = options
+  const { initialConversationId, initialMessages, restore = true } = options
 
   const router = useRouter()
   const closePanel = useSidePanelStore((s) => s.close)
   const storedConversationId = useConversationStore((s) => s.conversationId)
   const persistConversationId = useConversationStore((s) => s.setConversationId)
 
-  // Si no nos pasaron uno explícito, retomamos la conversación activa persistida
-  // (localStorage) para no perder el chat al salir y volver a la sección.
+  // Si no nos pasaron uno explícito y `restore` está activo, retomamos la
+  // conversación persistida (localStorage). Con restore=false arrancamos limpio.
   const [conversationId, setConversationId] = useState<string | undefined>(
-    initialConversationId ?? storedConversationId ?? undefined,
+    initialConversationId ?? (restore ? storedConversationId ?? undefined : undefined),
   )
   const conversationIdRef = useRef<string | undefined>(conversationId)
   conversationIdRef.current = conversationId
@@ -161,6 +167,7 @@ export function useAssistantChat(options: Options = {}) {
   const restoredIdRef = useRef<string | null>(null)
 
   useEffect(() => {
+    if (!restore) return
     if (initialMessages && initialMessages.length > 0) return
     const idToRestore = initialConversationId ?? storedConversationId
     if (!idToRestore || restoredIdRef.current === idToRestore) return
@@ -191,7 +198,7 @@ export function useAssistantChat(options: Options = {}) {
     return () => {
       cancelled = true
     }
-  }, [storedConversationId, initialConversationId, initialMessages])
+  }, [restore, storedConversationId, initialConversationId, initialMessages])
 
   return {
     ...chat,

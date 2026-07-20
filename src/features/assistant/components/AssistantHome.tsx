@@ -1,6 +1,6 @@
 'use client'
 
-import { Sparkles, Mic, MicOff, Send, FileText, Receipt, Calculator, Plus, Loader2 } from 'lucide-react'
+import { Sparkles, Mic, MicOff, Send, FileText, Receipt, Calculator, Plus, Loader2, PenSquare } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useAssistantChat } from '../hooks/useAssistantChat'
 import { useVoiceInput } from '../hooks/useVoiceInput'
@@ -17,7 +17,10 @@ const SUGGESTION_ICONS = [FileText, Receipt, Calculator, Plus]
 export function AssistantHome({ nombre }: Props) {
   const [text, setText] = useState('')
 
-  const { messages, status, error, sendMessage } = useAssistantChat()
+  // restore: false → el home arranca SIEMPRE limpio (mic-first) y no resucita la
+  // conversación vieja al montar. Ver useAssistantChat.
+  const { messages, status, error, sendMessage, setMessages, setConversationId } =
+    useAssistantChat({ restore: false })
 
   const isLoading = status === 'submitted' || status === 'streaming'
 
@@ -27,6 +30,14 @@ export function AssistantHome({ nombre }: Props) {
       setText('')
     },
   })
+
+  // Volver al inicio (mic-first) sin tener que tipear: limpia el chat actual.
+  function nuevaConversacion() {
+    setMessages([])
+    setConversationId(undefined)
+    setText('')
+    if (voice.isListening) voice.stop()
+  }
 
   function handleSuggestion(q: string) {
     sendMessage({ text: q })
@@ -51,6 +62,17 @@ export function AssistantHome({ nombre }: Props) {
   if (messages.length > 0) {
     return (
       <div className="h-full flex flex-col bg-card overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0">
+          <span className="text-sm font-semibold text-foreground">{saludo}</span>
+          <button
+            type="button"
+            onClick={nuevaConversacion}
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-accent/50"
+          >
+            <PenSquare className="w-4 h-4" />
+            Nueva conversación
+          </button>
+        </div>
         <div className="flex-1 overflow-y-auto">
           <AssistantMessages messages={messages} isLoading={isLoading} />
         </div>
