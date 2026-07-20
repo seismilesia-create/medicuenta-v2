@@ -1,6 +1,10 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 import { resolverAcceso, normalizarEstado, normalizarPlan, puedeAcceder } from '@/lib/admin/planes'
+
+// Throttle del bump de last_active_at: como máximo una escritura cada ~20 h por médico.
+const LAST_ACTIVE_THROTTLE_MS = 20 * 60 * 60 * 1000
 
 type CookieToSet = {
   name: string
@@ -91,9 +95,34 @@ export async function updateSession(request: NextRequest) {
   if (user && !esSecretaria && esRutaApp(pathname)) {
     const { data: sub } = await supabase
       .from('suscripciones')
-      .select('plan, estado, trial_ends_at')
+      .select('plan, estado, trial_ends_at, last_active_at')
       .eq('medico_id', user.id)
-      .maybeSingle<{ plan: string | null; estado: string | null; trial_ends_at: string | null }>()
+      .maybeSingle<{ plan: string | null; estado: string | null; trial_ends_at: string | null; last_active_at: string | null }>()
+
+    // Señal "última vez activo" para el push de la prueba (ver features/notifications/
+    // services/trial-push). Este bloque ya corre en cada request de app del médico, así
+    // que reusamos la lectura y solo escribimos si está vieja (throttle ~20 h). El UPDATE
+    // va con service-role porque la tabla es SELECT-only por RLS. Best-effort: si falla, no
+    // rompe el request (es telemetría para decidir a quién notificar, no gate de acceso).
+    if (
+      sub &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY &&
+      (!sub.last_active_at || Date.now() - new Date(sub.last_active_at).getTime() > LAST_ACTIVE_THROTTLE_MS)
+    ) {
+      try {
+        const admin = createSupabaseAdmin(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY,
+          { auth: { autoRefreshToken: false, persistSession: false } },
+        )
+        await admin
+          .from('suscripciones')
+          .update({ last_active_at: new Date().toISOString() })
+          .eq('medico_id', user.id)
+      } catch {
+        // best-effort
+      }
+    }
 
     // Sin fila = médico anterior a F4.3 → pasa. La fase 2 hace el backfill (ver resolverAcceso).
     const acceso = resolverAcceso(

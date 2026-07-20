@@ -1,5 +1,6 @@
 import { procesarYEnviarDigest } from '@/lib/admin/orquestadorEnvio'
 import { reconciliarPruebasVencidas } from '@/lib/admin/suscripciones'
+import { enviarPushTrial } from '@/features/notifications/services/trial-push'
 import { createServiceClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs' // service-role + fetch a Resend
@@ -28,7 +29,19 @@ export async function GET(req: Request) {
     // igual quiere sus alertas. El error queda logueado adentro.
     const recon = await reconciliarPruebasVencidas(createServiceClient())
     const r = await procesarYEnviarDigest({})
-    return Response.json({ ok: true, ...r, suspendidas: recon.suspendidas })
+
+    // Push de la prueba a los médicos INACTIVOS (re-enganche + urgencia de 3 días). Va
+    // DESPUÉS de reconciliar: las vencidas ya pasaron a 'suspendida' y salen del set
+    // 'prueba', así nadie recibe "faltan 3 días" el día que ya se venció. En su propio
+    // try/catch: si el push falla, el digest al dueño ya salió igual.
+    let pushTrial: Awaited<ReturnType<typeof enviarPushTrial>> | null = null
+    try {
+      pushTrial = await enviarPushTrial(createServiceClient())
+    } catch (e) {
+      console.error('Cron push trial error:', e)
+    }
+
+    return Response.json({ ok: true, ...r, suspendidas: recon.suspendidas, pushTrial })
   } catch (e) {
     console.error('Cron orquestador error:', e)
     return Response.json({ ok: false, error: 'Error interno' }, { status: 500 })
