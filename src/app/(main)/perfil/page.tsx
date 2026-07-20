@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { PerfilForm } from '@/features/perfil/components/PerfilForm'
+import { NotificacionesSettings } from '@/features/notifications/components/notificaciones-settings'
 import type { Perfil } from '@/features/perfil/types/perfil'
 
 export const metadata = {
@@ -67,6 +68,8 @@ export default async function PerfilPage() {
       </div>
 
       <PerfilForm perfil={perfil} email={user.email ?? null} />
+
+      <NotificacionesSettings />
     </div>
   )
 }
