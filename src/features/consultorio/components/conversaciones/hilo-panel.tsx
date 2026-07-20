@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { Loader2, Pause, Play, BellOff, Send } from 'lucide-react'
+import { Loader2, Pause, Play, BellOff, Send, ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getHilo, type Hilo } from '@/features/consultorio/services/panelService'
 import { responderComoHumano, setBotPausado, resolverAlarma } from '@/actions/consultorio-conversaciones'
@@ -20,7 +20,7 @@ function horasRestantes(ms: number): string {
   return `${Math.floor(ms / 3_600_000)} h ${Math.floor((ms % 3_600_000) / 60_000)} min`
 }
 
-export function HiloPanel({ medicoId, conversacionId, onChange }: { medicoId: string; conversacionId: string; onChange: () => void }) {
+export function HiloPanel({ medicoId, conversacionId, onChange, onBack }: { medicoId: string; conversacionId: string; onChange: () => void; onBack?: () => void }) {
   const [hilo, setHilo] = useState<Hilo | null>(null)
   const [texto, setTexto] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -88,11 +88,23 @@ export function HiloPanel({ medicoId, conversacionId, onChange }: { medicoId: st
   return (
     <div className="h-full flex flex-col">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-2.5 border-b border-border/60">
-        <div className="min-w-0">
-          <p className="font-semibold text-sm truncate">{hilo.contactoNombre || hilo.contactoTelefono}</p>
-          <p className={`text-[11px] font-semibold ${ventanaAbierta ? 'text-emerald-600' : 'text-blue-500'}`}>
-            {ventanaAbierta ? `● ventana abierta (cierra en ${horasRestantes(hilo.msVentana)})` : '○ ventana cerrada'}
-          </p>
+        <div className="flex items-center gap-2 min-w-0">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Volver a la lista"
+              className="lg:hidden shrink-0 -ml-1 rounded-lg p-1 hover:bg-accent/50"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          )}
+          <div className="min-w-0">
+            <p className="font-semibold text-sm truncate">{hilo.contactoNombre || hilo.contactoTelefono}</p>
+            <p className={`text-[11px] font-semibold ${ventanaAbierta ? 'text-emerald-600' : 'text-blue-500'}`}>
+              {ventanaAbierta ? `● ventana abierta (cierra en ${horasRestantes(hilo.msVentana)})` : '○ ventana cerrada'}
+            </p>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2 sm:justify-end">
           {hilo.necesitaHumano && (
@@ -165,7 +177,7 @@ export function HiloPanel({ medicoId, conversacionId, onChange }: { medicoId: st
                   : 'Escribí como humano (conviene pausar el asistente primero)…'
                 : 'Ventana cerrada: vas a poder responder cuando el paciente vuelva a escribir.'
             }
-            className="flex-1 rounded-xl border border-border bg-[var(--color-background)] px-3 py-2 text-sm disabled:opacity-50"
+            className="flex-1 min-w-0 rounded-xl border border-border bg-[var(--color-background)] px-3 py-2 text-sm disabled:opacity-50"
           />
           <button
             disabled={!ventanaAbierta || enviando || !texto.trim()}

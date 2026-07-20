@@ -51,8 +51,10 @@ export function ConversacionesView({ medicoId, initialId }: { medicoId: string; 
           {error}
         </div>
       )}
-      <div className="flex-1 min-h-0 grid grid-cols-1 gap-4 lg:grid-cols-[3fr_7fr]">
-        <div className="min-w-0 rounded-2xl border border-border overflow-y-auto divide-y divide-border/50">
+      {/* En celular es master-detail: se ve la lista O el hilo (no los dos apilados,
+          que dejaban el hilo en una ventanita). En lg vuelven lado a lado. */}
+      <div className="flex-1 min-h-0 grid grid-rows-1 grid-cols-1 gap-4 lg:grid-cols-[3fr_7fr]">
+        <div className={`min-w-0 min-h-0 rounded-2xl border border-border overflow-y-auto divide-y divide-border/50 ${seleccionada ? 'hidden lg:block' : ''}`}>
           {loading ? (
             <div className="flex justify-center py-16">
               <Loader2 className="animate-spin" />
@@ -86,9 +88,9 @@ export function ConversacionesView({ medicoId, initialId }: { medicoId: string; 
             ))
           )}
         </div>
-        <div className="min-w-0 rounded-2xl border border-border min-h-0">
+        <div className={`min-w-0 rounded-2xl border border-border min-h-0 ${seleccionada ? '' : 'hidden lg:block'}`}>
           {seleccionada ? (
-            <HiloPanel medicoId={medicoId} conversacionId={seleccionada} onChange={refetch} />
+            <HiloPanel medicoId={medicoId} conversacionId={seleccionada} onChange={refetch} onBack={() => setSeleccionada(null)} />
           ) : (
             <div className="h-full flex items-center justify-center text-sm text-[var(--color-muted-foreground)]">
               Elegí una conversación
