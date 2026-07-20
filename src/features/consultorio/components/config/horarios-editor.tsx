@@ -148,7 +148,7 @@ export function HorariosEditor({ inicial, onSaved }: { inicial: Bloque[]; onSave
         const abierto = delDia.length > 0
         return (
           <div key={wd} className="flex items-start gap-3 py-2.5 border-b border-border/40 last:border-b-0">
-            <span className="w-24 pt-1.5 text-sm font-medium">{DIAS[wd]}</span>
+            <span className="w-20 sm:w-24 pt-1.5 text-sm font-medium">{DIAS[wd]}</span>
             <button
               role="switch"
               aria-checked={abierto}
@@ -168,7 +168,7 @@ export function HorariosEditor({ inicial, onSaved }: { inicial: Bloque[]; onSave
               {abierto ? (
                 <>
                   {delDia.map(({ b, i }) => (
-                    <div key={i} className="flex items-center gap-1.5 text-sm">
+                    <div key={i} className="flex flex-wrap items-center gap-1.5 text-sm">
                       <TimeSelect
                         value={b.open_time}
                         formato={formato}

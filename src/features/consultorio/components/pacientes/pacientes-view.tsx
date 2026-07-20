@@ -86,8 +86,8 @@ export function PacientesView({ medicoId, puedeVerRecetas = true }: { medicoId: 
           {error}
         </div>
       )}
-      <div className="grid gap-4 lg:grid-cols-[4fr_6fr]">
-        <div className="rounded-2xl border border-border overflow-hidden">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[4fr_6fr]">
+        <div className="min-w-0 rounded-2xl border border-border overflow-hidden">
           <div className="p-3 border-b border-border/60 flex items-center gap-2">
             <Search className="w-4 h-4 text-[var(--color-muted-foreground)]" />
             <input
@@ -126,13 +126,13 @@ export function PacientesView({ medicoId, puedeVerRecetas = true }: { medicoId: 
           )}
         </div>
 
-        <div className="rounded-2xl border border-border p-5">
+        <div className="min-w-0 rounded-2xl border border-border p-5">
           {!ficha ? (
             <p className="text-sm text-[var(--color-muted-foreground)]">Elegí un paciente para ver su ficha.</p>
           ) : (
             <div className="space-y-4">
-              <div className="flex items-start justify-between gap-2">
-                <div>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                <div className="min-w-0">
                   <h2 className="text-lg font-semibold">
                     {[ficha.paciente.apellido, ficha.paciente.nombre].filter(Boolean).join(', ')}
                   </h2>
@@ -146,7 +146,7 @@ export function PacientesView({ medicoId, puedeVerRecetas = true }: { medicoId: 
                     </span>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {ficha.conversacionId && (
                     <Link
                       href={`/conversaciones?id=${ficha.conversacionId}`}

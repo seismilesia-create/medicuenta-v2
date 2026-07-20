@@ -45,28 +45,19 @@ export function AssistantSidePanel() {
 
   return (
     <>
-      {/* Botón "abrir" cuando está cerrado — tab lateral en desktop */}
+      {/* Botón "abrir" cuando está cerrado — tab lateral pegado al borde derecho.
+          En celular va arriba (top-16), a la altura del título de la página, para
+          no pisar el composer de Conversaciones ni el BottomNav. En escritorio
+          queda centrado vertical como estaba. */}
       {!isOpen && (
         <button
           type="button"
           onClick={open}
-          className="hidden md:flex fixed top-1/2 right-0 -translate-y-1/2 z-40 items-center gap-1 pl-2 pr-1.5 py-3 rounded-l-xl bg-primary text-primary-foreground shadow-lg hover:pr-2.5 transition-all group"
+          className="flex fixed top-16 right-0 md:top-1/2 md:-translate-y-1/2 z-40 items-center gap-1 pl-2 pr-1.5 py-3 rounded-l-xl bg-primary text-primary-foreground shadow-lg hover:pr-2.5 transition-all group"
           aria-label="Abrir asistente"
         >
           <ChevronLeft className="w-4 h-4" />
           <Bot className="w-5 h-5" />
-        </button>
-      )}
-
-      {/* FAB mobile cuando está cerrado — encima del BottomNav */}
-      {!isOpen && (
-        <button
-          type="button"
-          onClick={open}
-          className="md:hidden fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl active:scale-95 transition-transform"
-          aria-label="Abrir asistente"
-        >
-          <Bot className="w-6 h-6" />
         </button>
       )}
 

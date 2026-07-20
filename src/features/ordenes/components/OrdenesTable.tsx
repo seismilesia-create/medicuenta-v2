@@ -171,10 +171,10 @@ export function OrdenesTable() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Link
                 href="/ordenes/presentaciones"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/50 bg-card hover:bg-accent/50 text-sm font-medium text-foreground transition-colors"
+                className="inline-flex flex-1 sm:flex-none justify-center items-center gap-2 px-4 py-2.5 rounded-xl border border-border/50 bg-card hover:bg-accent/50 text-sm font-medium text-foreground transition-colors whitespace-nowrap"
               >
                 <FileText className="h-4 w-4" strokeWidth={1.5} />
                 Presentaciones
@@ -182,14 +182,14 @@ export function OrdenesTable() {
               <button
                 onClick={exportToExcel}
                 disabled={ordenes.length === 0}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border/50 bg-card hover:bg-accent/50 text-sm font-medium text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex flex-1 sm:flex-none justify-center items-center gap-2 px-4 py-2.5 rounded-xl border border-border/50 bg-card hover:bg-accent/50 text-sm font-medium text-foreground transition-colors whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Download className="h-4 w-4" strokeWidth={1.5} />
                 Exportar
               </button>
               <Link
                 href="/ordenes/nueva"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all"
+                className="inline-flex flex-1 sm:flex-none justify-center items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all whitespace-nowrap"
               >
                 <Plus className="h-4 w-4" strokeWidth={2} />
                 Nueva Orden

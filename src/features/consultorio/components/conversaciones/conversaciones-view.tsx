@@ -51,8 +51,8 @@ export function ConversacionesView({ medicoId, initialId }: { medicoId: string; 
           {error}
         </div>
       )}
-      <div className="flex-1 min-h-0 grid gap-4 lg:grid-cols-[3fr_7fr]">
-        <div className="rounded-2xl border border-border overflow-y-auto divide-y divide-border/50">
+      <div className="flex-1 min-h-0 grid grid-cols-1 gap-4 lg:grid-cols-[3fr_7fr]">
+        <div className="min-w-0 rounded-2xl border border-border overflow-y-auto divide-y divide-border/50">
           {loading ? (
             <div className="flex justify-center py-16">
               <Loader2 className="animate-spin" />
@@ -66,11 +66,11 @@ export function ConversacionesView({ medicoId, initialId }: { medicoId: string; 
               <button
                 key={c.id}
                 onClick={() => setSeleccionada(c.id)}
-                className={`w-full text-left px-3 py-3 transition hover:brightness-105 ${SEMAFORO_CLS[c.semaforo]} ${
+                className={`w-full min-w-0 text-left px-3 py-3 transition hover:brightness-105 ${SEMAFORO_CLS[c.semaforo]} ${
                   seleccionada === c.id ? 'ring-1 ring-primary/40' : ''
                 }`}
               >
-                <p className="font-medium text-sm flex items-center gap-2">
+                <p className="font-medium text-sm flex flex-wrap items-center gap-2">
                   {c.contactoNombre || c.contactoTelefono}
                   {c.semaforo === 'alerta' && (
                     <span className="text-[10px] font-bold bg-red-600 text-white rounded-full px-2 py-0.5">
@@ -86,7 +86,7 @@ export function ConversacionesView({ medicoId, initialId }: { medicoId: string; 
             ))
           )}
         </div>
-        <div className="rounded-2xl border border-border min-h-0">
+        <div className="min-w-0 rounded-2xl border border-border min-h-0">
           {seleccionada ? (
             <HiloPanel medicoId={medicoId} conversacionId={seleccionada} onChange={refetch} />
           ) : (

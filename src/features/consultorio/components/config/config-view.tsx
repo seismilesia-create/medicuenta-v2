@@ -57,7 +57,7 @@ function FilaConexion(props: {
   atenuada?: boolean
 }) {
   return (
-    <div className={'flex items-start justify-between gap-3 p-3' + (props.atenuada ? ' opacity-50' : '')}>
+    <div className={'flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3 p-3' + (props.atenuada ? ' opacity-50' : '')}>
       <div className="space-y-0.5 min-w-0">
         <p className="flex items-center gap-1.5 text-sm font-medium">
           {props.icono}
@@ -101,11 +101,11 @@ function BloqueOs(props: {
           </p>
         ))}
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         {/* Autocomplete contra el catálogo canónico (aranceles_os) en vez de texto libre:
             el médico elige una OS real → el nombre normalizado que se guarda matchea el del
             paciente. La `key` remonta el autocomplete tras agregar/quitar para limpiar su input. */}
-        <div className="w-44 shrink-0">
+        <div className="w-full sm:w-44 sm:shrink-0">
           <OsAutocomplete
             key={`${props.motivo}-${items.length}`}
             catalogo={props.catalogo}

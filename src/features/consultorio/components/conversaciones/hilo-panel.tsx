@@ -87,14 +87,14 @@ export function HiloPanel({ medicoId, conversacionId, onChange }: { medicoId: st
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border/60">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-2.5 border-b border-border/60">
         <div className="min-w-0">
           <p className="font-semibold text-sm truncate">{hilo.contactoNombre || hilo.contactoTelefono}</p>
           <p className={`text-[11px] font-semibold ${ventanaAbierta ? 'text-emerald-600' : 'text-blue-500'}`}>
             {ventanaAbierta ? `● ventana abierta (cierra en ${horasRestantes(hilo.msVentana)})` : '○ ventana cerrada'}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 sm:justify-end">
           {hilo.necesitaHumano && (
             <button
               onClick={async () => {
