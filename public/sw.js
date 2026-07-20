@@ -1,5 +1,5 @@
 // MediCuenta Service Worker — instalabilidad + notificaciones push.
-// v1.1.0
+// v1.2.0 (badge de notificación monocromático)
 //
 // CRÍTICO (gotchas de la fábrica, ya resueltos):
 //  - NO incluir un handler de 'fetch': rompe las PWA en iOS Safari.
@@ -45,7 +45,7 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(payload.title || 'MediCuenta', {
       body: payload.body || '',
       icon: payload.icon || '/icons/icon-192.png',
-      badge: payload.badge || '/icons/icon-96.png',
+      badge: payload.badge || '/icons/badge-96.png',
       data: payload.data || {},
       tag: payload.tag,
       requireInteraction: payload.requireInteraction || false,

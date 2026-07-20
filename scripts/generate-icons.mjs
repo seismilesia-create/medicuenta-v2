@@ -45,4 +45,14 @@ await writeFile(
   await readFile(join(iconsDir, 'apple-touch-icon.png'))
 )
 console.log('  ✓ public/apple-touch-icon.png')
+
+// Badge de notificaciones Android: silueta blanca sobre TRANSPARENTE (sin fondo blanco).
+const badgeSvg = await readFile(join(iconsDir, 'badge.svg'))
+for (const size of [72, 96]) {
+  await sharp(badgeSvg, { density: 512 })
+    .resize(size, size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .png()
+    .toFile(join(iconsDir, `badge-${size}.png`))
+  console.log(`  ✓ badge-${size}.png (${size}x${size}, transparente)`)
+}
 console.log('Íconos generados desde el logo de marca.')
