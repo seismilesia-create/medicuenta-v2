@@ -184,7 +184,10 @@ export function EditarOrdenForm({ orden }: Props) {
           token_osep: str('token_osep'),
           firma_paciente: form.get('firma_paciente') === 'on',
           firma_sello_medico: form.get('firma_sello_medico') === 'on',
-          codigo_practica: prestacionSeleccionada?.codigo ?? (form.get('codigo_practica') as string),
+          // No hay input `codigo_practica` (la práctica se elige por el autocomplete);
+          // sin selección, form.get da null → Zod lo rechaza. El campo es opcional, así
+          // que undefined. La práctica ya vive en `prestacionSeleccionada` si la había.
+          codigo_practica: prestacionSeleccionada?.codigo ?? undefined,
           nombre_practica: prestacionSeleccionada?.detalle ?? str('nombre_practica'),
           diagnostico_cie10: str('diagnostico_cie10'),
           honorario_calculado: prestacionSeleccionada?.total

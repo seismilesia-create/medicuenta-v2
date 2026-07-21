@@ -22,7 +22,11 @@ export async function createOrden(formData: OrdenFormData) {
   // Validate with Zod
   const parsed = ordenSchema.safeParse(formData)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0].message }
+    // Incluimos el nombre del campo: sin esto, un null en un campo opcional daba un
+    // "invalid input: expected string, received null" a ciegas, imposible de ubicar.
+    const issue = parsed.error.issues[0]
+    const campo = issue.path.join('.')
+    return { error: campo ? `${campo}: ${issue.message}` : issue.message }
   }
 
   const data = parsed.data
@@ -126,7 +130,11 @@ export async function updateOrden(ordenId: string, formData: OrdenFormData) {
 
   const parsed = ordenSchema.safeParse(formData)
   if (!parsed.success) {
-    return { error: parsed.error.issues[0].message }
+    // Incluimos el nombre del campo: sin esto, un null en un campo opcional daba un
+    // "invalid input: expected string, received null" a ciegas, imposible de ubicar.
+    const issue = parsed.error.issues[0]
+    const campo = issue.path.join('.')
+    return { error: campo ? `${campo}: ${issue.message}` : issue.message }
   }
 
   const data = parsed.data

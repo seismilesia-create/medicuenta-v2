@@ -376,7 +376,10 @@ export function NuevaOrdenForm() {
           token_osep: str('token_osep'),
           firma_paciente: firmaPaciente,
           firma_sello_medico: firmaSelloMedico,
-          codigo_practica: prestacionSeleccionada?.codigo ?? (form.get('codigo_practica') as string),
+          // El código SIEMPRE sale de una práctica real del nomenclador (el autocomplete,
+          // o el match del OCR vía buscarPrestacionPorCodigo → prestacionSeleccionada). NO
+          // se guarda un código manual/crudo: si no hubo match, va undefined (es opcional).
+          codigo_practica: prestacionSeleccionada?.codigo ?? undefined,
           nombre_practica: prestacionSeleccionada?.detalle ?? str('nombre_practica'),
           diagnostico_cie10: diagnostico || undefined,
           honorario_calculado: prestacionSeleccionada?.total
