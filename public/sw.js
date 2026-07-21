@@ -1,5 +1,5 @@
 // MediCuenta Service Worker — instalabilidad + notificaciones push.
-// v1.2.0 (badge de notificación monocromático)
+// v1.3.0 (fix: la notificación abre en su `url` y no en el dashboard)
 //
 // CRÍTICO (gotchas de la fábrica, ya resueltos):
 //  - NO incluir un handler de 'fetch': rompe las PWA en iOS Safari.
@@ -46,7 +46,9 @@ self.addEventListener('push', (event) => {
       body: payload.body || '',
       icon: payload.icon || '/icons/icon-192.png',
       badge: payload.badge || '/icons/badge-96.png',
-      data: payload.data || {},
+      // El `url` viene en el nivel de arriba del payload; lo metemos en `data` para que
+      // el handler de 'notificationclick' lo lea (si no, cae en '/' → dashboard).
+      data: { url: payload.url, ...(payload.data || {}) },
       tag: payload.tag,
       requireInteraction: payload.requireInteraction || false,
     })
