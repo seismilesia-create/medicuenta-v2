@@ -19,6 +19,19 @@ export const MODELS = {
 } as const
 
 /**
+ * Modelo de visión/OCR con ruteo determinístico. OpenRouter balancea cada request
+ * entre varios upstreams (Anthropic directo, Bedrock, Vertex…) y por default
+ * (`require_parameters: false`) puede caer en uno que NO soporta structured outputs
+ * → "structured_outputs not supported in your workspace" INTERMITENTE (reproducido
+ * en prod 2026-07-20 con el OCR de órdenes; los tests locales pasaban de casualidad).
+ * `require_parameters: true` restringe el ruteo a proveedores que soportan todos
+ * los parámetros del request (acá, response_format json_schema de generateObject).
+ */
+export function getVisionModel() {
+  return openrouter(MODELS.vision, { provider: { require_parameters: true } })
+}
+
+/**
  * Resuelve el modelo del asistente según ASSISTANT_MODEL (.env.local).
  * Por defecto: Gemini 3.5 Flash. Para comparar sin tocar código:
  *   - "haiku"    → Claude Haiku 4.5 (el modelo anterior)

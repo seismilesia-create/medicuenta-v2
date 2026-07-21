@@ -1,7 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import { openrouter, MODELS } from '@/lib/ai/openrouter'
+import { getVisionModel } from '@/lib/ai/openrouter'
 import { generateObject } from 'ai'
 import { NAVIGATION_DESTINATIONS } from './navigation'
 import { ordenExtraidaSchema, OCR_ORDEN_PROMPT } from '@/lib/ai/ocr-orden'
@@ -514,7 +514,7 @@ Devuelve estructura con nivel de confianza y lista de campos dudosos.`,
   execute: async (input) => {
     try {
       const { object } = await generateObject({
-        model: openrouter(MODELS.vision),
+        model: getVisionModel(),
         schema: ordenExtraidaSchema,
         messages: [
           {
