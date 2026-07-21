@@ -75,5 +75,70 @@ ATASCADO: al tocar **"Registrar"** → pide crear un **PIN de 6 dígitos** (2FA)
 
 Notas:
 - Toggle **"Suscribir webhooks"** → NO activar aún; va en **Fase 2** (tras configurar Callback URL + Verify Token).
-- Bajo Seismiles IA quedaron **2 WABAs**: `4350905665171500` (número de PRUEBA, Fase 0) + `1012682971379646` (`MediCuenta`, el del bot real). El de prueba se limpia en Fase 3.
+- Bajo Seismiles IA quedaron **2 WABAs**: `4350905665171500` (número de PRUEBA, Fase 0) + `1012682971379646` (`MediCuenta`, el del bot real). El de prueba se limpia en Fase 3. *(Corrección 2026-07-20: son 3 — ver WABA fantasma abajo.)*
 - El **PIN que ponga Héctor al registrar → GUARDARLO** (se necesita para futuras migraciones).
+
+## Progreso Fase 1 (2026-07-20) — diagnóstico real + re-alta en curso + PLAN B definido
+
+**DIAGNÓSTICO (cierra el misterio de ayer):** "Registrar" no fallaba por propagación — el número quedó **`PENDING` (la verificación OTP nunca se completó)** al re-agregarlo el 19/07. En WhatsApp Manager figuraba **"Pendiente"** y NO existe ningún botón "Verificar" en la UI (se revisó panel del número + menú "Más": solo opciones de llamadas). Un número sin OTP **no se puede registrar jamás** → única salida: borrar la entrada y re-agregar con el flujo completo (el fallback que ya estaba previsto).
+
+- ✅ **Entrada pendiente BORRADA** del WABA del bot (`1012682971379646`) — lista vacía. El `phone_number_id 1216878824841256` murió con ella; al re-agregar habrá OTRO nuevo (anotar el definitivo para Fase 2).
+- 🔎 **HALLAZGO — WABA fantasma:** bajo Seismiles IA hay un **TERCER WABA** llamado `MediCuenta`, id **`1539171257694302`** (duplicado nacido del doble-submit del 19/07). Está **VACÍO** (verificado) → **sumar a la lista de borrado de Fase 3**. Ojo al elegir WABA en los flujos: hay dos "MediCuenta"; el del bot es `1012682971379646`.
+- ❌ **Re-alta ~5-10 min post-borrado → `#2388002`** ("Error al comprobar si el número cumple los requisitos", trace `WBxP-1472096205-549938811`) en el chequeo previo del diálogo "Agregar número". = cooldown de liberación (igual que ayer). **No se quemó ningún intento de OTP** (falla antes del SMS).
+- **Estrategia de reintento:** UN intento por ronda, rondas espaciadas: 10-15 min → 30-60 min → 1-2 h. Cerrar el diálogo y Cmd+R antes de cada reintento (el resultado del chequeo queda cacheado en el diálogo).
+- **PLAN B (decidido por Héctor 2026-07-20):** si el número viejo no se libera hoy → **alta con CHIP/NÚMERO NUEVO virgen** y no se espera más. Viable porque es pre-launch (cero médicos, nada impreso). Requisitos del chip: nunca usado con WhatsApp (o borrar la cuenta WA antes desde la app) + recibir SMS. Delta de trabajo vs. plan A: solo actualizar el **número visible** en los links `wa.me` (landing `/c/slug`, QRs) durante el cableado de Fase 2 — el `phone_number_id`/token en nodos y los env de Vercel cambian igual en ambos planes. El número viejo queda en poder de Héctor y se libera solo.
+
+### Desenlace 2026-07-20 mediodía — número viejo WEDGED en el backend → PLAN B GATILLADO
+
+Ronda 2 (post-borrado + re-alta limpia por WhatsApp Manager):
+- ✅ Re-alta OK ("Se agregó tu número"; aviso de posible revisión del display name).
+- ✅ **Verificación OTP por SMS COMPLETADA** (badge `unverified` → "No registrado"; en Manager "Pendiente" = verificado-sin-registrar). **El `phone_number_id` NO cambió al re-agregar el mismo número al mismo WABA: sigue siendo `1216878824841256`** (corrige la nota de más arriba).
+- ❌ "Registrar" (~1 min post-OTP) → error real capturado por interceptor de red: **`"A server error field_exception occured"`** en la mutación GraphQL (el toast genérico lo tapaba).
+- Chequeos: 2FA del número **desactivada** (sin PIN viejo → mismatch descartado) · display name "MediCuenta" sin badge de revisión.
+- ❌ Workaround "setear PIN ANTES por el Manager" (Verificación en dos pasos → Activar) → **"The PIN could not be changed for +54 9 383 488-4384"** + modal "Error desconocido".
+- **CONCLUSIÓN:** dos mutaciones independientes (register + set-PIN) fallan sobre el mismo número → **el número quedó colgado a nivel backend de WhatsApp** (resaca del registro Cloud API viejo que no se liberó limpio al sacarlo del WABA de Empresa). Nada que hacer desde la UI.
+- **DECISIÓN: PLAN B en ejecución** → alta de un número/chip NUEVO en el MISMO WABA `MediCuenta 1012682971379646` (banca 2 números; el viejo queda ESTACIONADO sin tocar — ni borrar ni reintentar). Opcional en paralelo: ticket a soporte de Meta por el viejo (trace ids: `#2388002 WBxP-1472096205-549938811` del alta + field_exception del register + PIN-change fail ~12:13 ART).
+- ⚠️ Para Fase 2: el `phone_number_id` que va a la DB será el del **número NUEVO** (anotarlo al verificarlo), NO `1216878824841256`.
+
+### Cierre 2026-07-20 (noche) — ✅ FASE 1 COMPLETA: número nuevo REGISTRADO y "Conectado"
+
+**Número del bot (NUEVO): `+54 9 383 402-9027` · `phone_number_id 1134910809713758` · WABA `MediCuenta 1012682971379646`.** Estado final en WhatsApp Manager: **"Conectado"** 🟢. PIN 2FA seteado por Héctor (anotado fuera del repo). El viejo `488-4384` sigue estacionado ("Pendiente", wedged).
+
+Cómo se logró (los 3 bloqueos y sus salidas — GOTCHAS REUSABLES):
+1. **Alta**: por WhatsApp Manager → "Agregar número de teléfono" (chip nuevo virgen). El flujo NO pide OTP al agregar (difiere la verificación) → queda "No verificado".
+2. **Verificación**: el wizard del dev console ("Paso 2") **muestra UN solo número por WABA (el más viejo)** — el nuevo NUNCA apareció ahí (horas, recargas, rutas alternativas: inútil). La salida: **WhatsApp Manager → panel del número → pestaña Perfil → banner rojo "Verificación del número de teléfono obligatoria" → "Enviar código de verificación"**. (Ojo: el SMS internacional puede tardar/no llegar a un chip recién activado; opción llamada.)
+3. **Registro**: imposible por UI (sin fila en Paso 2, no hay botón). La salida: **Graph API Explorer** → `https://developers.facebook.com/tools/explorer/?app_id=1040069988722640` (fijar la app POR URL: en el dropdown hay DOS "MediCuenta Bot" — la real y la dud del doble-submit) → token de usuario con `whatsapp_business_management` + `whatsapp_business_messaging`, acceso concedido SOLO al WABA `1012682971379646` → **POST `1134910809713758/register`** con `messaging_product=whatsapp` + `pin` → `{"success": true}`. (Confirmado además por la IA de Meta como camino oficial cuando la UI no lista el número.)
+
+### Vuelta de tuerca final (misma noche) — ¡el número VIEJO también revivió! AMBOS "Conectado"
+
+Como diagnóstico se probó la misma vía API con el viejo: **POST `1216878824841256/register` → `{"success": true}`** → `+54 9 383 488-4384` quedó **"Conectado" y CONSERVÓ su calificación de calidad ALTA** de su vida anterior. **Conclusión definitiva: el número NUNCA estuvo "wedged" — lo roto era la capa GraphQL de los dashboards de Meta** (botón "Registrar" del dev console + set-PIN del Manager); la Graph API directa registró AMBOS números a la primera. PIN 2FA seteado también en el viejo (anotado por Héctor, fuera del repo). Ticket a soporte: **ya no hace falta**.
+
+**ESTADO FINAL FASE 1 — dos números registrados y conectados en el WABA `MediCuenta 1012682971379646`:**
+| Número | phone_number_id | Estado |
+|---|---|---|
+| `+54 9 383 488-4384` (histórico del bot) | `1216878824841256` | Conectado · **calidad Alta** |
+| `+54 9 383 402-9027` (chip nuevo) | `1134910809713758` | Conectado |
+
+**✅ DECISIÓN TOMADA (Héctor, 2026-07-20): el bot queda con el número VIEJO/histórico `+54 9 383 488-4384`** (`phone_number_id 1216878824841256`) — ya figura en nodos y links `wa.me` (no cambia el número visible), conserva la calidad Alta y la continuidad. **El nuevo `402-9027` queda de repuesto / candidato a número de la landing.** OJO: el `phone_number_id` del bot CAMBIÓ igual vs. la DB (era `1110153015523184` en el WABA de Empresa) → la tabla de nodos se actualiza SÍ o SÍ en Fase 2.
+
+## ✅ FASE 2 COMPLETA (2026-07-20 noche → 21 madrugada) — BOT OPERATIVO EN EL SETUP NUEVO
+
+**E2E VALIDADO 2026-07-21 02:41 UTC**: "Hola" al `+54 9 383 488-4384` → webhook (dedupe ✓) → `wa_mensajes` entrante → **agente médico responde** ("¡Hola, Dr. Martínez!…") → saliente por Graph API. **Round-trip ~7 segundos. La migración quedó operativa.**
+
+Qué se cableó:
+- **System user** `medicuenta bot sys` (Seismiles IA) con app `MediCuenta Bot` + WABA `1012682971379646` asignados → **token permanente** (en el gestor de Héctor; cifrado en la DB).
+- **Vercel**: `WHATSAPP_APP_SECRET` = el de la app nueva (`1040069988722640`) + redeploy. `WHATSAPP_VERIFY_TOKEN`: se REUSÓ el mismo de siempre (una pieza menos).
+- **Webhook de la app**: callback `https://medicuenta-v2.vercel.app/api/whatsapp` verificado y activo, campo `messages` ✓ (auto-suscribió varios campos más — inofensivo, el handler los ignora).
+- **WABA → app suscripto POR API**: `POST /1012682971379646/subscribed_apps` → `success:true` (el toggle de la UI nunca se tocó; verificable con el GET homónimo).
+- **`wa_nodos` actualizado** con el script nuevo [`scripts/update-wa-nodo.mjs`](../../scripts/update-wa-nodo.mjs): `phone_number_id 1216878824841256` + `access_token_cifrado` nuevo (patrón: token en `WA_TOKEN_TMP` de `.env.local` → cifrar → DB; la fila legacy `wa_canales` quedó como estaba, es fallback muerto).
+
+GOTCHAS de la fase (auto-blindaje):
+1. **`.env.local` sin guardar** — el clásico: ediciones en el buffer del IDE, mtime del archivo era de JUNIO. Chequear `stat -f '%Sm' .env.local` ANTES de diagnosticar secretos "incorrectos".
+2. **App Secret de la app equivocada** (hay DOS "MediCuenta Bot"). Validación sin exponer secretos: `GET /{app_id}?fields=id,name&access_token={app_id}|{secret}` → matchea o no.
+3. **Pre-vuelo del token antes de cifrarlo a la DB**: `GET /me` (¿quién soy?) + `GET /{phone_number_id}` (¿veo el número?). Evitó cifrar un token viejo.
+4. El **verify token de Vercel no se puede releer** (sensitive) — pero vive en `.env.local`; se valida contra prod con el handshake GET real (`?hub.mode=subscribe&hub.verify_token=...&hub.challenge=ping` → debe devolver el ping).
+
+Higiene post-operación (opcional): vaciar `WA_TOKEN_TMP` en `.env.local` (el token ya vive cifrado en `wa_nodos` + gestor).
+
+Pendientes:
+- **FASE 3 limpieza (lista ampliada)**: app dud `5319254603752021` · WABA fantasma `1539171257694302` (¡mismo nombre que el real — verificar ID dígito a dígito!) · WABA prueba `4350905665171500` · en portfolio Empresa: 3× "MediCuenta Landing" (`2811487925887146`, `1319474490345585`, `874636285327896`), app `MediCuenta` duplicada, WABA viejo `Asistente MediCuenta 27343280775302597` y su Test WABA `2040120146582315`.

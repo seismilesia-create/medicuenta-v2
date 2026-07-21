@@ -1,47 +1,55 @@
-# HANDOFF — MediCuenta V2 — 2026-07-19 (Migración WhatsApp a Seismiles IA · Fase 1 EN CURSO, atascado en "Registrar")
+# HANDOFF — MediCuenta V2 — 2026-07-20 ~23:50 ART (Migración WhatsApp COMPLETA · Fases 0-2 ✅ · queda Fase 3 limpieza)
 
 ## Estado actual
-- **Tarea**: Fase 1 de la migración del WhatsApp Cloud API al portfolio limpio **Seismiles IA** — mover el bot **conservando el número** `+54 9 383 488-4384`. Atascado en el paso final "Registrar".
-- **Estado**: **blocked** (esperando que Meta libere/propague el número para poder re-registrarlo).
+- **Tarea**: Migración del WhatsApp Cloud API al portfolio **Seismiles IA** — **TERMINADA Y OPERATIVA** (Fases 0, 1 y 2 completas, E2E validado en prod). Checkpoint de cierre de jornada.
+- **Estado**: working (nada roto, nada a medio hacer — el bot responde en prod)
 - **Branch**: `main`
-- **Último commit ANTES de este handoff**: `86eadbe` docs: runbook migracion WhatsApp al portfolio Seismiles IA (Fase 0 hecha)
+- **Último commit ANTES de este handoff**: `e230822` WIP(checkpoint): migración WhatsApp a Seismiles IA — Fase 1 atascada en "Registrar"
 
 ## Archivos modificados esta sesión
-- `docs/superpowers/specs/2026-07-19-migracion-whatsapp-seismiles-ia.md`: agregada la sección "Progreso Fase 1" con los IDs nuevos y dónde quedó atascado. **Es la fuente de verdad — leer completo al retomar.**
-- `HANDOFF.md`: este archivo (sobrescribió el viejo del 2026-07-16, que era de la tarea #1–#14 ya cerrada).
-- *(Sin cambios de código — todo el trabajo de la sesión fue en el navegador/Meta.)*
+- `docs/superpowers/specs/2026-07-19-migracion-whatsapp-seismiles-ia.md`: +66 líneas — TODO el desenlace (diagnóstico real, plan B, ambos números "Conectado", Fase 2 completa, gotchas). **Fuente de verdad — leer completo al retomar.**
+- `scripts/update-wa-nodo.mjs`: NUEVO — actualiza `wa_nodos` (phone_number_id + token cifrado) leyendo el token de `WA_TOKEN_TMP` en `.env.local`; nunca expone secretos.
+- *(Fuera del repo: memoria `project_medicuenta_meta_reorg` + índice MEMORY.md actualizados con el estado final.)*
+
+## Resultado final (lo importante)
+- **Bot OPERATIVO** con su número histórico **`+54 9 383 488-4384`** (calidad Alta) en WABA `MediCuenta 1012682971379646` bajo Seismiles IA. E2E validado 2026-07-21 02:41 UTC: "Hola" → agente médico respondió en ~7 s.
+- `wa_nodos`: `phone_number_id 1216878824841256` + token nuevo cifrado (system user `medicuenta bot sys`).
+- Webhook prod activo (`/api/whatsapp`, campo `messages`) + WABA suscripto a la app vía API + Vercel con `WHATSAPP_APP_SECRET` de la app nueva (`1040069988722640`).
+- **Número de repuesto**: `+54 9 383 402-9027` (`phone_number_id 1134910809713758`), Conectado, sin uso — candidato a landing.
 
 ## Decisiones tomadas (con el "por qué")
-- **Rebuild limpio en Seismiles IA + conservar el número** (no mover el WABA viejo) — Meta no deja mover WABAs entre portfolios fácil.
-- **Eliminar el número del WABA viejo y re-agregarlo** (no migrar) — no apareció opción de migrar; pre-launch (sin médicos), perder calidad/historial no importa; el perfil nuevo ya está cargado.
-- **Modo de trabajo**: Héctor hace TODOS los clicks manuales; Claude solo **mira** (screenshots vía claude-in-chrome, Browser 1) y **guía**. Es más rápido.
+- **El bot conserva el número viejo/histórico** — ya estaba en nodos/links `wa.me` (cero cambios de número visible), calidad Alta, continuidad. El chip nuevo queda de repuesto.
+- **`WHATSAPP_VERIFY_TOKEN` se REUSÓ** (mismo valor de siempre) — una pieza menos que rotar; validado contra prod con el handshake GET real.
+- **Registro de números y suscripción del WABA: por Graph API directa** (Explorer / curl), no por la UI — ver "lo que NO funcionó".
 
-## Lo que NO funcionó (no repetir)
-- **Agregar el número al WABA nuevo con el número aún en el viejo** → error `#2388002` ("no cumple los requisitos"). Hay que **darlo de baja del viejo primero**.
-- **Reintentar apenas se da de baja** → mismo error `#2388002` **cacheado** (el trace id era idéntico). Fix: **cerrar el diálogo, recargar la página (Cmd+R) y esperar unos minutos** a que propague.
-- **"Registrar" (poner PIN) apenas re-agregado** → error genérico "Se produjo un error durante el registro. Vuelve a intentarlo". Probó **varios PINs** → NO es el PIN. Es **propagación/cooldown** post-baja.
+## Lo que NO funcionó (no repetir en próxima sesión)
+- **Los dashboards de Meta para operaciones de números**: el botón "Registrar" (GraphQL `field_exception`), el set-PIN del Manager ("PIN could not be changed"), el wizard "Paso 2" (muestra UN solo número por WABA — cosmético, ignorar), y el toggle "Suscribir webhooks" (nunca se usó). **La Graph API directa funcionó a la primera en TODO** → ante cualquier operación de número/WABA: ir directo a la API.
+- **Diagnosticar secretos sin chequear el mtime de `.env.local`** — el archivo estuvo SIN GUARDAR (buffer del IDE) y se testeó data de junio. Primero `stat -f '%Sm' .env.local`.
+- **Copiar el App Secret navegando por "Mis apps"** — hay DOS apps "MediCuenta Bot" (la real y la dud) y DOS WABAs "MediCuenta" (el real y el fantasma). SIEMPRE entrar por URL con el ID explícito y validar: `GET /{app_id}?fields=id,name&access_token={app_id}|{secret}`.
 
 ## Próximo paso concreto
-1. **Esperar ~15 min** desde la baja (dar tiempo a que Meta suelte el número).
-2. En la pestaña de la **app nueva → Paso 2: Configuración de producción**, **recargar la página (Cmd+R)**.
-3. En el número `+54 383 15-488-4384` (estado "No registrado"), tocar **"Registrar"** → poner un **PIN de 6 dígitos y ANOTARLO** → "Registrarse".
-4. **Si sigue el error**: borrar esa entrada "No registrado" y re-agregar con **"Agregar número nuevo"** (con el número libre debería mandar el **código por SMS** y verificar bien). El chip del bot está en un teléfono listo para recibir SMS.
+**FASE 3 — limpieza en Meta** (con calma, el bot ya no depende de nada de esto). Borrar, verificando ID **dígito a dígito** antes de cada click (varios homónimos):
+1. Bajo Seismiles IA: app dud `MediCuenta Bot 5319254603752021` ("Tipo: Ninguno") · **WABA fantasma `MediCuenta 1539171257694302`** (VACÍO — ⚠️ mismo nombre que el real `1012682971379646`) · WABA de prueba `4350905665171500`.
+2. En portfolio Empresa (`110201979883274`): 3× WABA "MediCuenta Landing" (`2811487925887146`, `1319474490345585`, `874636285327896`) · app `MediCuenta` duplicada · WABA viejo `Asistente MediCuenta 27343280775302597` · su Test WABA `2040120146582315`.
+3. Higiene local opcional: vaciar `WA_TOKEN_TMP` en `.env.local`; borrar la fila legacy muerta de `wa_canales` (phone_number_id `1084361314771068`).
+
+**Después de Fase 3 (backlog inmediato, en orden de interés de Héctor):**
+- **Landing page** (retomar `project_medicuenta_landing_brand`; prompts en docs/superpowers/specs/2026-07-17).
+- **Número `402-9027` como número de la landing** + **idea de Héctor a brainstormear ANTES de implementar**: usarlo también como un **bot con más funciones** (no solo responder la landing — alcance a discutir; pasar por superpowers:brainstorming).
 
 ## Comandos para verificar estado al retomar
 ```bash
 git status        # esperado: limpio
 git log -3        # esperado top: el commit de este checkpoint (WIP(checkpoint): ...)
+# Prueba de vida del bot: mandar "hola" por WhatsApp al +54 9 383 488-4384 → responde el agente.
 ```
 
 ## Archivos clave para releer en la próxima sesión
-- `docs/superpowers/specs/2026-07-19-migracion-whatsapp-seismiles-ia.md` — **runbook completo** (mapa, plan por fases, gotchas, TODOS los IDs, progreso Fase 1).
-- Memoria `project_medicuenta_meta_reorg` — resumen de la reorganización.
+- `docs/superpowers/specs/2026-07-19-migracion-whatsapp-seismiles-ia.md` — runbook completo con TODOS los IDs, gotchas y la lista exacta de Fase 3.
+- Memoria `project_medicuenta_meta_reorg` — resumen del estado final + lecciones.
+- `scripts/update-wa-nodo.mjs` — patrón para futuros cambios de token/phone_number_id del nodo.
 
 ## Notas contextuales
-- **IDs clave**: Seismiles IA `business_id 1031852666067009` · app `MediCuenta Bot 1040069988722640` · **WABA nuevo (bot) `MediCuenta 1012682971379646`** · **nuevo `phone_number_id` del bot `1216878824841256`** (el viejo era `1110153015523184`).
-- El número se muestra como `+54 383 15-488-4384` → es el MISMO que `+54 9 383 488-4384` (el "15" argentino = el "9" internacional).
-- **Browser**: Chrome conectado del usuario (Browser 1). Tabs de la sesión: `849495069` (WhatsApp Manager, WABA viejo ya vacío) · `849495072` (app nueva, Paso 2). Al retomar seguramente hay que reabrir/reconectar tabs.
-- El **PIN de 6 dígitos** que ponga Héctor al registrar → **guardarlo** (se pide para futuras migraciones). NO está en este archivo (es secreto).
-- El toggle **"Suscribir webhooks"** → NO activar todavía; va en Fase 2.
-- **Falta después del registro**: **Fase 2** (configurar webhook: Callback URL de prod + Verify Token; setear `WHATSAPP_APP_SECRET` + `WHATSAPP_VERIFY_TOKEN` nuevos en Vercel; actualizar la tabla de **nodos** en Supabase con el nuevo `phone_number_id 1216878824841256` + token — el phone_number_id CAMBIÓ; probar que el bot responde) y **Fase 3** (limpieza: app dud `5319254603752021`, WABA de prueba `4350905665171500`, y los WABAs/apps basura del portfolio Empresa).
-- **Sin secretos en este archivo** (ni PIN, ni tokens, ni `.env`).
+- **Sin secretos en este archivo ni en el repo**: token permanente en el gestor de Héctor + cifrado en `wa_nodos`; PINs de 2FA de ambos números anotados por Héctor fuera del repo.
+- Los E2E manuales pendientes de la rama `mejoras-post-checklist` (agente médico multi-turno, Fase 8, Fase 9 — ver memoria del proyecto) siguen pendientes; no se tocaron hoy.
+- El wizard "Paso 2" del dev console va a seguir mostrando un solo número por WABA — es cosmético; el estado real se mira en WhatsApp Manager o por API.
