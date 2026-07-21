@@ -12,6 +12,18 @@ function errorAuth(contexto: string, mensaje: string): { error: string } {
   return { error: traducirErrorAuth(mensaje) }
 }
 
+/**
+ * Sanitiza el `next` del login: solo aceptamos rutas internas absolutas (`/algo`),
+ * nunca URLs externas ni protocol-relative (`//host`) — si no, es un open redirect.
+ * Sin `next` válido, `/` deja que HomePage decida (superadmin→/admin, médico→/dashboard).
+ */
+function destinoSeguro(next: unknown): string {
+  if (typeof next === 'string' && next.startsWith('/') && !next.startsWith('//')) {
+    return next
+  }
+  return '/'
+}
+
 export async function login(formData: FormData) {
   const supabase = await createClient()
 
@@ -27,7 +39,9 @@ export async function login(formData: FormData) {
     return errorAuth('login', error.message)
   }
 
-  redirect('/')
+  // Volvemos a donde el usuario quería ir (ej: el PWA abre en `/asistente` y, si la
+  // sesión venció, rebota acá con `?next=/asistente`). Sin `next`, va a `/`.
+  redirect(destinoSeguro(formData.get('next')))
 }
 
 export async function signup(formData: FormData) {

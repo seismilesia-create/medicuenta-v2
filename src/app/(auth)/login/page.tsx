@@ -2,7 +2,12 @@ import Link from 'next/link'
 import { Logo } from '@/shared/components/logo'
 import { LoginForm } from '@/features/auth/components'
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>
+}) {
+  const { next } = await searchParams
   return (
     <div className="space-y-8">
       {/* Logo móvil */}
@@ -15,7 +20,7 @@ export default function LoginPage() {
         <p className="mt-2 text-foreground-secondary">Inicia sesión en tu cuenta para continuar</p>
       </div>
 
-      <LoginForm />
+      <LoginForm next={next} />
 
       <p className="text-center text-sm text-foreground-secondary">
         ¿No tienes una cuenta?{' '}

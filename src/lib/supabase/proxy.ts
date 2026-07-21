@@ -62,7 +62,10 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/signup')
 
   if (isProtectedRoute && !user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    // Guardamos a dónde iba para volver ahí después de loguear (no siempre a /dashboard).
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('next', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   if (isAuthRoute && user) {

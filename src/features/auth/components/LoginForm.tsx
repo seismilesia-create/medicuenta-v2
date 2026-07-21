@@ -24,7 +24,7 @@ function EyeOffIcon({ className }: { className?: string }) {
   )
 }
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -43,6 +43,8 @@ export function LoginForm() {
 
   return (
     <form action={handleSubmit} className="space-y-5">
+      {/* Destino post-login (ej: /asistente cuando el PWA rebota por sesión vencida). */}
+      {next && <input type="hidden" name="next" value={next} />}
       <Input
         id="email"
         name="email"
