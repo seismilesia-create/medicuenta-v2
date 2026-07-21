@@ -133,6 +133,70 @@ export const NUCLEO_LABELS: Record<CampoNucleo, string> = {
   diagnostico: 'Diagnóstico',
 }
 
+/**
+ * Etiquetas legibles de TODOS los campos del OCR (no solo el núcleo). Se usa en los
+ * avisos post-escaneo ("Verificá: …", "Faltan: …") para no mostrarle al médico los
+ * nombres crudos de las columnas. `campos_dudosos` puede traer cualquier campo del
+ * schema (incluidos los específicos de OSEP), por eso este mapa es más amplio que
+ * NUCLEO_LABELS (que solo cubre lo que aparece en `no_encontrados`).
+ */
+export const CAMPO_OCR_LABELS: Record<string, string> = {
+  ...NUCLEO_LABELS,
+  // Cabecera
+  delegacion: 'Delegación',
+  titulo_autorizacion: 'Título de autorización',
+  nro_internacion: 'N° de internación',
+  // Fechas
+  fecha_solicitud: 'Fecha de solicitud',
+  fecha_vencimiento: 'Fecha de vencimiento',
+  fecha_prescripcion: 'Fecha de prescripción',
+  hora_emision: 'Hora de emisión',
+  // Titular / afiliado
+  titular_nombre: 'Titular',
+  medico_solicitante: 'Médico solicitante',
+  grupo_afiliado: 'Grupo',
+  // Beneficiario / documento
+  parentesco: 'Parentesco',
+  domicilio: 'Domicilio',
+  tipo_documento: 'Tipo de documento',
+  // Práctica
+  alias: 'Alias de la práctica',
+  cantidad: 'Cantidad',
+  cara: 'Cara (odontología)',
+  pieza: 'Pieza (odontología)',
+  importe: 'Importe',
+  // Pago
+  forma_pago: 'Forma de pago',
+  cod_pago: 'Código de pago',
+  origen: 'Origen',
+  // Arancel / total
+  arancelista: 'Arancelista',
+  cajero: 'Cajero',
+  total_cargo_afiliado: 'Total a cargo del afiliado',
+  // Realización
+  horario_realizacion: 'Hora de realización',
+  // Profesional
+  matricula_profesional: 'Matrícula profesional',
+  profesional: 'Profesional',
+  entidad: 'Entidad',
+  responsable: 'Responsable',
+  agente_facturador: 'Agente facturador',
+  // OSEP / firmas
+  token_osep: 'Token OSEP',
+  firma_paciente: 'Firma del afiliado',
+  firma_sello_medico: 'Firma y sello del médico',
+  observaciones: 'Observaciones',
+}
+
+/**
+ * Etiqueta legible para una clave del OCR. Si la clave no está mapeada, cae a una
+ * versión prettificada (guiones bajos → espacios, primera en mayúscula) para no
+ * mostrar nunca el nombre crudo de la columna.
+ */
+export function etiquetaCampoOcr(clave: string): string {
+  return CAMPO_OCR_LABELS[clave] ?? clave.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
+}
+
 export const OCR_ORDEN_PROMPT = `Analizá esta imagen de una orden médica de CUALQUIER obra social argentina (puede ser OSEP, PAMI, Swiss Medical, OSDE u otra) y extraé TODOS los campos que reconozcas. Cada obra social tiene un formato distinto: leé por SIGNIFICADO, no por posición fija. Si un campo propio de OSEP (delegación, arancelista, cajero, token, cara/pieza) no existe en esta orden, dejalo vacío.
 
 Valores vacíos: texto que no se lee/no figura → "". Numéricos sin valor → 0. agente_facturador sin dato → "". NUNCA inventes datos.

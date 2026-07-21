@@ -23,7 +23,7 @@ import { normalizarOs } from '@/lib/consultorio/osSuspendidas'
 import { EscanearOrdenButton, type OrdenEscaneada } from './EscanearOrdenButton'
 import { SugerenciaTurnoCard } from './SugerenciaTurnoCard'
 import { evaluarRiesgoOrden, FALTANTE_LABELS } from '@/lib/ordenes/riesgo-debito'
-import { OCR_ORDEN_PROMPT_VERSION, NUCLEO_LABELS, type CampoNucleo } from '@/lib/ai/ocr-orden'
+import { OCR_ORDEN_PROMPT_VERSION, etiquetaCampoOcr } from '@/lib/ai/ocr-orden'
 import { estadoCampoOcr } from '@/lib/ordenes/estado-campo-ocr'
 
 const inputBase = 'w-full px-4 py-3 rounded-lg text-sm'
@@ -428,7 +428,7 @@ export function NuevaOrdenForm() {
             ✓ Datos extraídos (confianza: {ocr.confianza})
             {ocr.campos_dudosos.length > 0 && (
               <span className="block text-xs mt-1" style={{ color: 'var(--color-warning)' }}>
-                Verificá: {ocr.campos_dudosos.join(', ')}
+                Verificá: {ocr.campos_dudosos.map(etiquetaCampoOcr).join(', ')}
               </span>
             )}
           </p>
@@ -445,7 +445,7 @@ export function NuevaOrdenForm() {
           </p>
           <p className="mt-1" style={{ color: 'var(--color-foreground)' }}>
             {ocr.no_encontrados
-              .map((c) => NUCLEO_LABELS[c as CampoNucleo] ?? c)
+              .map(etiquetaCampoOcr)
               .join(', ')}
           </p>
         </div>

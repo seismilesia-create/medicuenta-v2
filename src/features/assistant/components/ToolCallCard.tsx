@@ -1,5 +1,7 @@
 'use client'
 
+import { etiquetaCampoOcr } from '@/lib/ai/ocr-orden'
+
 interface Props {
   toolName: string
   state: 'input-streaming' | 'input-available' | 'output-available' | 'output-error'
@@ -182,7 +184,7 @@ function ToolCardBody({
         {output.codigo_practica != null && <p>Código: {String(output.codigo_practica)}</p>}
         {Array.isArray(output.campos_dudosos) && output.campos_dudosos.length > 0 && (
           <p className="text-[11px]" style={{ color: 'var(--color-warning)' }}>
-            Verificar: {(output.campos_dudosos as string[]).join(', ')}
+            Verificar: {(output.campos_dudosos as string[]).map(etiquetaCampoOcr).join(', ')}
           </p>
         )}
       </div>
