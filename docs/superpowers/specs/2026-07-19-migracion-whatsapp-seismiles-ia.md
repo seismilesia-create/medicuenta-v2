@@ -141,4 +141,32 @@ GOTCHAS de la fase (auto-blindaje):
 Higiene post-operación (opcional): vaciar `WA_TOKEN_TMP` en `.env.local` (el token ya vive cifrado en `wa_nodos` + gestor).
 
 Pendientes:
-- **FASE 3 limpieza (lista ampliada)**: app dud `5319254603752021` · WABA fantasma `1539171257694302` (¡mismo nombre que el real — verificar ID dígito a dígito!) · WABA prueba `4350905665171500` · en portfolio Empresa: 3× "MediCuenta Landing" (`2811487925887146`, `1319474490345585`, `874636285327896`), app `MediCuenta` duplicada, WABA viejo `Asistente MediCuenta 27343280775302597` y su Test WABA `2040120146582315`.
+- **FASE 3 limpieza (lista ampliada)**: app dud `5319254603752021` · WABA fantasma `1539171257694302` (¡mismo nombre que el real — verificar ID dígito a dígito!) · WABA prueba `4350905665171500` · en portfolio Empresa: 3× "MediCuenta Landing" (`2811487925887146`, `1319474490345585`, `874636285327896`), app `MediCuenta` duplicada, WABA viejo `Asistente MediCuenta 27343280775302597` y su Test WABA `2040120146582315`. *(→ ejecutada, ver sección siguiente.)*
+
+## ✅ FASE 3 EJECUTADA (2026-07-21) — MIGRACIÓN 100% CERRADA
+
+Modo: Claude navegó, verificó cada ID dígito a dígito (zoom de pantalla + URL) y dejó cada menú abierto; **Héctor hizo todos los clicks de borrado**. Vía: Business Suite → Configuración → Cuentas de WhatsApp → panel del WABA → "…" → "Eliminar del portfolio comercial"; apps por developers.facebook.com → "Mis apps" → "…" de la card → "Eliminar app".
+
+**Borrados (8):**
+| Activo | ID | Portfolio |
+|---|---|---|
+| WABA fantasma `MediCuenta` (vacío, verificado sin números) | `1539171257694302` | Seismiles IA |
+| WABA de prueba (test number `+1 555 191-9769`) | `4350905665171500` | Seismiles IA |
+| App dud `MediCuenta Bot` ("Tipo: Ninguno") | `1319254603752021` ⚠️ | Seismiles IA |
+| WABA `MediCuenta Landing` ×3 (vacíos) | `2811487925887146` · `1319474490345585` · `874636285327896` | Empresa |
+| WABA viejo `Asistente MediCuenta` (re-verificado sin números antes de borrar) | `27343280775302597` | Empresa |
+| App `MediCuenta` duplicada | `1556981509178874` | Empresa |
+
+**Correcciones de IDs vs. lo anotado el 19/07:** el ID real de la app dud es **`1319254603752021`** (se había anotado `5319…` — por eso el deep-link a sus settings redirigía a la lista). El ID de la app `MediCuenta` duplicada de Empresa (faltaba): **`1556981509178874`**.
+
+**Residuos DELIBERADOS en Empresa — NO tocar desde MediCuenta:**
+- **App `Agente WA Demo` (`1019333590827154`) SE CONSERVA**: es de OTRO proyecto de Héctor (asistente que contesta por WhatsApp para distintos rubros: peluquería, estética, etc.). Su eventual migración a Seismiles IA es tarea de ESE proyecto, desde su propia carpeta.
+- **`Test WhatsApp Business Account` (`2040120146582315`)** con test number `+1 555-664-2326` (`phone_number_id 1084361314771068`): **imborrable mientras viva su app dueña** (Agente WA Demo) — el modal dice "tiene números adjuntos" y los test numbers no se pueden sacar a mano (pertenecen al API Setup de su app; el perfil dice "No es posible editar el número de prueba"). Es inerte: sin costo, sin mensajes, invisible. Cuando el otro proyecto migre/borre Agente WA Demo, borrar este WABA en la misma pasada.
+
+**Cierre del misterio `wa_canales`:** el `phone_number_id 1084361314771068` de la fila legacy era EXACTAMENTE este test number — el "canal" del piloto de junio era el número de prueba de Meta de Agente WA Demo.
+
+**Higiene local (hecha el mismo día):** `WA_TOKEN_TMP=` vaciado en `.env.local` · fila legacy de `wa_canales` borrada de prod tras verificar inalcanzabilidad (su médico tiene asignación activa a nodo; el nodo gana antes del fallback en `resolverIngreso`, `resolverSaliente`, `panelService` y `consultorio-config`).
+
+**Estado final de Meta:**
+- **Seismiles IA**: app `MediCuenta Bot 1040069988722640` + WABA `MediCuenta 1012682971379646` (bot `488-4384` phone_number_id `1216878824841256` + repuesto `402-9027` phone_number_id `1134910809713758`). Nada más.
+- **Empresa**: solo `Agente WA Demo` + su Test WABA (residuos del otro proyecto).
