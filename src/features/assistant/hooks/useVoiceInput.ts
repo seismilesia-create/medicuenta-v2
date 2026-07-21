@@ -52,6 +52,12 @@ function getCtor(): SpeechRecognitionCtor | null {
   )
 }
 
+// Red de seguridad: si la grabación queda colgada sin recibir NADA durante este tiempo,
+// la cortamos a la fuerza. iOS Safari a veces no dispara onend ni respeta stop() (sobre
+// todo la 1ª vez, al otorgar el permiso), y sin esto la app queda trabada. Cada resultado
+// reinicia el reloj, así una dictado real largo no se corta.
+const SEGURIDAD_MS = 15_000
+
 export function useVoiceInput({ onFinalTranscript, lang = 'es-AR' }: Options): VoiceState {
   const [isSupported, setIsSupported] = useState(false)
   const [isListening, setIsListening] = useState(false)
@@ -61,6 +67,8 @@ export function useVoiceInput({ onFinalTranscript, lang = 'es-AR' }: Options): V
   // anterior; cuando termina (onend / onerror), nulleamos el ref.
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
   const finalCallbackRef = useRef(onFinalTranscript)
+  // Timer de la red de seguridad (auto-corte si la grabación queda colgada).
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     finalCallbackRef.current = onFinalTranscript
@@ -73,6 +81,7 @@ export function useVoiceInput({ onFinalTranscript, lang = 'es-AR' }: Options): V
   // Cleanup al desmontar
   useEffect(() => {
     return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
       if (recognitionRef.current) {
         try {
           recognitionRef.current.abort()
@@ -96,6 +105,10 @@ export function useVoiceInput({ onFinalTranscript, lang = 'es-AR' }: Options): V
       }
       recognitionRef.current = null
     }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
 
     const Ctor = getCtor()
     if (!Ctor) {
@@ -108,7 +121,30 @@ export function useVoiceInput({ onFinalTranscript, lang = 'es-AR' }: Options): V
     rec.continuous = false
     rec.interimResults = true
 
+    const limpiarTimeout = () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+    }
+    // (Re)arma el reloj de seguridad. Si vence sin actividad, la grabación quedó colgada
+    // (iOS no disparó onend / ignoró stop): la cortamos y reseteamos para no trabar la app.
+    const armarTimeout = () => {
+      limpiarTimeout()
+      timeoutRef.current = setTimeout(() => {
+        try {
+          rec.abort()
+        } catch {
+          // ignore
+        }
+        recognitionRef.current = null
+        setIsListening(false)
+        setInterim('')
+      }, SEGURIDAD_MS)
+    }
+
     rec.onresult = (event) => {
+      armarTimeout() // hubo actividad → reiniciamos el reloj
       let finalText = ''
       let interimText = ''
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -125,6 +161,7 @@ export function useVoiceInput({ onFinalTranscript, lang = 'es-AR' }: Options): V
     }
 
     rec.onerror = (e) => {
+      limpiarTimeout()
       setError(e.error)
       setIsListening(false)
       setInterim('')
@@ -132,6 +169,7 @@ export function useVoiceInput({ onFinalTranscript, lang = 'es-AR' }: Options): V
     }
 
     rec.onend = () => {
+      limpiarTimeout()
       setIsListening(false)
       setInterim('')
       recognitionRef.current = null
@@ -144,7 +182,9 @@ export function useVoiceInput({ onFinalTranscript, lang = 'es-AR' }: Options): V
     try {
       rec.start()
       setIsListening(true)
+      armarTimeout()
     } catch (err) {
+      limpiarTimeout()
       setError(err instanceof Error ? err.message : 'start_error')
       recognitionRef.current = null
     }
@@ -160,6 +200,10 @@ export function useVoiceInput({ onFinalTranscript, lang = 'es-AR' }: Options): V
   }, [])
 
   const abort = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
     if (recognitionRef.current) {
       try {
         recognitionRef.current.abort()
