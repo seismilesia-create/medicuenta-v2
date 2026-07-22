@@ -4,11 +4,9 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useConversationStore } from '../store/conversationStore'
 
-// ⚠️ TEMPORAL (test en device): valores bajados para verificar rápido.
-// REVERTIR a producción → IDLE_MS: 5*60*1000, CHECK_MS: 20*1000, PERSIST_THROTTLE_MS: 10*1000.
-const IDLE_MS = 15 * 1000 // TEST: 15 s (prod: 5 min de inactividad)
-const CHECK_MS = 5 * 1000 // TEST: 5 s (prod: 20 s) — cada cuánto chequeamos en foreground
-const PERSIST_THROTTLE_MS = 5 * 1000 // TEST: 5 s (prod: 10 s) — máx. frecuencia de escritura del timestamp
+const IDLE_MS = 10 * 60 * 1000 // 10 minutos de inactividad
+const CHECK_MS = 20 * 1000 // cada cuánto chequeamos si ya se cumplió el umbral (app en foreground)
+const PERSIST_THROTTLE_MS = 10 * 1000 // no escribimos el timestamp en cada scroll: máx. cada 10 s
 const LAST_ACTIVITY_KEY = 'medicuenta-idle-last-activity'
 // Interacción que "resetea" el contador. En celular, `touchmove` cubre el scroll.
 const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'touchstart', 'touchmove'] as const
@@ -19,7 +17,7 @@ function esCelular(): boolean {
 }
 
 /**
- * Tras 5 min sin interacción, "reinicia la sesión" SIN desloguear: vuelve a
+ * Tras 10 min sin interacción, "reinicia la sesión" SIN desloguear: vuelve a
  * `/asistente` con una conversación nueva, como si el médico recién abriera la app.
  *
  * Pensado para médicos reacios a la tecnología: si dejan la app abierta en
@@ -31,7 +29,7 @@ function esCelular(): boolean {
  *  2. App suspendida y luego visible (minimizó y volvió) → `visibilitychange`.
  *  3. App CERRADA por el SO y reabierta (cold start / reload, típico en iOS) →
  *     al montar leemos el timestamp persistido; si la última actividad fue hace
- *     >5 min, reiniciamos igual, sin importar a qué URL haya arrancado.
+ *     >10 min, reiniciamos igual, sin importar a qué URL haya arrancado.
  */
 export function useIdleReset() {
   const router = useRouter()
