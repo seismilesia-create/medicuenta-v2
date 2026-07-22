@@ -26,7 +26,6 @@ import { getCatalogoOs } from '@/actions/catalogo'
 import { OsAutocomplete } from '@/features/catalogo/components/OsAutocomplete'
 import type { OsCatalogoItem } from '@/lib/catalogo/obras-sociales'
 import { HorariosEditor } from './horarios-editor'
-import { ActividadAsistente } from './actividad-asistente'
 
 function Seccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
@@ -762,10 +761,6 @@ export function ConfigView({ esDueño }: { esDueño: boolean }) {
         </div>
         </Seccion>
       )}
-
-      <Seccion titulo="Actividad del asistente">
-        <ActividadAsistente medicoId={cfg.medicoId} />
-      </Seccion>
 
       {confirmar && (
         <ConfirmDialog
