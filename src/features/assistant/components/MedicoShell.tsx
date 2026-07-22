@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { AssistantHome } from './AssistantHome'
+import { useIdleReset } from '../hooks/useIdleReset'
 
 /**
  * Shell del MÉDICO que decide qué mostrar según la ruta (asistente-first).
@@ -23,6 +24,9 @@ export function MedicoShell({
   children: React.ReactNode
 }) {
   const enHomeAsistente = usePathname() === '/asistente'
+
+  // Inactividad (5 min, solo celular): reinicia al asistente sin desloguear.
+  useIdleReset()
 
   return (
     <>

@@ -55,6 +55,7 @@ export function useAssistantChat(options: Options = {}) {
   const closePanel = useSidePanelStore((s) => s.close)
   const storedConversationId = useConversationStore((s) => s.conversationId)
   const persistConversationId = useConversationStore((s) => s.setConversationId)
+  const resetNonce = useConversationStore((s) => s.resetNonce)
 
   // Si no nos pasaron uno explícito y `restore` está activo, retomamos la
   // conversación persistida (localStorage). Con restore=false arrancamos limpio.
@@ -199,6 +200,17 @@ export function useAssistantChat(options: Options = {}) {
       cancelled = true
     }
   }, [restore, storedConversationId, initialConversationId, initialMessages])
+
+  // Reinicio global (ej: inactividad → "sesión nueva"): cuando el nonce sube,
+  // vaciamos el chat EN MEMORIA de esta instancia (mensajes + id) para volver a
+  // foja cero. Saltamos el valor inicial para no limpiar en el primer montaje.
+  const seenNonceRef = useRef(resetNonce)
+  useEffect(() => {
+    if (resetNonce === seenNonceRef.current) return
+    seenNonceRef.current = resetNonce
+    setMessagesRef.current([])
+    setConversationId(undefined)
+  }, [resetNonce])
 
   return {
     ...chat,
