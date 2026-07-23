@@ -67,8 +67,16 @@ export function PlusCard({ cobroExistente, cobroDelTurno, montoInicial, paciente
   const mpAcreditadoPrevio =
     (cobroExistente?.medio === 'mercadopago' && cobroExistente.estado === 'cobrado') ||
     (cobroDelTurno?.medio === 'mercadopago' && cobroDelTurno.estado === 'cobrado')
+  // Prioridad del monto inicial: cobro del turno > cobro anclado (el monto REAL
+  // acreditado manda sobre un monto_plus desactualizado de la orden) > la orden.
   const [monto, setMonto] = useState(
-    cobroDelTurno ? String(cobroDelTurno.monto) : montoInicial && montoInicial > 0 ? String(montoInicial) : '',
+    cobroDelTurno
+      ? String(cobroDelTurno.monto)
+      : cobroExistente
+        ? String(cobroExistente.monto)
+        : montoInicial && montoInicial > 0
+          ? String(montoInicial)
+          : '',
   )
   const [medio, setMedio] = useState<MedioCobro>(cobroDelTurno?.medio ?? cobroExistente?.medio ?? 'efectivo')
   const [recientes, setRecientes] = useState<number[]>([])
@@ -145,6 +153,10 @@ export function PlusCard({ cobroExistente, cobroDelTurno, montoInicial, paciente
   }
 
   const linkDesactualizado = linkInfo && !acreditado && montoDelLink !== null && montoDelLink !== montoNum
+  // Regla única del ledger: ordenes.monto_plus refleja SOLO plata acreditada o en
+  // mano. Un link del check-in aún sin pagar somete monto_plus = 0; cuando el
+  // webhook acredite, él mismo lo escribe (reflejarPlusEnOrden).
+  const pendienteDelTurno = cobroDelTurno?.estado === 'pendiente'
 
   return (
     <div
@@ -167,7 +179,7 @@ export function PlusCard({ cobroExistente, cobroDelTurno, montoInicial, paciente
         <div className="flex-1 min-w-[160px]">
           <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Monto</label>
           <input
-            name="monto_plus"
+            name={pendienteDelTurno ? undefined : 'monto_plus'}
             type="number"
             min="0"
             step="0.01"
@@ -220,6 +232,7 @@ export function PlusCard({ cobroExistente, cobroDelTurno, montoInicial, paciente
       </div>
 
       <input type="hidden" name="cobro_medio" value={medio} />
+      {pendienteDelTurno && <input type="hidden" name="monto_plus" value="0" />}
       {(linkInfo || cobroDelTurno) && (
         <input type="hidden" name="cobro_id" value={linkInfo?.cobroId ?? cobroDelTurno!.id} />
       )}

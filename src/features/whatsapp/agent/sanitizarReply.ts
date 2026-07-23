@@ -1,4 +1,4 @@
-/** Cobro generado de verdad por la tool cobrar_receta (extraído de los tool results). */
+/** Cobro generado de verdad por una tool de cobro (cobrar_receta / cobrar_turno_hoy). */
 export interface CobroGenerado {
   link: string
   monto: number
@@ -28,7 +28,8 @@ export function sanitizarReplyCobro(texto: string, cobros: CobroGenerado[]): str
 
   if (cobros.length === 0) {
     if (urls.length === 0) return texto
-    return 'Tuve un problema para generar el link de pago. Escribime "quiero pagar mi receta" y lo intento de nuevo 🙏'
+    // Neutro: sirve tanto para recetas como para el pago del turno (check-in).
+    return 'Tuve un problema para generar el link de pago. Decime de nuevo qué querés pagar y lo intento otra vez 🙏'
   }
 
   const ultimo = cobros[cobros.length - 1]
@@ -37,6 +38,6 @@ export function sanitizarReplyCobro(texto: string, cobros: CobroGenerado[]): str
   if (todasReales) return texto
 
   const resto = texto.replace(MP_URL_RE, '').trim()
-  const bloqueCobro = `Tu receta cuesta $${ultimo.monto.toLocaleString('es-AR')}. Pagá acá: ${ultimo.link}\nApenas se acredite el pago te la mando por acá 📄`
+  const bloqueCobro = `El pago es de $${ultimo.monto.toLocaleString('es-AR')}. Pagá acá: ${ultimo.link}\nApenas se acredite, seguimos por este chat ✓`
   return (resto ? `${resto}\n\n` : '') + bloqueCobro
 }

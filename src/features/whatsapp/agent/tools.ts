@@ -13,6 +13,7 @@ import {
 } from '@/features/whatsapp/services/recetasService'
 import { actualizarPendiente, crearCobro, getCobroVivoDeTurno } from '@/features/cobros/services/cobrosService'
 import { normalizarOs } from '@/lib/consultorio/osSuspendidas'
+import { esDiaParticular, type DiaParticular } from '@/lib/consultorio/diasParticulares'
 import { arDateString, AR_OFFSET } from '@/lib/turnos/slots'
 
 export interface PacienteToolsCtx {
@@ -125,7 +126,7 @@ export function buildPacienteTools(ctx: PacienteToolsCtx) {
         const hoy = arDateString(Date.now(), 0)
         const desdeIso = new Date(`${hoy}T00:00:00${AR_OFFSET}`).toISOString()
         const hastaIso = new Date(new Date(desdeIso).getTime() + 86_400_000).toISOString()
-        const { data: turnos } = await ctx.db
+        const { data: turnosRaw } = await ctx.db
           .from('wa_turnos')
           .select('id, servicio_id, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social')
           .eq('medico_id', ctx.medicoId)
@@ -134,18 +135,17 @@ export function buildPacienteTools(ctx: PacienteToolsCtx) {
           .lt('starts_at', hastaIso)
           .not('estado', 'in', '(cancelado,ausente)')
           .order('starts_at')
-          .limit(1)
-        const turno = (turnos ?? [])[0] as
-          | {
-              id: string
-              servicio_id: string | null
-              paciente_nombre: string | null
-              paciente_apellido: string | null
-              paciente_dni: string | null
-              paciente_obra_social: string | null
-            }
-          | undefined
-        if (!turno) {
+          .limit(3)
+        type TurnoHoy = {
+          id: string
+          servicio_id: string | null
+          paciente_nombre: string | null
+          paciente_apellido: string | null
+          paciente_dni: string | null
+          paciente_obra_social: string | null
+        }
+        const candidatos = ((turnosRaw ?? []) as TurnoHoy[])
+        if (candidatos.length === 0) {
           return {
             sin_turno: true,
             mensaje:
@@ -153,13 +153,31 @@ export function buildPacienteTools(ctx: PacienteToolsCtx) {
           }
         }
 
-        // ¿Ya hay un cobro del turno? (el mostrador pudo registrarlo antes)
-        const existente = await getCobroVivoDeTurno(ctx.db, ctx.medicoId, { turnoId: turno.id })
-        if (existente?.estado === 'cobrado') {
+        // Del mismo número puede haber más de un turno hoy (madre e hijo): se
+        // cobra el primero que aún NO esté pago; si todos están pagos, avisar.
+        let turno: TurnoHoy | null = null
+        let existente: Awaited<ReturnType<typeof getCobroVivoDeTurno>> = null
+        for (const cand of candidatos) {
+          const cobro = await getCobroVivoDeTurno(ctx.db, ctx.medicoId, { turnoId: cand.id })
+          if (cobro?.estado !== 'cobrado') {
+            turno = cand
+            existente = cobro
+            break
+          }
+        }
+        if (!turno) {
           return { ya_pagado: true, mensaje: 'Tu pago de hoy ya está registrado ✓ El consultorio ya lo ve.' }
         }
 
-        const esParticular = normalizarOs(turno.paciente_obra_social ?? '') === 'particular'
+        // Día particular (B3): ese día TODOS pagan la consulta completa, tengan
+        // la obra social que tengan — mismo criterio que la reserva.
+        const { data: diasPart } = await ctx.db
+          .from('wa_dias_particulares')
+          .select('tipo, dia_semana, fecha')
+          .eq('medico_id', ctx.medicoId)
+        const esParticular =
+          normalizarOs(turno.paciente_obra_social ?? '') === 'particular' ||
+          esDiaParticular(((diasPart ?? []) as DiaParticular[]), hoy)
         const concepto: 'plus' | 'consulta_particular' =
           existente?.concepto ?? (esParticular ? 'consulta_particular' : 'plus')
         let monto: number | null = existente ? Number(existente.monto) : null

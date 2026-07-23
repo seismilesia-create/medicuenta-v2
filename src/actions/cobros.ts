@@ -50,13 +50,12 @@ export async function generarLinkCobro(
   let cobroId: string
   if (data.cobroId) {
     // Regenerar: solo sobre un cobro MP aún pendiente (el monto pudo cambiar).
+    // OJO: el monto del cobro se actualiza DESPUÉS de crear la preference nueva
+    // — si se pisara antes y el paciente pagara el QR viejo, el webhook
+    // ignoraría la plata real por "monto distinto".
     const cobro = await getCobroById(supabase, user.id, data.cobroId)
     if (!cobro || cobro.estado !== 'pendiente' || cobro.medio !== 'mercadopago') {
       return { error: 'Ese cobro ya no admite regenerar el link.' }
-    }
-    if (Number(cobro.monto) !== data.monto) {
-      const ok = await actualizarPendiente(supabase, user.id, cobro.id, { monto: data.monto })
-      if (!ok) return { error: 'No se pudo actualizar el monto del cobro.' }
     }
     cobroId = cobro.id
   } else {
@@ -86,10 +85,11 @@ export async function generarLinkCobro(
   const pref = await crearPreferencia(conexion.accessToken, body)
   if (!pref) {
     // Sin link no hay cobro: si recién nació, se anula para no dejar pendientes basura.
+    // Si era una regeneración, el cobro conserva su monto y preference viejos (coherentes).
     if (!data.cobroId) await anularCobroService(supabase, user.id, cobroId)
     return { error: 'MercadoPago no pudo generar el link. Probá de nuevo.' }
   }
-  await actualizarPendiente(supabase, user.id, cobroId, { mpPreferenceId: pref.id })
+  await actualizarPendiente(supabase, user.id, cobroId, { monto: data.monto, mpPreferenceId: pref.id })
 
   return { cobroId, link: pref.initPoint }
 }

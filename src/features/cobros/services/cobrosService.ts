@@ -162,6 +162,24 @@ export async function marcarDevuelto(db: SupabaseClient, medicoId: string, cobro
   return (data?.length ?? 0) > 0
 }
 
+/**
+ * Refleja un cobro de PLUS acreditado en su orden: Reportes y la orden leen
+ * `ordenes.monto_plus`, y un cobro MP que se acredita DESPUÉS de crear la orden
+ * (link pendiente del check-in) lo dejaría en 0 para siempre sin esto.
+ */
+export async function reflejarPlusEnOrden(
+  db: SupabaseClient,
+  medicoId: string,
+  cobro: { orden_id: string | null; concepto: string; monto: number },
+): Promise<void> {
+  if (!cobro.orden_id || cobro.concepto !== 'plus') return
+  await db
+    .from('ordenes')
+    .update({ monto_plus: Number(cobro.monto), updated_at: new Date().toISOString() })
+    .eq('id', cobro.orden_id)
+    .eq('medico_id', medicoId)
+}
+
 /** Solo se anulan cobros pendientes (un cobrado real no se borra: se devuelve). */
 export async function anularCobro(db: SupabaseClient, medicoId: string, cobroId: string): Promise<boolean> {
   const { data } = await db

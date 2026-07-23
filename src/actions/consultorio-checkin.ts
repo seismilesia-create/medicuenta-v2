@@ -9,7 +9,13 @@ import { catalogoVigente, type ArancelOsRow } from '@/lib/catalogo/obras-sociale
 import { elegirArancelVigente, calcularHonorarioConsulta, type CategoriaArancel } from '@/lib/catalogo/honorario'
 import { ordenExtraidaSchema, OCR_ORDEN_PROMPT_VERSION, type OrdenExtraida } from '@/lib/ai/ocr-orden'
 import { mergeOcrEnOrden, ordenDesdeOcr } from '@/lib/ordenes/desde-ocr'
-import { crearCobro, getCobroVivoDeTurno, vincularOrden, anularCobro } from '@/features/cobros/services/cobrosService'
+import {
+  anularCobro,
+  crearCobro,
+  getCobroVivoDeTurno,
+  reflejarPlusEnOrden,
+  vincularOrden,
+} from '@/features/cobros/services/cobrosService'
 import { CONCEPTOS_COBRO, MEDIOS_COBRO, type ConceptoCobro, type EstadoCobro, type MedioCobro } from '@/features/cobros/types/cobros'
 import { getConexionActiva } from '@/features/whatsapp/services/mpConexiones'
 import { buildPreferenciaBodyCobro, crearPreferencia } from '@/lib/mercadopago/client'
@@ -290,9 +296,24 @@ export async function registrarCobroCheckin(
     registradoPor: c.userId,
   }
 
+  // Orden YA registrada del turno (orden primero, cobro después): el cobro
+  // nuevo se ancla a esa orden para que no quede suelto para siempre.
+  const ordenDelTurno =
+    d.tipo === 'turno'
+      ? await db
+          .from('ordenes')
+          .select('id')
+          .eq('medico_id', c.medicoId)
+          .eq('turno_id', d.id)
+          .limit(1)
+          .maybeSingle()
+          .then((r) => (r.data as { id: string } | null) ?? null)
+      : null
+
   if (d.medio !== 'mercadopago') {
-    const cobro = await crearCobro(db, { ...base, medio: d.medio, estado: 'cobrado' })
+    const cobro = await crearCobro(db, { ...base, medio: d.medio, estado: 'cobrado', ordenId: ordenDelTurno?.id ?? null })
     if (!cobro) return { error: 'Ya hay un cobro registrado para este turno (refrescá la sala).' }
+    await reflejarPlusEnOrden(db, c.medicoId, { orden_id: ordenDelTurno?.id ?? null, concepto: d.concepto, monto: d.monto })
     return { ok: true, cobroId: cobro.id }
   }
 
@@ -301,7 +322,7 @@ export async function registrarCobroCheckin(
   const conexion = await getConexionActiva(db, c.medicoId)
   if (!conexion) return { error: 'El médico no tiene MercadoPago conectado (Configuración).' }
 
-  const cobro = await crearCobro(db, { ...base, medio: 'mercadopago', estado: 'pendiente' })
+  const cobro = await crearCobro(db, { ...base, medio: 'mercadopago', estado: 'pendiente', ordenId: ordenDelTurno?.id ?? null })
   if (!cobro) return { error: 'Ya hay un cobro registrado para este turno (refrescá la sala).' }
 
   const body = buildPreferenciaBodyCobro(

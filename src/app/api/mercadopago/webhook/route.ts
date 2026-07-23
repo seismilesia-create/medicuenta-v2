@@ -6,7 +6,7 @@ import { getConexionActiva } from '@/features/whatsapp/services/mpConexiones'
 import { resolverSaliente } from '@/features/whatsapp/services/nodos'
 import { getRecetaDelMedico, marcarPagada, marcarDevuelta } from '@/features/whatsapp/services/recetasService'
 import { entregarReceta } from '@/features/whatsapp/services/entrega'
-import { marcarCobrado, marcarDevuelto } from '@/features/cobros/services/cobrosService'
+import { marcarCobrado, marcarDevuelto, reflejarPlusEnOrden } from '@/features/cobros/services/cobrosService'
 import { sendWhatsAppText } from '@/lib/whatsapp/client'
 import { sendPushToUser } from '@/features/notifications/services/send-push'
 
@@ -92,7 +92,7 @@ async function webhookCobro(cobroId: string, paymentId: string): Promise<void> {
     // y el pago se re-consulta con el token del dueño (decidirAccionPagoCobro).
     const { data: cobroRow } = await db
       .from('cobros')
-      .select('id, medico_id, concepto, monto, estado, paciente_nombre')
+      .select('id, medico_id, concepto, monto, estado, paciente_nombre, orden_id')
       .eq('id', cobroId)
       .maybeSingle()
 
@@ -108,7 +108,19 @@ async function webhookCobro(cobroId: string, paymentId: string): Promise<void> {
         } | null) ?? null,
       getConexion: (medicoId) => getConexionActiva(db, medicoId),
       consultarPago: (token, id) => consultarPago(token, id),
-      marcarCobrado: (medicoId, id, paymentId2) => marcarCobrado(db, medicoId, id, paymentId2),
+      marcarCobrado: async (medicoId, id, paymentId2) => {
+        const ok = await marcarCobrado(db, medicoId, id, paymentId2)
+        // El cobro puede estar anclado a una orden creada ANTES de que el
+        // paciente pague: recién acá el plus real llega a ordenes.monto_plus.
+        if (ok && cobroRow) {
+          await reflejarPlusEnOrden(db, medicoId, {
+            orden_id: (cobroRow as { orden_id: string | null }).orden_id,
+            concepto: (cobroRow as { concepto: string }).concepto,
+            monto: Number((cobroRow as { monto: number }).monto),
+          })
+        }
+        return ok
+      },
       marcarDevuelto: (medicoId, id) => marcarDevuelto(db, medicoId, id),
       notificarMedico: async (medicoId, aviso) => {
         // El aviso de un cobro va por push al panel (no por WhatsApp: es plata

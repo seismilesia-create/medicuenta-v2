@@ -318,6 +318,24 @@ export async function deleteOrden(ordenId: string) {
     return { error: 'Solo se pueden eliminar órdenes en borrador. Esta orden ya fue presentada.' }
   }
 
+  // El cobro que nació de esta orden se anula con ella: si sobreviviera suelto,
+  // recargar la orden duplicaría la caja del día en silencio. Un cobro MP
+  // acreditado NO se toca (la plata es real, quede o no la orden). Dos updates
+  // separados: .or() en UPDATE rompe PostgREST (gotcha a9e3699).
+  await supabase
+    .from('cobros')
+    .update({ estado: 'anulado', updated_at: new Date().toISOString() })
+    .eq('medico_id', user.id)
+    .eq('orden_id', ordenId)
+    .eq('estado', 'pendiente')
+  await supabase
+    .from('cobros')
+    .update({ estado: 'anulado', updated_at: new Date().toISOString() })
+    .eq('medico_id', user.id)
+    .eq('orden_id', ordenId)
+    .eq('estado', 'cobrado')
+    .neq('medio', 'mercadopago')
+
   const { error } = await supabase
     .from('ordenes')
     .delete()
