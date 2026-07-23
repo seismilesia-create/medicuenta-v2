@@ -13,6 +13,18 @@ export function parseExternalReference(ref: string): string | null {
   return UUID_RE.test(id) ? id : null
 }
 
+// Cobros de consultorio (plus / consulta particular): namespace propio, disjunto
+// de 'receta:' — un pago de receta jamás matchea un cobro ni viceversa.
+export function buildExternalReferenceCobro(cobroId: string): string {
+  return `plus:${cobroId}`
+}
+
+export function parseExternalReferenceCobro(ref: string): string | null {
+  if (!ref.startsWith('plus:')) return null
+  const id = ref.slice('plus:'.length)
+  return UUID_RE.test(id) ? id : null
+}
+
 export interface PreferenciaInput {
   recetaId: string
   titulo: string
@@ -26,6 +38,25 @@ export function buildPreferenciaBody(input: PreferenciaInput, ahora: Date) {
   return {
     items: [{ title: input.titulo, quantity: 1, unit_price: input.monto, currency_id: 'ARS' }],
     external_reference: buildExternalReference(input.recetaId),
+    notification_url: input.notificationUrl,
+    expires: true,
+    expiration_date_to: expira.toISOString(),
+  }
+}
+
+export interface PreferenciaCobroInput {
+  cobroId: string
+  titulo: string
+  monto: number
+  notificationUrl: string
+}
+
+/** Preference de un cobro de consultorio. Expira en 1 día: se paga en el momento, en el mostrador. */
+export function buildPreferenciaBodyCobro(input: PreferenciaCobroInput, ahora: Date) {
+  const expira = new Date(ahora.getTime() + 24 * 60 * 60 * 1000)
+  return {
+    items: [{ title: input.titulo, quantity: 1, unit_price: input.monto, currency_id: 'ARS' }],
+    external_reference: buildExternalReferenceCobro(input.cobroId),
     notification_url: input.notificationUrl,
     expires: true,
     expiration_date_to: expira.toISOString(),

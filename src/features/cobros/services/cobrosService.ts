@@ -144,14 +144,20 @@ export async function marcarCobrado(
   return (data?.length ?? 0) > 0
 }
 
-/** Devolución/contracargo reportado por MP: el cobro deja de contar como plata. */
-export async function marcarDevuelto(db: SupabaseClient, medicoId: string, cobroId: string): Promise<void> {
-  await db
+/**
+ * Devolución/contracargo reportado por MP: el cobro deja de contar como plata.
+ * Devuelve si la fila realmente transicionó (false = ya estaba devuelto/anulado,
+ * p.ej. un retry del webhook — el caller no debe re-notificar).
+ */
+export async function marcarDevuelto(db: SupabaseClient, medicoId: string, cobroId: string): Promise<boolean> {
+  const { data } = await db
     .from('cobros')
     .update({ estado: 'devuelto', updated_at: new Date().toISOString() })
     .eq('id', cobroId)
     .eq('medico_id', medicoId)
     .in('estado', ['pendiente', 'cobrado'])
+    .select('id')
+  return (data?.length ?? 0) > 0
 }
 
 /** Solo se anulan cobros pendientes (un cobrado real no se borra: se devuelve). */

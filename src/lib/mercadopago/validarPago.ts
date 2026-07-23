@@ -1,4 +1,4 @@
-import { buildExternalReference, type PagoMP } from './client'
+import { buildExternalReference, buildExternalReferenceCobro, type PagoMP } from './client'
 
 export type AccionPago =
   | { accion: 'marcar_pagada_y_entregar' }
@@ -48,4 +48,57 @@ export function decidirAccionPago(args: {
     return { accion: 'ignorar', motivo: `estado de receta ${receta.estado} no admite cobro` }
   }
   return { accion: 'marcar_pagada_y_entregar' }
+}
+
+// ── Cobros de consultorio (plus / consulta particular) ───────────────────────
+
+export type AccionPagoCobro =
+  | { accion: 'marcar_cobrado' }
+  | { accion: 'ignorar'; motivo: string }
+  | { accion: 'avisar_devolucion'; motivo: string }
+
+export interface CobroParaValidar {
+  id: string
+  monto: number
+  estado: string
+}
+
+/**
+ * Mismas reglas de oro que decidirAccionPago, sobre el ledger `cobros`:
+ * referencia exacta, cobrador = médico dueño, ARS, monto exacto. La devolución
+ * se evalúa ANTES que el estado porque el contracargo típico llega cuando el
+ * cobro ya está 'cobrado'.
+ */
+export function decidirAccionPagoCobro(args: {
+  pago: PagoMP
+  cobro: CobroParaValidar
+  mpUserId: string
+}): AccionPagoCobro {
+  const { pago, cobro, mpUserId } = args
+
+  if (pago.externalReference !== buildExternalReferenceCobro(cobro.id)) {
+    return { accion: 'ignorar', motivo: 'external_reference no corresponde a este cobro' }
+  }
+  if (!mpUserId || pago.collectorId !== mpUserId) {
+    return { accion: 'ignorar', motivo: 'el cobrador del pago no es el médico dueño' }
+  }
+  if (pago.status === 'refunded' || pago.status === 'charged_back') {
+    return { accion: 'avisar_devolucion', motivo: `pago ${pago.id} en estado ${pago.status}` }
+  }
+  if (pago.status !== 'approved') {
+    return { accion: 'ignorar', motivo: `status ${pago.status} no acredita el cobro` }
+  }
+  if (pago.currencyId !== 'ARS') {
+    return { accion: 'ignorar', motivo: `moneda ${pago.currencyId || 'desconocida'} distinta de ARS` }
+  }
+  if (pago.transactionAmount !== Number(cobro.monto)) {
+    return { accion: 'ignorar', motivo: 'el monto pagado no coincide con el cobro' }
+  }
+  if (cobro.estado === 'cobrado') {
+    return { accion: 'ignorar', motivo: 'el cobro ya está acreditado (idempotencia)' }
+  }
+  if (cobro.estado !== 'pendiente') {
+    return { accion: 'ignorar', motivo: `estado de cobro ${cobro.estado} no admite acreditación` }
+  }
+  return { accion: 'marcar_cobrado' }
 }
