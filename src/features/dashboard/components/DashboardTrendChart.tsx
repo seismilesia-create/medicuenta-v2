@@ -52,8 +52,8 @@ export function DashboardTrendChart({ data }: Props) {
               <BarChart3 className="h-5 w-5 text-primary" strokeWidth={1.5} />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-foreground">Tendencia ultimos 6 meses</h3>
-              <p className="text-xs text-muted-foreground">Comparativa de facturacion, cobros y debitos</p>
+              <h3 className="text-sm font-semibold text-foreground">Tendencia últimos 6 meses</h3>
+              <p className="text-xs text-muted-foreground">Comparativa de facturación, cobros y débitos</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -73,7 +73,7 @@ export function DashboardTrendChart({ data }: Props) {
             </div>
             <p className="text-sm font-medium text-foreground">Sin datos suficientes</p>
             <p className="text-xs text-muted-foreground mt-1 max-w-[260px]">
-              Carga ordenes para visualizar la tendencia de tu facturacion.
+              Carga órdenes para visualizar la tendencia de tu facturación.
             </p>
           </div>
         ) : (

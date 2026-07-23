@@ -51,9 +51,9 @@ interface NavItem {
 const navigation: { principal: NavItem[]; consultorio: NavItem[]; avanzado: NavItem[] } = {
   principal: [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Ordenes', href: '/ordenes', icon: FileText },
+    { name: 'Órdenes', href: '/ordenes', icon: FileText },
     { name: 'Liquidaciones', href: '/liquidaciones', icon: Receipt },
-    { name: 'Debitos', href: '/debitos', icon: AlertTriangle },
+    { name: 'Débitos', href: '/debitos', icon: AlertTriangle },
     { name: 'Reportes', href: '/reportes', icon: BarChart3 },
   ],
   consultorio: [
@@ -124,14 +124,14 @@ export function Sidebar({ nombre, rol = 'medico', medicos = [], medicoActivoId =
               <span className="text-foreground">Medi</span>
               <span className="text-primary">Cuenta</span>
             </span>
-            <span className="mt-1 text-xs font-medium text-muted-foreground">Facturacion Medica</span>
+            <span className="mt-1 text-xs font-medium text-muted-foreground">Facturación Médica</span>
           </div>
         </div>
         {/* Close button - mobile only */}
         <button
           onClick={() => setMobileOpen(false)}
           className="md:hidden p-2 rounded-lg hover:bg-accent/50 text-muted-foreground"
-          aria-label="Cerrar menu"
+          aria-label="Cerrar menú"
         >
           <X className="h-5 w-5" />
         </button>
@@ -226,7 +226,7 @@ export function Sidebar({ nombre, rol = 'medico', medicos = [], medicoActivoId =
               }}
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Cerrar sesion
+              Cerrar sesión
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -241,7 +241,7 @@ export function Sidebar({ nombre, rol = 'medico', medicos = [], medicoActivoId =
         <button
           onClick={() => setMobileOpen(true)}
           className="p-2 -ml-2 rounded-lg hover:bg-accent/50"
-          aria-label="Abrir menu"
+          aria-label="Abrir menú"
         >
           <Menu className="h-5 w-5" />
         </button>

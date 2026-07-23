@@ -14,7 +14,7 @@ export function DeleteDebitoButton({ debitoId }: { debitoId: string }) {
 
   async function handleDelete() {
     const confirmed = window.confirm(
-      '¿Estas seguro de que deseas eliminar este debito? Esta accion no se puede deshacer.'
+      '¿Estás seguro de que deseas eliminar este débito? Esta acción no se puede deshacer.'
     )
     if (!confirmed) return
 

@@ -5,7 +5,7 @@ import { EditarCirugiaForm } from '@/features/cirugias/components'
 import type { Cirugia } from '@/features/cirugias/types/cirugias'
 
 export const metadata = {
-  title: 'Editar Cirugia | MediCuenta',
+  title: 'Editar Cirugía | MediCuenta',
 }
 
 export default async function EditarCirugiaPage({ params }: { params: Promise<{ id: string }> }) {
@@ -37,7 +37,7 @@ export default async function EditarCirugiaPage({ params }: { params: Promise<{ 
           className="inline-flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
           style={{ color: 'var(--color-muted-foreground)' }}
         >
-          &larr; Volver a la cirugia
+          &larr; Volver a la cirugía
         </Link>
       </div>
 
@@ -47,10 +47,10 @@ export default async function EditarCirugiaPage({ params }: { params: Promise<{ 
           className="text-2xl md:text-3xl font-semibold tracking-tight"
           style={{ color: 'var(--color-foreground)' }}
         >
-          Editar cirugia
+          Editar cirugía
         </h1>
         <p className="mt-1.5 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-          Modificando cirugia de {(cirugia as Cirugia).nombre_paciente}
+          Modificando cirugía de {(cirugia as Cirugia).nombre_paciente}
         </p>
       </div>
 

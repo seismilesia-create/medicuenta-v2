@@ -16,7 +16,7 @@ export function DeleteOrdenButton({ ordenId }: { ordenId: string }) {
 
   async function handleDelete() {
     const confirmed = window.confirm(
-      '¿Estas seguro de que deseas eliminar esta orden? Esta accion no se puede deshacer.'
+      '¿Estás seguro de que deseas eliminar esta orden? Esta acción no se puede deshacer.'
     )
     if (!confirmed) return
 

@@ -24,7 +24,7 @@ export function PlusMensualChart({ data }: Props) {
             </div>
             <div>
               <h3 className="text-sm font-semibold text-foreground">Plus cobrado por mes</h3>
-              <p className="text-xs text-muted-foreground">Ultimos 6 meses - dato confidencial</p>
+              <p className="text-xs text-muted-foreground">Últimos 6 meses - dato confidencial</p>
             </div>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-[10px] font-semibold text-amber-500">
@@ -59,7 +59,7 @@ export function PlusMensualChart({ data }: Props) {
           </ResponsiveContainer>
         ) : (
           <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
-            Sin plus registrado en los ultimos 6 meses.
+            Sin plus registrado en los últimos 6 meses.
           </div>
         )}
       </div>

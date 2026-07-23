@@ -18,10 +18,10 @@ export default function AuthLayout({
               <span className="text-2xl font-bold text-white">MediCuenta</span>
             </div>
             <h1 className="text-display-md text-white mb-4">
-              Tu facturacion medica, simplificada
+              Tu facturación médica, simplificada
             </h1>
             <p className="text-lg text-white/70 leading-relaxed">
-              La plataforma de facturacion y control financiero disenada para medicos del Circulo Medico de Catamarca.
+              La plataforma de facturación y control financiero disenada para médicos del Círculo Médico de Catamarca.
             </p>
           </div>
 
@@ -32,7 +32,7 @@ export default function AuthLayout({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <span>Control total de ordenes y liquidaciones</span>
+              <span>Control total de órdenes y liquidaciones</span>
             </div>
             <div className="flex items-center gap-3 text-white/80">
               <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
@@ -40,7 +40,7 @@ export default function AuthLayout({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <span>Seguimiento de debitos y rechazos</span>
+              <span>Seguimiento de débitos y rechazos</span>
             </div>
             <div className="flex items-center gap-3 text-white/80">
               <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
@@ -48,7 +48,7 @@ export default function AuthLayout({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <span>Reportes y estadisticas en tiempo real</span>
+              <span>Reportes y estadísticas en tiempo real</span>
             </div>
           </div>
         </div>

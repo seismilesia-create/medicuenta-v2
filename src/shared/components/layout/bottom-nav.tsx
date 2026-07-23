@@ -120,7 +120,7 @@ export function BottomNav({ rol = 'medico' }: { rol?: 'medico' | 'secretaria' })
             className="text-[10px] font-medium"
             style={{ color: isActive('/ordenes') ? 'var(--color-primary)' : 'var(--color-muted-foreground)' }}
           >
-            Ordenes
+            Órdenes
           </span>
         </Link>
 
@@ -165,7 +165,7 @@ export function BottomNav({ rol = 'medico' }: { rol?: 'medico' | 'secretaria' })
           <button
             onClick={() => setMenuOpen(prev => !prev)}
             className="flex flex-col items-center justify-center gap-0.5"
-            aria-label="Mas opciones"
+            aria-label="Más opciones"
           >
             <svg
               className="w-6 h-6"
@@ -180,7 +180,7 @@ export function BottomNav({ rol = 'medico' }: { rol?: 'medico' | 'secretaria' })
               className="text-[10px] font-medium"
               style={{ color: isMoreActive || menuOpen ? 'var(--color-primary)' : 'var(--color-muted-foreground)' }}
             >
-              Mas
+              Más
             </span>
           </button>
 
@@ -211,7 +211,7 @@ export function BottomNav({ rol = 'medico' }: { rol?: 'medico' | 'secretaria' })
                 <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                Debitos
+                Débitos
               </Link>
               <Link
                 href="/perfil"
@@ -242,7 +242,7 @@ export function BottomNav({ rol = 'medico' }: { rol?: 'medico' | 'secretaria' })
                 <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-                Cerrar sesion
+                Cerrar sesión
               </button>
             </div>
           )}

@@ -19,7 +19,7 @@ export function FacturacionPorOSChart({ data }: Props) {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10">
             <Building2 className="h-5 w-5 text-blue-500" strokeWidth={1.5} />
           </div>
-          <h3 className="text-sm font-semibold text-foreground">Facturacion por obra social</h3>
+          <h3 className="text-sm font-semibold text-foreground">Facturación por obra social</h3>
         </div>
 
         {data.length > 0 ? (
@@ -56,7 +56,7 @@ export function FacturacionPorOSChart({ data }: Props) {
           </ResponsiveContainer>
         ) : (
           <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
-            Sin facturacion registrada en este periodo.
+            Sin facturación registrada en este periodo.
           </div>
         )}
       </div>

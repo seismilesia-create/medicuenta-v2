@@ -107,7 +107,7 @@ export default async function DebitoDetallePage({
       {/* Informacion general */}
       <section className="rounded-xl p-5 md:p-6 space-y-4" style={{ backgroundColor: 'var(--color-surface)' }} aria-labelledby="section-general">
         <h2 id="section-general" className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted-foreground)' }}>
-          Informacion general
+          Información general
         </h2>
         <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field label="Fecha" value={formatFecha(typed.fecha)} />
@@ -128,8 +128,8 @@ export default async function DebitoDetallePage({
               {ARS.format(typed.monto)}
             </dd>
           </div>
-          <Field label="Refacturable" value={typed.refacturable ? 'Si' : 'No'} />
-          <Field label="Refacturado" value={typed.refacturado ? 'Si' : 'No'} />
+          <Field label="Refacturable" value={typed.refacturable ? 'Sí' : 'No'} />
+          <Field label="Refacturado" value={typed.refacturado ? 'Sí' : 'No'} />
         </dl>
       </section>
     </div>

@@ -35,7 +35,7 @@ export function DescuentosApiladosChart({ data }: Props) {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-foreground">Descuentos por entidad</h3>
-            <p className="text-xs text-muted-foreground">Ultimos 6 meses - apilado por quien aplico el descuento</p>
+            <p className="text-xs text-muted-foreground">Últimos 6 meses - apilado por quien aplicó el descuento</p>
           </div>
         </div>
 
@@ -74,7 +74,7 @@ export function DescuentosApiladosChart({ data }: Props) {
           </ResponsiveContainer>
         ) : (
           <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
-            Sin descuentos registrados en los ultimos 6 meses.
+            Sin descuentos registrados en los últimos 6 meses.
           </div>
         )}
       </div>

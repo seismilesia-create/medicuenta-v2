@@ -30,7 +30,7 @@ export function TablaComparativa12Meses({ rows }: Props) {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
             <Table2 className="h-5 w-5 text-primary" strokeWidth={1.5} />
           </div>
-          <h3 className="text-sm font-semibold text-foreground">Tabla comparativa - ultimos 12 meses</h3>
+          <h3 className="text-sm font-semibold text-foreground">Tabla comparativa - últimos 12 meses</h3>
         </div>
 
         {hasData ? (
@@ -41,7 +41,7 @@ export function TablaComparativa12Meses({ rows }: Props) {
                   <Th>Mes</Th>
                   <Th align="right">Facturado</Th>
                   <Th align="right">Cobrado</Th>
-                  <Th align="right">Debitos</Th>
+                  <Th align="right">Débitos</Th>
                   <Th align="right">Plus</Th>
                   <Th align="right">Neto</Th>
                 </tr>
@@ -72,7 +72,7 @@ export function TablaComparativa12Meses({ rows }: Props) {
           </div>
         ) : (
           <div className="h-[120px] flex items-center justify-center text-sm text-muted-foreground">
-            Sin datos en los ultimos 12 meses.
+            Sin datos en los últimos 12 meses.
           </div>
         )}
       </div>

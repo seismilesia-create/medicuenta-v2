@@ -23,7 +23,7 @@ export default function DebitosPage() {
                 <AlertTriangle className="h-6 w-6 text-red-500" strokeWidth={1.5} />
               </div>
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Debitos</h1>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Débitos</h1>
                 <p className="text-sm text-muted-foreground">Seguimiento de descuentos aplicados</p>
               </div>
             </div>

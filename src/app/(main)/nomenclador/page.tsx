@@ -4,7 +4,7 @@ import { NomencladorSearch, NomencladorCalculator } from '@/features/nomenclador
 
 export const metadata: Metadata = {
   title: 'Nomenclador OSEP | MediCuenta',
-  description: 'Busca practicas del nomenclador OSEP y calcula el total de multiples intervenciones',
+  description: 'Busca prácticas del nomenclador OSEP y calcula el total de múltiples intervenciones',
 }
 
 export default function NomencladorPage() {
@@ -22,7 +22,7 @@ export default function NomencladorPage() {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Nomenclador OSEP</h1>
-              <p className="text-sm text-muted-foreground">Busca practicas y calcula el total con regla de multiples intervenciones</p>
+              <p className="text-sm text-muted-foreground">Busca prácticas y calcula el total con regla de múltiples intervenciones</p>
             </div>
           </div>
         </div>

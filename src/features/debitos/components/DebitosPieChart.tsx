@@ -74,7 +74,7 @@ export function DebitosPieChart() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
             <PieIcon className="h-4 w-4 text-amber-500" />
           </div>
-          <h3 className="text-sm font-semibold text-foreground">Distribucion por motivo</h3>
+          <h3 className="text-sm font-semibold text-foreground">Distribución por motivo</h3>
         </div>
 
         {loading ? (
@@ -90,7 +90,7 @@ export function DebitosPieChart() {
               </div>
             </div>
             <p className="text-sm font-medium text-foreground">Sin datos para mostrar</p>
-            <p className="text-xs text-muted-foreground mt-1">Carga debitos para ver el analisis</p>
+            <p className="text-xs text-muted-foreground mt-1">Carga débitos para ver el análisis</p>
           </div>
         ) : (
           <>

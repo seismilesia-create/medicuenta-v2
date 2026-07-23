@@ -287,7 +287,7 @@ export function OrdenesTable() {
                     <th className="text-left px-3 md:px-5 py-4 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden lg:table-cell">Tipo</th>
                     <th className="text-left px-3 md:px-5 py-4 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden lg:table-cell">OS</th>
                     <th className="text-left px-3 md:px-5 py-4 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden xl:table-cell">Agente</th>
-                    <th className="text-left px-3 md:px-5 py-4 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden lg:table-cell">Practica</th>
+                    <th className="text-left px-3 md:px-5 py-4 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden lg:table-cell">Práctica</th>
                     <th className="text-right px-3 md:px-5 py-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Monto</th>
                     <th className="text-left px-3 md:px-5 py-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Estado</th>
                   </tr>

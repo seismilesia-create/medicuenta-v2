@@ -127,7 +127,7 @@ export function PerfilForm({ perfil, email }: Props) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground-secondary)' }}>
-                Matricula
+                Matrícula
               </label>
               <input
                 name="matricula"
@@ -172,7 +172,7 @@ export function PerfilForm({ perfil, email }: Props) {
             name="especialidad"
             type="text"
             defaultValue={perfil.especialidad ?? ''}
-            placeholder="Ej: Clinica Medica, Cardiologia, Pediatria..."
+            placeholder="Ej: Clínica Médica, Cardiología, Pediatría..."
             className={inputClasses}
             style={{
               backgroundColor: 'var(--color-surface-elevated)',

@@ -28,7 +28,7 @@ export function NomencladorSearch() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
             <Search className="h-4 w-4 text-violet-500" />
           </div>
-          <h3 className="text-sm font-semibold text-foreground">Buscar practicas</h3>
+          <h3 className="text-sm font-semibold text-foreground">Buscar prácticas</h3>
         </div>
 
         {/* Search input */}
@@ -38,7 +38,7 @@ export function NomencladorSearch() {
             type="text"
             value={query}
             onChange={(e) => search(e.target.value)}
-            placeholder="Buscar por codigo o nombre de practica..."
+            placeholder="Buscar por código o nombre de práctica..."
             className="w-full pl-10 pr-10 py-3 rounded-xl bg-muted/50 border border-border/50 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none transition-colors"
           />
           {loading && (
@@ -54,7 +54,7 @@ export function NomencladorSearch() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-3 px-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Codigo</th>
+                  <th className="text-left py-3 px-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Código</th>
                   <th className="text-left py-3 px-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Detalle</th>
                   <th className="text-right py-3 px-3 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden md:table-cell">Honorarios</th>
                   <th className="text-right py-3 px-3 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden md:table-cell">Gastos</th>
@@ -105,13 +105,13 @@ export function NomencladorSearch() {
 
         {query.length >= 2 && !loading && results.length === 0 && (
           <p className="text-center py-8 text-sm text-muted-foreground">
-            No se encontraron practicas para &quot;{query}&quot;
+            No se encontraron prácticas para &quot;{query}&quot;
           </p>
         )}
 
         {query.length < 2 && (
           <p className="text-center py-8 text-sm text-muted-foreground">
-            Escribi al menos 2 caracteres para buscar
+            Escribí al menos 2 caracteres para buscar
           </p>
         )}
       </div>

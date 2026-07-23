@@ -55,14 +55,14 @@ export function ReporteKPICards({ kpis }: Props) {
         />
         <div className="relative flex items-start justify-between">
           <div className="space-y-3">
-            <p className="text-sm font-medium text-muted-foreground">Cirugias 2° sin liquidar +90d</p>
+            <p className="text-sm font-medium text-muted-foreground">Cirugías 2° sin liquidar +90d</p>
             <p className={`text-2xl font-bold tracking-tight ${alertaSinLiquidar ? 'text-red-500' : 'text-sky-500'}`}>
               {kpis.cirugias2doSinLiquidar.count === 0
-                ? 'Todo al dia'
+                ? 'Todo al día'
                 : `${kpis.cirugias2doSinLiquidar.count} · ${formatARS(kpis.cirugias2doSinLiquidar.monto)}`}
             </p>
             <p className="text-xs text-muted-foreground">
-              {alertaSinLiquidar ? 'Atencion requerida' : 'Sin cirugias pendientes'}
+              {alertaSinLiquidar ? 'Atención requerida' : 'Sin cirugías pendientes'}
             </p>
           </div>
           <div

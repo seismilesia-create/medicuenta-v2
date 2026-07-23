@@ -29,7 +29,7 @@ export function DebitosPorMotivoChart({ data }: Props) {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10">
             <PieIcon className="h-5 w-5 text-red-500" strokeWidth={1.5} />
           </div>
-          <h3 className="text-sm font-semibold text-foreground">Debitos por motivo</h3>
+          <h3 className="text-sm font-semibold text-foreground">Débitos por motivo</h3>
         </div>
 
         {data.length > 0 ? (
@@ -58,7 +58,7 @@ export function DebitosPorMotivoChart({ data }: Props) {
           </ResponsiveContainer>
         ) : (
           <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
-            Sin debitos en este periodo.
+            Sin débitos en este periodo.
           </div>
         )}
       </div>

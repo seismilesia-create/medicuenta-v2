@@ -97,25 +97,25 @@ export function DebitosStats() {
         description="Descuentos del periodo actual"
       />
       <MetricCard
-        title="Ultimos 3 meses"
+        title="Últimos 3 meses"
         value={formatMonto(stats.total3Meses)}
         icon={Calendar}
         variant="danger"
         description="Acumulado trimestral"
       />
       <MetricCard
-        title="% sobre facturacion"
+        title="% sobre facturación"
         value={`${stats.porcentajeSobreFacturacion.toFixed(1)}%`}
         icon={Percent}
         variant="warning"
-        description="Ratio de perdida"
+        description="Ratio de pérdida"
       />
       <MetricCard
         title="Motivo frecuente"
         value={stats.motivoMasFrecuente}
         icon={Tag}
         variant="info"
-        description="Principal causa de debitos"
+        description="Principal causa de débitos"
       />
     </div>
   )

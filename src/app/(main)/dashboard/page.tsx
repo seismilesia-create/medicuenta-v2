@@ -90,7 +90,7 @@ export default async function DashboardPage() {
                 {greeting}, {nombre ? `Dr. ${nombre}` : 'Doctor'}
               </h1>
               <p className="text-sm md:text-base text-muted-foreground">
-                Resumen de tu facturacion medica
+                Resumen de tu facturación médica
               </p>
             </div>
           </div>
@@ -122,10 +122,10 @@ export default async function DashboardPage() {
             value={stats.pendiente}
             icon={Clock}
             variant="warning"
-            description="Esperando aprobacion"
+            description="Esperando aprobación"
           />
           <MetricCard
-            title="Debitos"
+            title="Débitos"
             value={stats.perdido}
             icon={AlertTriangle}
             variant="danger"
@@ -154,7 +154,7 @@ export default async function DashboardPage() {
 
 function getGreeting(): string {
   const hour = horaEnArgentina(new Date())
-  if (hour < 12) return 'Buenos dias'
+  if (hour < 12) return 'Buenos días'
   if (hour < 18) return 'Buenas tardes'
   return 'Buenas noches'
 }
@@ -209,7 +209,7 @@ function computeAlerts(
   if (borradores > 0) {
     alerts.push({
       type: 'warning',
-      message: `${borradores} ${borradores === 1 ? 'orden en borrador' : 'ordenes en borrador'}`,
+      message: `${borradores} ${borradores === 1 ? 'orden en borrador' : 'órdenes en borrador'}`,
       href: '/ordenes',
       count: borradores,
     })
@@ -219,7 +219,7 @@ function computeAlerts(
   if (cirugiasBorrador > 0) {
     alerts.push({
       type: 'warning',
-      message: `${cirugiasBorrador} ${cirugiasBorrador === 1 ? 'cirugia en borrador' : 'cirugias en borrador'}`,
+      message: `${cirugiasBorrador} ${cirugiasBorrador === 1 ? 'cirugía en borrador' : 'cirugías en borrador'}`,
       href: '/cirugias',
       count: cirugiasBorrador,
     })
@@ -229,7 +229,7 @@ function computeAlerts(
   if (refacturables > 0) {
     alerts.push({
       type: 'error',
-      message: `${refacturables} ${refacturables === 1 ? 'debito refacturable' : 'debitos refacturables'} sin refacturar`,
+      message: `${refacturables} ${refacturables === 1 ? 'débito refacturable' : 'débitos refacturables'} sin refacturar`,
       href: '/debitos',
       count: refacturables,
     })
@@ -239,7 +239,7 @@ function computeAlerts(
   if (pendientes > 0) {
     alerts.push({
       type: 'info',
-      message: `${pendientes} ${pendientes === 1 ? 'liquidacion pendiente' : 'liquidaciones pendientes'}`,
+      message: `${pendientes} ${pendientes === 1 ? 'liquidación pendiente' : 'liquidaciones pendientes'}`,
       href: '/liquidaciones',
       count: pendientes,
     })

@@ -111,7 +111,7 @@ export function DebitosTable() {
                 <AlertTriangle className="h-10 w-10 text-red-500" strokeWidth={1.5} />
               </div>
             </div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">No hay debitos</h3>
+            <h3 className="text-xl font-semibold text-foreground mb-2">No hay débitos</h3>
             <p className="text-sm text-muted-foreground mb-8 max-w-md">
               Registra los descuentos aplicados por las obras sociales para llevar un control detallado
             </p>

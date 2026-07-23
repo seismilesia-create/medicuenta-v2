@@ -86,7 +86,7 @@ export function PracticaAutocomplete({ obraSocial, onSelect, value = '' }: Props
           value={query}
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={() => results.length > 0 && setIsOpen(true)}
-          placeholder="Buscar por codigo o nombre..."
+          placeholder="Buscar por código o nombre..."
           className="w-full px-4 py-3 rounded-lg text-sm pr-8"
           style={{
             background: 'var(--color-background)',

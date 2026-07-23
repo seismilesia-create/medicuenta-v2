@@ -20,8 +20,8 @@ export function InstitucionPendienteChart({ data }: Props) {
             <Hospital className="h-5 w-5 text-red-500" strokeWidth={1.5} />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Institucion con mas pendiente</h3>
-            <p className="text-xs text-muted-foreground">Cirugias 2° sin liquidar +90 dias</p>
+            <h3 className="text-sm font-semibold text-foreground">Institución con más pendiente</h3>
+            <p className="text-xs text-muted-foreground">Cirugías 2° sin liquidar +90 días</p>
           </div>
         </div>
 
@@ -64,7 +64,7 @@ export function InstitucionPendienteChart({ data }: Props) {
           </ResponsiveContainer>
         ) : (
           <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
-            No hay cirugias de 2° Nivel sin liquidar. Todo al dia.
+            No hay cirugías de 2° Nivel sin liquidar. Todo al día.
           </div>
         )}
       </div>

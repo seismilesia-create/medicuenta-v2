@@ -16,7 +16,7 @@ export function DeleteLiquidacionButton({ liquidacionId }: { liquidacionId: stri
 
   async function handleDelete() {
     const confirmed = window.confirm(
-      '¿Estas seguro de que deseas eliminar esta liquidacion? Esta accion no se puede deshacer.'
+      '¿Estás seguro de que deseas eliminar esta liquidación? Esta acción no se puede deshacer.'
     )
     if (!confirmed) return
 

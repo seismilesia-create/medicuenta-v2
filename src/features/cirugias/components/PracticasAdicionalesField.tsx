@@ -140,8 +140,8 @@ function PracticaRow({ practica, onRemove }: PracticaRowProps) {
             }}
             title={
               is100
-                ? 'Esta practica cobra el 100% de sus honorarios (mayor valor)'
-                : 'Esta practica cobra el 50% de sus honorarios (regla OSEP)'
+                ? 'Esta práctica cobra el 100% de sus honorarios (mayor valor)'
+                : 'Esta práctica cobra el 50% de sus honorarios (regla OSEP)'
             }
           >
             {practica.porcentajeHonorarios}%
@@ -154,8 +154,8 @@ function PracticaRow({ practica, onRemove }: PracticaRowProps) {
           onClick={onRemove}
           className="p-1 rounded-md transition-colors hover:bg-black/[0.06] dark:hover:bg-white/[0.08] shrink-0"
           style={{ color: 'var(--color-error)' }}
-          aria-label={`Quitar practica ${practica.codigo}`}
-          title="Quitar practica"
+          aria-label={`Quitar práctica ${practica.codigo}`}
+          title="Quitar práctica"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -301,7 +301,7 @@ export function PracticasAdicionalesField({
   )
 
   return (
-    <section aria-label="Practicas adicionales">
+    <section aria-label="Prácticas adicionales">
       {/* Autocomplete search */}
       <div className="mb-4">
         <PracticaAutocomplete
@@ -325,7 +325,7 @@ export function PracticasAdicionalesField({
             color: 'var(--color-primary)',
           }}
           role="note"
-          aria-label="Informacion sobre regla OSEP"
+          aria-label="Información sobre regla OSEP"
         >
           <svg
             className="w-4 h-4 shrink-0 mt-0.5"
@@ -352,7 +352,7 @@ export function PracticasAdicionalesField({
       {value.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="space-y-2" role="list" aria-label="Practicas adicionales agregadas">
+        <div className="space-y-2" role="list" aria-label="Prácticas adicionales agregadas">
           {practicasConPorcentaje.map((practica, index) => (
             <div key={`${practica.codigo}-${index}`} role="listitem">
               <PracticaRow

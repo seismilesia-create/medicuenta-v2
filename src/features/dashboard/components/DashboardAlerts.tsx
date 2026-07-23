@@ -70,7 +70,7 @@ export function DashboardAlerts({ alerts }: Props) {
             </div>
             <p className="text-sm font-medium text-foreground">Todo en orden</p>
             <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
-              No hay alertas pendientes. Tu facturacion esta al dia.
+              No hay alertas pendientes. Tu facturación está al día.
             </p>
           </div>
         ) : (

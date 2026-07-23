@@ -228,11 +228,11 @@ export default async function OrdenDetallePage({
           className="text-sm font-semibold uppercase tracking-wide"
           style={{ color: 'var(--color-muted-foreground)' }}
         >
-          Informacion general
+          Información general
         </h2>
         <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field
-            label="Fecha de atencion"
+            label="Fecha de atención"
             value={formatFecha(typedOrden.fecha_atencion)}
           />
           <Field
@@ -285,7 +285,7 @@ export default async function OrdenDetallePage({
               )}
               <Field
                 label="Firma paciente"
-                value={typedOrden.firma_paciente ? 'Si' : 'No'}
+                value={typedOrden.firma_paciente ? 'Sí' : 'No'}
               />
             </>
           )}
@@ -305,18 +305,18 @@ export default async function OrdenDetallePage({
           className="text-sm font-semibold uppercase tracking-wide"
           style={{ color: 'var(--color-muted-foreground)' }}
         >
-          Prestacion
+          Prestación
         </h2>
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {typedOrden.codigo_practica && (
             <Field
-              label="Codigo practica"
+              label="Código práctica"
               value={typedOrden.codigo_practica}
             />
           )}
           {typedOrden.nombre_practica && (
             <Field
-              label="Nombre practica"
+              label="Nombre práctica"
               value={typedOrden.nombre_practica}
             />
           )}

@@ -48,7 +48,7 @@ export default async function ReportesPage({
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Reportes</h1>
-              <p className="text-sm text-muted-foreground">Analisis de facturacion, cobros, debitos y plus</p>
+              <p className="text-sm text-muted-foreground">Análisis de facturación, cobros, débitos y plus</p>
             </div>
           </div>
         </div>

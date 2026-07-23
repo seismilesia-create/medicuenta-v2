@@ -63,7 +63,7 @@ export default async function PerfilPage() {
           Mi perfil
         </h1>
         <p className="mt-1.5 text-base" style={{ color: 'var(--color-foreground-secondary)' }}>
-          Administra tu informacion personal y configuracion
+          Administra tu información personal y configuración
         </p>
       </div>
 

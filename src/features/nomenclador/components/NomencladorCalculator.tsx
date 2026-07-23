@@ -28,7 +28,7 @@ export function NomencladorCalculator() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
               <Calculator className="h-4 w-4 text-violet-500" />
             </div>
-            <h3 className="text-sm font-semibold text-foreground">Calculadora de practicas</h3>
+            <h3 className="text-sm font-semibold text-foreground">Calculadora de prácticas</h3>
           </div>
 
           <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -38,9 +38,9 @@ export function NomencladorCalculator() {
                 <BookOpen className="h-8 w-8 text-violet-500" strokeWidth={1.5} />
               </div>
             </div>
-            <p className="text-sm font-medium text-foreground mb-2">Agrega practicas desde el buscador</p>
+            <p className="text-sm font-medium text-foreground mb-2">Agrega prácticas desde el buscador</p>
             <div className="text-xs text-muted-foreground space-y-0.5">
-              <p>Primera practica: 100% honorarios + 100% gastos</p>
+              <p>Primera práctica: 100% honorarios + 100% gastos</p>
               <p>Siguientes: 50% honorarios + 100% gastos</p>
             </div>
           </div>
@@ -59,7 +59,7 @@ export function NomencladorCalculator() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
               <Calculator className="h-4 w-4 text-violet-500" />
             </div>
-            <h3 className="text-sm font-semibold text-foreground">Calculadora de practicas</h3>
+            <h3 className="text-sm font-semibold text-foreground">Calculadora de prácticas</h3>
           </div>
           <button
             onClick={clearItems}
@@ -74,7 +74,7 @@ export function NomencladorCalculator() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-3 px-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Codigo</th>
+                <th className="text-left py-3 px-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Código</th>
                 <th className="text-left py-3 px-3 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden md:table-cell">Detalle</th>
                 <th className="text-right py-3 px-3 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden lg:table-cell">Honorarios</th>
                 <th className="text-center py-3 px-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">%</th>
@@ -144,7 +144,7 @@ export function NomencladorCalculator() {
         <div className="mt-4 flex items-start gap-2 text-xs text-muted-foreground p-3 rounded-xl bg-muted/30">
           <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-violet-500" />
           <p>
-            Regla OSEP: la practica de mayor valor cobra 100% de honorarios. Las demas cobran 50%.
+            Regla OSEP: la práctica de mayor valor cobra 100% de honorarios. Las demás cobran 50%.
             Gastos se cobran al 100% en todas. Se auto-ordena por valor.
           </p>
         </div>

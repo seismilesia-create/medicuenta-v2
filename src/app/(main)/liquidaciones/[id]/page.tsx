@@ -107,7 +107,7 @@ export default async function LiquidacionDetallePage({
       {/* Informacion general */}
       <section className="rounded-xl p-5 md:p-6 space-y-4" style={{ backgroundColor: 'var(--color-surface)' }} aria-labelledby="section-general">
         <h2 id="section-general" className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted-foreground)' }}>
-          Informacion general
+          Información general
         </h2>
         <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field label="Periodo inicio" value={formatFecha(typed.periodo_inicio)} />

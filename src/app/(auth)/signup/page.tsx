@@ -12,7 +12,7 @@ export default function SignupPage() {
 
       <div className="text-center lg:text-left">
         <h1 className="text-display-xs text-foreground">Crea tu cuenta</h1>
-        <p className="mt-2 text-foreground-secondary">Comienza a controlar tu facturacion medica</p>
+        <p className="mt-2 text-foreground-secondary">Comienza a controlar tu facturación médica</p>
       </div>
 
       <SignupForm />

@@ -462,7 +462,7 @@ export function NuevaOrdenForm() {
         {/* Tipo de atencion */}
         <div>
           <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-foreground)' }}>
-            Tipo de atencion
+            Tipo de atención
           </label>
           <div className="flex gap-3">
             <button
@@ -524,7 +524,7 @@ export function NuevaOrdenForm() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
-              Fecha de atencion (realización) *
+              Fecha de atención (realización) *
             </label>
             <input
               name="fecha_atencion"
@@ -736,10 +736,10 @@ export function NuevaOrdenForm() {
         {/* ===== Campos Particular ===== */}
         {tipo === 'particular' && (
           <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-secondary)' }}>Prestacion Particular</h3>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-secondary)' }}>Prestación Particular</h3>
             <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Descripcion de la prestacion *</label>
-              <input name="nombre_practica" type="text" required placeholder="Consulta, cirugia menor, etc." className={inputBase} style={inputStyle} />
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Descripción de la prestación *</label>
+              <input name="nombre_practica" type="text" required placeholder="Consulta, cirugía menor, etc." className={inputBase} style={inputStyle} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Monto cobrado *</label>

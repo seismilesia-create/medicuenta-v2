@@ -19,7 +19,7 @@ export function ThemeToggle() {
     else setTheme('dark')
   }
 
-  const label = theme === 'dark' ? 'Noche' : theme === 'light' ? 'Dia' : 'Auto'
+  const label = theme === 'dark' ? 'Noche' : theme === 'light' ? 'Día' : 'Auto'
 
   return (
     <button
@@ -31,7 +31,7 @@ export function ThemeToggle() {
       }}
       onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-sidebar-hover)' }}
       onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-      title={theme === 'dark' ? 'Modo Noche' : theme === 'light' ? 'Modo Dia' : 'Automatico'}
+      title={theme === 'dark' ? 'Modo Noche' : theme === 'light' ? 'Modo Día' : 'Automático'}
     >
       <span className="w-5 h-5 flex-shrink-0">
         {theme === 'dark' ? (

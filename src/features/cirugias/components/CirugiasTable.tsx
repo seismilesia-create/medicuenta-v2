@@ -122,7 +122,7 @@ export function CirugiasTable() {
     if (selectedBorradores.length === 0) return
 
     const confirmed = window.confirm(
-      `Marcar ${selectedBorradores.length} ${selectedBorradores.length === 1 ? 'cirugia' : 'cirugias'} como presentada${selectedBorradores.length === 1 ? '' : 's'}?`,
+      `Marcar ${selectedBorradores.length} ${selectedBorradores.length === 1 ? 'cirugía' : 'cirugías'} como presentada${selectedBorradores.length === 1 ? '' : 's'}?`,
     )
     if (!confirmed) return
 
@@ -140,7 +140,7 @@ export function CirugiasTable() {
 
       setBatchResult({
         type: 'success',
-        message: `${selectedBorradores.length} ${selectedBorradores.length === 1 ? 'cirugia marcada' : 'cirugias marcadas'} como presentada${selectedBorradores.length === 1 ? '' : 's'}`,
+        message: `${selectedBorradores.length} ${selectedBorradores.length === 1 ? 'cirugía marcada' : 'cirugías marcadas'} como presentada${selectedBorradores.length === 1 ? '' : 's'}`,
       })
       setSelected(new Set())
       fetchCirugias(filters)
@@ -190,9 +190,9 @@ export function CirugiasTable() {
                 <Scissors className="h-6 w-6 text-pink-500" strokeWidth={1.5} />
               </div>
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Cirugias</h1>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Cirugías</h1>
                 <p className="text-sm text-muted-foreground">
-                  {cirugias.length} {cirugias.length === 1 ? 'cirugia registrada' : 'cirugias registradas'}
+                  {cirugias.length} {cirugias.length === 1 ? 'cirugía registrada' : 'cirugías registradas'}
                 </p>
               </div>
             </div>
@@ -211,7 +211,7 @@ export function CirugiasTable() {
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all"
               >
                 <Plus className="h-4 w-4" strokeWidth={2} />
-                Nueva Cirugia
+                Nueva Cirugía
               </Link>
             </div>
           </div>
@@ -262,7 +262,7 @@ export function CirugiasTable() {
                   <Heart className="h-10 w-10 text-pink-500" strokeWidth={1.5} />
                 </div>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">No hay cirugias registradas</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">No hay cirugías registradas</h3>
               <p className="text-sm text-muted-foreground mb-8 max-w-md">
                 Registra tu primera cirugia para comenzar el seguimiento de procedimientos quirurgicos
               </p>
@@ -298,7 +298,7 @@ export function CirugiasTable() {
                     <th className="text-left px-3 md:px-5 py-4 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden lg:table-cell">OS</th>
                     <th className="text-left px-3 md:px-5 py-4 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden xl:table-cell">Agente</th>
                     <th className="text-left px-3 md:px-5 py-4 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden xl:table-cell">Institucion</th>
-                    <th className="text-left px-3 md:px-5 py-4 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden lg:table-cell">Practica</th>
+                    <th className="text-left px-3 md:px-5 py-4 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden lg:table-cell">Práctica</th>
                     <th className="text-right px-3 md:px-5 py-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Total Calc.</th>
                     <th className="text-left px-3 md:px-5 py-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Estado</th>
                   </tr>

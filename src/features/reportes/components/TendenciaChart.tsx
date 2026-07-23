@@ -30,13 +30,13 @@ export function TendenciaChart({ data }: Props) {
             </div>
             <div>
               <h3 className="text-sm font-semibold text-foreground">Tendencia mensual</h3>
-              <p className="text-xs text-muted-foreground">Ultimos 6 meses</p>
+              <p className="text-xs text-muted-foreground">Últimos 6 meses</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <LegendDot color={COLORS.facturado} label="Facturado" />
             <LegendDot color={COLORS.cobrado} label="Cobrado" />
-            <LegendDot color={COLORS.debitos} label="Debitos" />
+            <LegendDot color={COLORS.debitos} label="Débitos" />
           </div>
         </div>
 
@@ -93,7 +93,7 @@ function EmptyChartState() {
         </div>
       </div>
       <p className="text-sm font-medium text-foreground">Sin datos suficientes</p>
-      <p className="text-xs text-muted-foreground mt-1 max-w-[260px]">Carga ordenes para visualizar las tendencias del periodo</p>
+      <p className="text-xs text-muted-foreground mt-1 max-w-[260px]">Carga órdenes para visualizar las tendencias del período</p>
     </div>
   )
 }

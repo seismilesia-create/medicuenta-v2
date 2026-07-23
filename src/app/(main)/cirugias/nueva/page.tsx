@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { CirugiaVozCard } from './CirugiaVozCard'
 
-export const metadata = { title: 'Nueva Cirugia | MediCuenta' }
+export const metadata = { title: 'Nueva Cirugía | MediCuenta' }
 
 export default function NuevaCirugiaPage() {
   return (
@@ -13,7 +13,7 @@ export default function NuevaCirugiaPage() {
           className="inline-flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
           style={{ color: 'var(--color-muted-foreground)' }}
         >
-          &larr; Volver a Cirugias
+          &larr; Volver a Cirugías
         </Link>
       </div>
 
@@ -23,10 +23,10 @@ export default function NuevaCirugiaPage() {
           className="text-2xl md:text-3xl font-semibold tracking-tight"
           style={{ color: 'var(--color-foreground)' }}
         >
-          Nueva cirugia
+          Nueva cirugía
         </h1>
         <p className="mt-1.5 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-          Las cirugias (fojas quirurgicas) se registran dictandoselas al asistente.
+          Las cirugías (fojas quirúrgicas) se registran dictándoselas al asistente.
         </p>
       </div>
 

@@ -16,7 +16,7 @@ export function DeleteCirugiaButton({ cirugiaId }: { cirugiaId: string }) {
 
   async function handleDelete() {
     const confirmed = window.confirm(
-      '¿Estas seguro de que deseas eliminar esta cirugia? Esta accion no se puede deshacer.'
+      '¿Estás seguro de que deseas eliminar esta cirugía? Esta acción no se puede deshacer.'
     )
     if (!confirmed) return
 

@@ -239,7 +239,7 @@ export function EditarCirugiaForm({ cirugia }: Props) {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Practica seleccionada</p>
+                <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Práctica seleccionada</p>
                 <p className="text-sm font-mono" style={{ color: 'var(--color-foreground)' }}>
                   {prestacion.codigo} - {prestacion.detalle}
                 </p>

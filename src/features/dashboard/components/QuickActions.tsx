@@ -23,8 +23,8 @@ interface Props {
 
 const quickActions: QuickActionItem[] = [
   { label: 'Nueva orden', icon: FileText, href: '/ordenes/nueva', color: 'primary' },
-  { label: 'Nueva liquidacion', icon: Receipt, href: '/liquidaciones/nueva', color: 'sky' },
-  { label: 'Nuevo debito', icon: AlertTriangle, href: '/debitos/nuevo', color: 'amber' },
+  { label: 'Nueva liquidación', icon: Receipt, href: '/liquidaciones/nueva', color: 'sky' },
+  { label: 'Nuevo débito', icon: AlertTriangle, href: '/debitos/nuevo', color: 'amber' },
 ]
 
 const colorVariants: Record<QuickActionItem['color'], { bg: string; text: string; hover: string }> = {
@@ -44,7 +44,7 @@ export function QuickActions({ ordenesCount }: Props) {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
             <Zap className="h-4 w-4 text-primary" />
           </div>
-          <h3 className="text-sm font-semibold text-foreground">Acciones rapidas</h3>
+          <h3 className="text-sm font-semibold text-foreground">Acciones rápidas</h3>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -76,7 +76,7 @@ export function QuickActions({ ordenesCount }: Props) {
             href="/ordenes"
             className="group flex items-center justify-between w-full rounded-xl px-4 py-3 text-sm font-medium text-muted-foreground transition-all duration-300 hover:bg-accent hover:text-foreground"
           >
-            <span>Ver todas las ordenes ({ordenesCount})</span>
+            <span>Ver todas las órdenes ({ordenesCount})</span>
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
         </div>

@@ -226,7 +226,7 @@ export function EditarOrdenForm({ orden }: Props) {
 
       {/* Tipo de atencion */}
       <div>
-        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-foreground)' }}>Tipo de atencion</label>
+        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-foreground)' }}>Tipo de atención</label>
         <div className="flex gap-3">
           <button type="button" onClick={() => setTipo('obra_social')} className="flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all"
             style={tipo === 'obra_social'
@@ -254,7 +254,7 @@ export function EditarOrdenForm({ orden }: Props) {
       {/* Paciente + fecha */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Campo name="nombre_paciente" label="Nombre del paciente *" defaultValue={orden.nombre_paciente} placeholder="Juan Perez" />
-        <Campo name="fecha_atencion" label="Fecha de atencion (realización) *" type="date" defaultValue={orden.fecha_atencion} />
+        <Campo name="fecha_atencion" label="Fecha de atención (realización) *" type="date" defaultValue={orden.fecha_atencion} />
       </div>
 
       {tipo === 'obra_social' && (
@@ -404,8 +404,8 @@ export function EditarOrdenForm({ orden }: Props) {
 
       {tipo === 'particular' && (
         <section className="space-y-4 p-6 rounded-xl" style={sectionStyle}>
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--color-secondary)' }}>Prestacion Particular</h3>
-          <Campo name="nombre_practica" label="Descripcion de la prestacion *" defaultValue={orden.nombre_practica ?? ''} placeholder="Consulta, cirugia menor, etc." />
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--color-secondary)' }}>Prestación Particular</h3>
+          <Campo name="nombre_practica" label="Descripción de la prestación *" defaultValue={orden.nombre_practica ?? ''} placeholder="Consulta, cirugía menor, etc." />
           <Campo name="monto_particular" label="Monto cobrado *" type="number" min="0" step="0.01" mono placeholder="0.00" defaultValue={orden.monto_particular} />
         </section>
       )}

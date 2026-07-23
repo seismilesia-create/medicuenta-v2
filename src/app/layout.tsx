@@ -4,8 +4,8 @@ import PWARegister from '@/shared/components/pwa-register'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'MediCuenta | Facturacion Medica Inteligente',
-  description: 'Sistema de facturacion y liquidacion para medicos del Circulo Medico de Catamarca.',
+  title: 'MediCuenta | Facturación Médica Inteligente',
+  description: 'Sistema de facturación y liquidación para médicos del Círculo Médico de Catamarca.',
   applicationName: 'MediCuenta',
   manifest: '/manifest.json',
   appleWebApp: {
@@ -17,8 +17,8 @@ export const metadata: Metadata = {
   // El apple-touch-icon lo detecta iOS solo en `/apple-touch-icon.png`. NO definir
   // `icons.icon` acá: taparía el favicon de marca en la pestaña.
   openGraph: {
-    title: 'MediCuenta | Facturacion Medica Inteligente',
-    description: 'Control total de ordenes, liquidaciones y debitos para profesionales de la salud.',
+    title: 'MediCuenta | Facturación Médica Inteligente',
+    description: 'Control total de órdenes, liquidaciones y débitos para profesionales de la salud.',
     locale: 'es_AR',
     siteName: 'MediCuenta',
     type: 'website',

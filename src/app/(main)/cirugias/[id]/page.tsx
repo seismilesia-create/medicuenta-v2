@@ -9,7 +9,7 @@ import { DeleteCirugiaButton, EstadoSelector } from './_components'
 // Metadata
 // ---------------------------------------------------------------------------
 
-export const metadata = { title: 'Detalle Cirugia | MediCuenta' }
+export const metadata = { title: 'Detalle Cirugía | MediCuenta' }
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -93,14 +93,14 @@ export default async function CirugiaDetallePage({
           style={{ backgroundColor: 'var(--color-surface)' }}
         >
           <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-            No se encontro la cirugia solicitada o no tienes acceso a ella.
+            No se encontró la cirugía solicitada o no tienes acceso a ella.
           </p>
           <Link
             href="/cirugias"
             className="inline-flex items-center gap-1.5 text-sm font-medium transition-opacity hover:opacity-70"
             style={{ color: 'var(--color-primary)' }}
           >
-            &larr; Volver a Cirugias
+            &larr; Volver a Cirugías
           </Link>
         </div>
       </div>
@@ -124,7 +124,7 @@ export default async function CirugiaDetallePage({
             className="inline-flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
             style={{ color: 'var(--color-muted-foreground)' }}
           >
-            &larr; Volver a Cirugias
+            &larr; Volver a Cirugías
           </Link>
           <h1
             className="text-2xl font-semibold tracking-tight"
@@ -182,7 +182,7 @@ export default async function CirugiaDetallePage({
           className="text-sm font-semibold uppercase tracking-wide"
           style={{ color: 'var(--color-muted-foreground)' }}
         >
-          Informacion general
+          Información general
         </h2>
         <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Field label="Fecha" value={formatFecha(c.fecha)} />
@@ -202,10 +202,10 @@ export default async function CirugiaDetallePage({
           className="text-sm font-semibold uppercase tracking-wide"
           style={{ color: 'var(--color-muted-foreground)' }}
         >
-          Practica principal
+          Práctica principal
         </h2>
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="Codigo" value={c.codigo_practica} />
+          <Field label="Código" value={c.codigo_practica} />
           {c.nombre_practica && <Field label="Nombre" value={c.nombre_practica} />}
         </dl>
       </section>
@@ -226,7 +226,7 @@ export default async function CirugiaDetallePage({
         <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Field label="Honorarios" value={ARS.format(Number(c.honorarios))} />
           <Field label="Gastos" value={ARS.format(Number(c.gastos))} />
-          <Field label="Total practica" value={ARS.format(Number(c.total))} />
+          <Field label="Total práctica" value={ARS.format(Number(c.total))} />
           <div>
             <dt
               className="text-sm font-medium"
@@ -301,13 +301,13 @@ export default async function CirugiaDetallePage({
             className="text-sm font-semibold uppercase tracking-wide"
             style={{ color: 'var(--color-muted-foreground)' }}
           >
-            Practicas adicionales ({practicas.length})
+            Prácticas adicionales ({practicas.length})
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <th className="text-left py-2 font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Codigo</th>
+                  <th className="text-left py-2 font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Código</th>
                   <th className="text-left py-2 font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Detalle</th>
                   <th className="text-right py-2 font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Honorarios</th>
                   <th className="text-right py-2 font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Gastos</th>

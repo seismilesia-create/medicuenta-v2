@@ -24,7 +24,7 @@ export default function NuevaOrdenPage() {
           Nueva Orden
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
-          Registra una nueva atencion medica
+          Registra una nueva atención médica
         </p>
       </div>
 
