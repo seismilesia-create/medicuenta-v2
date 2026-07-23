@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/orquestador",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/cierre-dia",
+      "schedule": "0 2 * * *"
     }
   ]
 }

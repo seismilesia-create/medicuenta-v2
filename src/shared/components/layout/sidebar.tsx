@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import {
   LayoutDashboard,
+  Wallet,
   FileText,
   Receipt,
   AlertTriangle,
@@ -50,10 +51,11 @@ interface NavItem {
 
 const navigation: { principal: NavItem[]; consultorio: NavItem[]; avanzado: NavItem[] } = {
   principal: [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Inicio', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Ordenes', href: '/ordenes', icon: FileText },
     { name: 'Liquidaciones', href: '/liquidaciones', icon: Receipt },
     { name: 'Debitos', href: '/debitos', icon: AlertTriangle },
+    { name: 'Cierre del día', href: '/cierre', icon: Wallet },
     { name: 'Reportes', href: '/reportes', icon: BarChart3 },
   ],
   consultorio: [
