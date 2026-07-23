@@ -52,6 +52,17 @@ export interface SyncOrdenInput {
   turnoId?: string | null
   pacienteNombre?: string | null
   registradoPor: string
+  /**
+   * Fecha de atención de la orden (YYYY-MM-DD). Los cobros en mano registrados
+   * vía la orden llevan ESA fecha como cobrado_at (mediodía AR): cargar hoy una
+   * orden de ayer no debe inflar la caja de hoy en la rendición.
+   */
+  fechaAtencion?: string
+}
+
+function cobradoAtDeAtencion(fechaAtencion?: string): string | undefined {
+  if (!fechaAtencion || !/^\d{4}-\d{2}-\d{2}$/.test(fechaAtencion)) return undefined
+  return new Date(`${fechaAtencion}T12:00:00-03:00`).toISOString()
 }
 
 /**
@@ -76,6 +87,7 @@ export async function syncCobroAlCrearOrden(db: SupabaseClient, input: SyncOrden
         turnoId: input.turnoId ?? null,
         pacienteNombre: input.pacienteNombre ?? null,
         registradoPor: input.registradoPor,
+        cobradoAt: cobradoAtDeAtencion(input.fechaAtencion),
       })
     }
   } catch (e) {
@@ -105,6 +117,7 @@ export async function syncCobroAlEditarOrden(db: SupabaseClient, input: SyncOrde
           turnoId: input.turnoId ?? null,
           pacienteNombre: input.pacienteNombre ?? null,
           registradoPor: input.registradoPor,
+          cobradoAt: cobradoAtDeAtencion(input.fechaAtencion),
         })
         break
       case 'actualizar_monto':

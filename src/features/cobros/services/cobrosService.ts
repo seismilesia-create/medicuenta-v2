@@ -22,6 +22,8 @@ export interface CrearCobroInput {
   pacienteNombre?: string | null
   pacienteDni?: string | null
   registradoPor?: string | null
+  /** ISO. Solo para estado 'cobrado': cuándo entró la plata (default: ahora). */
+  cobradoAt?: string
 }
 
 export async function crearCobro(db: SupabaseClient, input: CrearCobroInput): Promise<Cobro | null> {
@@ -39,7 +41,7 @@ export async function crearCobro(db: SupabaseClient, input: CrearCobroInput): Pr
       paciente_nombre: input.pacienteNombre ?? null,
       paciente_dni: input.pacienteDni ?? null,
       registrado_por: input.registradoPor ?? null,
-      cobrado_at: input.estado === 'cobrado' ? new Date().toISOString() : null,
+      cobrado_at: input.estado === 'cobrado' ? (input.cobradoAt ?? new Date().toISOString()) : null,
     })
     .select(COLS)
     .single()

@@ -28,6 +28,7 @@ function syncInputDeOrden(
     turnoId: data.turno_id ?? null,
     pacienteNombre: data.nombre_paciente,
     registradoPor: args.medicoId,
+    fechaAtencion: data.fecha_atencion,
   }
 }
 

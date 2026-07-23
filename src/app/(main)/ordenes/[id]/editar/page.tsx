@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { EditarOrdenForm } from '@/features/ordenes/components/EditarOrdenForm'
 import type { Orden } from '@/features/ordenes/types/ordenes'
+import { getCobroVivoDeOrden } from '@/features/cobros/services/cobrosService'
 
 export const metadata = {
   title: 'Editar Orden | MediCuenta',
@@ -27,6 +28,9 @@ export default async function EditarOrdenPage({ params }: { params: Promise<{ id
   if (error || !orden) {
     notFound()
   }
+
+  // Cobro vivo anclado a esta orden (para la tarjeta de plus: medio y bloqueo MP).
+  const cobro = await getCobroVivoDeOrden(supabase, user.id, id)
 
   return (
     <div className="px-4 py-6 md:px-8 md:py-10 max-w-4xl mx-auto space-y-6">
@@ -68,7 +72,12 @@ export default async function EditarOrdenPage({ params }: { params: Promise<{ id
       </div>
 
       {/* Form */}
-      <EditarOrdenForm orden={orden as Orden} />
+      <EditarOrdenForm
+        orden={orden as Orden}
+        cobroVinculado={
+          cobro ? { id: cobro.id, monto: Number(cobro.monto), medio: cobro.medio, estado: cobro.estado } : null
+        }
+      />
     </div>
   )
 }
