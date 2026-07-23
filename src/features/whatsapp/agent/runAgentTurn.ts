@@ -57,6 +57,12 @@ export async function runAgentTurn(opts: {
         const out = tr.output as { ok?: boolean; mensaje?: string } | undefined
         if (out?.ok && !fallbackConEfecto) fallbackConEfecto = 'Listo, ya avisé al consultorio: te van a responder por este mismo chat. 🙏'
       }
+      // El instructivo de la orden de consulta ya viene redactado: si el modelo quedó mudo,
+      // sale igual (sin él, el paciente no se entera de que el trámite es presencial).
+      if (tr.toolName === 'solicitar_orden_consulta') {
+        const out = tr.output as { ok?: boolean; mensaje?: string } | undefined
+        if (out?.ok && out.mensaje && !fallbackConEfecto) fallbackConEfecto = out.mensaje
+      }
     }
   }
 

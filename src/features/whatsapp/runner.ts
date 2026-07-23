@@ -27,6 +27,8 @@ import { buildSystemPromptMedico } from '@/features/whatsapp/agent/systemPromptM
 import { registrarEvento } from '@/features/whatsapp/services/bitacora'
 import { registrarUsoIa } from '@/lib/ai/usoIa'
 import { secretariaDisponibleAhora } from '@/features/whatsapp/services/horarioSecretaria'
+import { getLugares } from '@/features/whatsapp/services/lugaresService'
+import { resumenLugaresLinea } from '@/lib/consultorio/lugaresAtencion'
 
 type Db = ReturnType<typeof createServiceClient>
 
@@ -259,17 +261,20 @@ async function handlePaciente(db: Db, canal: CanalResuelto, incoming: IncomingMe
   if (await isBotPausado(db, canal.medicoId, conversacionId)) return
 
   // 3) Agente con tools de cobro.
-  const { data: cfgRow } = await db
-    .from('wa_config_agente')
-    .select('saludo, tono, faqs, nombre_medico, especialidad')
-    .eq('medico_id', canal.medicoId)
-    .maybeSingle()
+  const [{ data: cfgRow }, lugares] = await Promise.all([
+    db
+      .from('wa_config_agente')
+      .select('saludo, tono, faqs, nombre_medico, especialidad')
+      .eq('medico_id', canal.medicoId)
+      .maybeSingle(),
+    getLugares(db, canal.medicoId),
+  ])
 
   const secretariaDisponible = await secretariaDisponibleAhora(db, canal.medicoId)
   const systemPrompt = buildSystemPromptPaciente({
     config: cfgRow as ConfigAgente | null,
     contactName: incoming.contactName,
-    secretariaDisponible,
+    lugares: resumenLugaresLinea(lugares) || undefined,
   })
   // Links viejos fuera del contexto del modelo: vencidos, y son fuente de imitación.
   const historial = (await loadHistorial(db, canal.medicoId, conversacionId, 12)).map((m) => ({

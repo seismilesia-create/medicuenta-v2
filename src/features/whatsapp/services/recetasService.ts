@@ -303,6 +303,43 @@ export async function resumenRecetas(db: SupabaseClient, medicoId: string): Prom
 }
 
 /**
+ * Ata la receta al WhatsApp que la va a recibir. La vía de orden de consulta no pasa por
+ * `vincularPago` (no hay pago), así que sin esto `paciente_telefono` queda NULL y la receta
+ * es INENTREGABLE: `entregarReceta` corta de entrada y `listarPagadasSinEntregar` (que filtra
+ * por teléfono) tampoco la encuentra al reintentar → el PDF no salía nunca.
+ *
+ * El teléfono debe venir en el canónico `54…` de `normalizeRecipient` — el mismo con el que
+ * el runner llama a `entregarPendientes`. Con el crudo `549…` de `wa_contactos` el reintento
+ * matchea 0 filas en silencio.
+ *
+ * Condicional `paciente_telefono IS NULL`: no pisa el candado anti-secuestro de `vincularPago`
+ * (si otro número ya gestiona la receta, esa gestión manda). Devuelve el teléfono que quedó
+ * asociado, para que quien libera sepa a dónde va realmente el PDF.
+ */
+export async function estamparDestinoEntrega(
+  db: SupabaseClient,
+  medicoId: string,
+  recetaId: string,
+  args: { pacienteTelefono: string; contactoId: string | null },
+): Promise<{ ok: boolean }> {
+  const { error } = await db
+    .from('recetas')
+    .update({
+      paciente_telefono: args.pacienteTelefono,
+      contacto_id: args.contactoId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('medico_id', medicoId)
+    .eq('id', recetaId)
+    .is('paciente_telefono', null)
+  if (error) {
+    console.error('[recetas] estamparDestinoEntrega:', error.message)
+    return { ok: false }
+  }
+  return { ok: true }
+}
+
+/**
  * Libera una receta por orden de consulta: registra la constancia y transiciona
  * pendiente_pago → pagada (condicional por estado, anti-doble). Devuelve la fila
  * lista para entregar, o null si no era liberable (no pendiente / ajena).

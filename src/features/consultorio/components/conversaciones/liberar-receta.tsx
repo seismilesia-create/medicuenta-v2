@@ -2,10 +2,19 @@
 
 import { useState } from 'react'
 import { getRecetasPendientesConversacion, liberarReceta } from '@/actions/consultorio-recetas'
+import { nacionalDeWhatsappAr, normalizarWhatsappAr } from '@/lib/whatsapp/numeroAr'
 
 type Pendiente = { id: string; paciente_nombre: string; nro_receta: string | null; monto: number | null; created_at: string }
 
-export function LiberarRecetaButton({ conversacionId }: { conversacionId: string }) {
+interface Props {
+  conversacionId: string
+  contactoNombre: string | null
+  contactoTelefono: string
+  /** Ventana de 24 h de Meta. Cerrada = el PDF no sale ahora, sale cuando el paciente escriba. */
+  ventanaAbierta: boolean
+}
+
+export function LiberarRecetaButton({ conversacionId, contactoNombre, contactoTelefono, ventanaAbierta }: Props) {
   const [abierto, setAbierto] = useState(false)
   const [dni, setDni] = useState('')
   const [buscado, setBuscado] = useState(false)
@@ -14,6 +23,8 @@ export function LiberarRecetaButton({ conversacionId }: { conversacionId: string
   const [nroOrden, setNroOrden] = useState('')
   const [estado, setEstado] = useState<'idle' | 'cargando' | 'guardando'>('idle')
   const [msg, setMsg] = useState<string | null>(null)
+
+  const destino = `${contactoNombre ? `${contactoNombre} · ` : ''}+54 ${nacionalDeWhatsappAr(contactoTelefono)}`
 
   async function buscar() {
     if (dni.replace(/\D/g, '').length < 7) { setMsg('Ingresá el DNI del paciente (mínimo 7 dígitos).'); return }
@@ -28,10 +39,21 @@ export function LiberarRecetaButton({ conversacionId }: { conversacionId: string
   async function confirmar() {
     if (!sel || !nroOrden.trim()) { setMsg('Elegí la receta y escribí el N° de orden.'); return }
     setEstado('guardando'); setMsg(null)
-    const res = await liberarReceta({ recetaId: sel, nroOrden: nroOrden.trim() })
+    const res = await liberarReceta({ conversacionId, recetaId: sel, nroOrden: nroOrden.trim() })
     setEstado('idle')
     if ('error' in res) { setMsg(res.error ?? 'Ocurrió un error al liberar la receta.'); return }
-    setMsg('✅ Receta liberada — el bot ya se la envió al paciente.')
+
+    // La receta pudo quedar atada a otro WhatsApp de antes (candado anti-secuestro): si el PDF
+    // no va al número de esta conversación, la secretaria tiene que saberlo.
+    const otroNumero =
+      !!res.telefonoDestino && normalizarWhatsappAr(res.telefonoDestino) !== normalizarWhatsappAr(contactoTelefono)
+    if (otroNumero) {
+      setMsg('⚠️ Esta receta ya se estaba gestionando desde otro WhatsApp: el PDF va a ese número, no al de esta conversación.')
+    } else if (res.entregada) {
+      setMsg('✅ Receta liberada y enviada al paciente por WhatsApp.')
+    } else {
+      setMsg('✅ Receta liberada. El PDF todavía no salió (pasaron más de 24 h del último mensaje del paciente): decile que le escriba cualquier cosa al asistente y la recibe al instante.')
+    }
     setPendientes((p) => p.filter((x) => x.id !== sel)); setSel(''); setNroOrden('')
   }
 
@@ -50,6 +72,10 @@ export function LiberarRecetaButton({ conversacionId }: { conversacionId: string
 
   return (
     <div className="rounded-lg border border-border bg-card p-3 space-y-3 text-sm">
+      <p className="text-xs text-muted-foreground">
+        El PDF se envía al WhatsApp de esta conversación: <span className="font-medium text-foreground">{destino}</span>
+      </p>
+
       <div className="flex gap-2">
         <input value={dni} onChange={(e) => setDni(e.target.value)} inputMode="numeric" placeholder="DNI del paciente"
           onKeyDown={(e) => { if (e.key === 'Enter') buscar() }}
@@ -77,6 +103,11 @@ export function LiberarRecetaButton({ conversacionId }: { conversacionId: string
             </ul>
             <input value={nroOrden} onChange={(e) => setNroOrden(e.target.value)} placeholder="N° de orden de consulta"
               className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground" />
+            {!ventanaAbierta && (
+              <p className="text-xs text-blue-500">
+                ⏳ La ventana de 24 h está cerrada: al liberar, la receta va a salir sola apenas el paciente vuelva a escribir.
+              </p>
+            )}
             <button type="button" onClick={confirmar} disabled={estado === 'guardando'}
               className="text-sm px-3 py-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-50">
               {estado === 'guardando' ? 'Liberando…' : 'Liberar y enviar'}

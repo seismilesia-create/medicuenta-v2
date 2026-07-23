@@ -141,7 +141,12 @@ export function HiloPanel({ medicoId, conversacionId, onChange, onBack }: { medi
               </>
             )}
           </button>
-          <LiberarRecetaButton conversacionId={conversacionId} />
+          <LiberarRecetaButton
+            conversacionId={conversacionId}
+            contactoNombre={hilo.contactoNombre}
+            contactoTelefono={hilo.contactoTelefono}
+            ventanaAbierta={ventanaAbierta}
+          />
         </div>
       </div>
 

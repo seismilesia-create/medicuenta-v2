@@ -170,6 +170,58 @@ export async function quitarDiaParticular(id: string) {
   return { ok: true as const }
 }
 
+/** Un lugar físico de atención. Los opcionales vacíos se guardan como null (el formateador
+ *  del bot los omite en vez de imprimir "consultorio  ,  "). */
+const lugarSchema = z.object({
+  nombre: z.string().trim().min(1, 'Poné el nombre del lugar').max(120),
+  direccion: z.string().trim().max(120).nullish().transform((v) => v || null),
+  consultorio: z.string().trim().max(120).nullish().transform((v) => v || null),
+  piso: z.string().trim().max(120).nullish().transform((v) => v || null),
+  dias: z
+    .array(z.number().int().min(0).max(6))
+    .max(7)
+    .transform((d) => [...new Set(d)].sort()),
+})
+export type LugarInput = z.input<typeof lugarSchema>
+
+export async function agregarLugarAtencion(input: LugarInput) {
+  const c = await ctxOperativo()
+  if ('error' in c) return c
+  const { medicoId } = c
+  const parsed = lugarSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  const supabase = createServiceClient()
+  const { error } = await supabase.from('wa_lugares_atencion').insert({ medico_id: medicoId, ...parsed.data })
+  if (error) return { error: error.message }
+  return { ok: true as const }
+}
+
+export async function editarLugarAtencion(id: string, input: LugarInput) {
+  const c = await ctxOperativo()
+  if ('error' in c) return c
+  const { medicoId } = c
+  const parsed = lugarSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  const supabase = createServiceClient()
+  const { error } = await supabase
+    .from('wa_lugares_atencion')
+    .update({ ...parsed.data, updated_at: new Date().toISOString() })
+    .eq('medico_id', medicoId)
+    .eq('id', id)
+  if (error) return { error: error.message }
+  return { ok: true as const }
+}
+
+export async function quitarLugarAtencion(id: string) {
+  const c = await ctxOperativo()
+  if ('error' in c) return c
+  const { medicoId } = c
+  const supabase = createServiceClient()
+  const { error } = await supabase.from('wa_lugares_atencion').delete().eq('medico_id', medicoId).eq('id', id)
+  if (error) return { error: error.message }
+  return { ok: true as const }
+}
+
 /** Cambia el número con el que el bot reconoce al médico (cambió de celular / lo perdió).
  *  Médico-only y sobre SÍ MISMO (ctxDueño → su propio userId): la secretaria no lo toca, y
  *  no se puede editar el de otro consultorio.
@@ -305,6 +357,7 @@ export interface ConfigVista {
   excepciones: ConfigConsultorio['excepciones']
   osSuspendidas: ConfigConsultorio['osSuspendidas']
   diasParticulares: ConfigConsultorio['diasParticulares']
+  lugares: ConfigConsultorio['lugares']
   precioReceta: number | null
   montoPlus: number | null
   agente: Omit<NonNullable<ConfigConsultorio['agente']>, 'precio_receta_default' | 'monto_plus_default'> | null
@@ -331,6 +384,7 @@ export async function cargarConfigConsultorio(): Promise<ConfigVista | { error: 
     excepciones: cfg.excepciones,
     osSuspendidas: cfg.osSuspendidas,
     diasParticulares: cfg.diasParticulares,
+    lugares: cfg.lugares,
     precioReceta: cfg.agente?.precio_receta_default ?? null,
     montoPlus: cfg.agente?.monto_plus_default ?? null,
     agente: ctx.esDueño ? personalidad : null,

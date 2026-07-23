@@ -43,7 +43,7 @@ export async function getServiciosActivos(db: SupabaseClient, medicoId: string):
   }))
 }
 
-async function getHorarios(
+export async function getHorarios(
   db: SupabaseClient,
   medicoId: string,
 ): Promise<{ weekday: number; open_time: string; close_time: string }[]> {
