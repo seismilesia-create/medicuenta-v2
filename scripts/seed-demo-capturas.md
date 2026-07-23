@@ -43,6 +43,64 @@ fueron generados para las capturas.
 - **Obras sociales**: usar el nombre exacto del catálogo (`O.S.E.P.`, `PAMI`, …) en órdenes y
   cirugías, o el gráfico de facturación por OS abre dos barras para la misma obra social.
 
+## ⚠️ Refrescar antes de sacar capturas (importante)
+
+Dos cosas dependen del reloj y se "vencen" con el paso de los días:
+
+1. **Los colores de la bandeja**: una conversación es verde solo si el paciente escribió hace
+   menos de 24 h. Pasado ese plazo se vuelve azul y la captura pierde el verde.
+2. **La sala de espera**: solo se muestra en el día en curso.
+
+Correr esto **el mismo día** en que se sacan las capturas deja todo fresco:
+
+```sql
+-- 1) Rejuvenece la bandeja: rojas, verdes y azules quedan bien respecto de "ahora"
+update wa_conversaciones c
+set last_paciente_at = now() - (v.hace_min || ' minutes')::interval,
+    last_message_at  = now() - (greatest(v.hace_min - 2, 0) || ' minutes')::interval
+from (values
+  ('3834501122',65),('3834506677',180),('3834517788',35),      -- 🔴 alerta
+  ('3834503344',12),('3834504455',95),('3834505566',240),
+  ('3834507788',420),('3834510011',610),('3834515566',150),    -- 🟢 vivas
+  ('3834508899',4320),('3834509900',2880),('3834511122',5760),
+  ('3834512233',1800),('3834513344',7200)                      -- 🔵 terminadas
+) as v(nac, hace_min)
+join wa_contactos ct on ct.medico_id = '1bee7847-e33a-4aca-af5f-1d43383af540'
+                    and ct.telefono = '549' || v.nac
+where c.contacto_id = ct.id and c.medico_id = '1bee7847-e33a-4aca-af5f-1d43383af540';
+
+-- 2) Los mensajes acompañan el nuevo horario de su conversación
+update wa_mensajes m
+set created_at = c.last_message_at - (x.desde_el_final * interval '3 minutes')
+from wa_conversaciones c,
+     lateral (select row_number() over (partition by m2.conversacion_id order by m2.created_at desc) - 1 as desde_el_final
+              from wa_mensajes m2 where m2.id = m.id) x
+where m.conversacion_id = c.id and c.medico_id = '1bee7847-e33a-4aca-af5f-1d43383af540';
+
+-- 3) Sala de espera del día: marca 3 pacientes como "en sala" hace un rato
+update wa_turnos set checkin_at = now() - interval '12 minutes'
+where medico_id = '1bee7847-e33a-4aca-af5f-1d43383af540'
+  and id in (select id from wa_turnos
+             where medico_id = '1bee7847-e33a-4aca-af5f-1d43383af540'
+               and (starts_at at time zone 'America/Argentina/Catamarca')::date = current_date
+               and estado in ('reservado','confirmado','completado')
+             order by starts_at limit 3);
+```
+
+**Para mover la semana de turnos a otra fecha** (si las capturas se hacen más adelante):
+
+```sql
+-- Corre TODA la agenda N días hacia adelante (cambiar el 7)
+update wa_turnos set starts_at = starts_at + interval '7 days', ends_at = ends_at + interval '7 days',
+                     checkin_at = checkin_at + interval '7 days'
+where medico_id = '1bee7847-e33a-4aca-af5f-1d43383af540';
+update wa_sobreturnos set fecha = fecha + 7, checkin_at = checkin_at + interval '7 days'
+where medico_id = '1bee7847-e33a-4aca-af5f-1d43383af540';
+```
+
+Ojo: mover los turnos **no** mueve las órdenes ni los cierres, así que la rendición diaria
+quedaría desalineada de la agenda. Si se necesita todo corrido, avisar y se rehace el seed.
+
 ## Cómo borrar todo el seed
 
 Borra los datos de demo del médico y deja la cuenta como estaba. **Revisar antes de correr:**
