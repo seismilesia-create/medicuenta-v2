@@ -20,7 +20,7 @@ type CookieToSet = {
  */
 const RUTAS_APP = [
   '/dashboard', '/ordenes', '/liquidaciones', '/debitos', '/cirugias', '/nomenclador',
-  '/reportes', '/perfil', '/asistente', '/agenda', '/conversaciones', '/pacientes', '/consultorio',
+  '/reportes', '/cierre', '/perfil', '/asistente', '/agenda', '/conversaciones', '/pacientes', '/consultorio',
 ]
 
 function esRutaApp(pathname: string): boolean {
@@ -80,7 +80,7 @@ export async function updateSession(request: NextRequest) {
   if (esSecretaria) {
     const soloMedico = [
       '/dashboard', '/ordenes', '/liquidaciones', '/debitos', '/cirugias',
-      '/nomenclador', '/reportes', '/consultorio/config', '/asistente',
+      '/nomenclador', '/reportes', '/cierre', '/consultorio/config', '/asistente',
     ]
     const esRutaSoloMedico = pathname === '/' || soloMedico.some((p) => pathname.startsWith(p))
     if (esRutaSoloMedico) {

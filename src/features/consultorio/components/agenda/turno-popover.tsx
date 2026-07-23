@@ -3,7 +3,9 @@
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
 import { cancelarTurnoPanel, marcarAsistencia } from '@/actions/consultorio-agenda'
+import { marcarCheckin } from '@/actions/consultorio-checkin'
 import { fmtHora, fmtFechaLarga } from '@/lib/turnos/formato'
+import { arDateString } from '@/lib/turnos/slots'
 import type { TurnoItem } from './timeline-dia'
 
 const ESTADO_CHIP: Record<string, { label: string; cls: string }> = {
@@ -23,6 +25,9 @@ interface Props {
 export function TurnoPopover({ item, onClose, onAccion }: Props) {
   const t = item.turno
   const chip = ESTADO_CHIP[item.estadoEfectivo]
+  // El check-in solo tiene sentido el día del turno, sobre turnos vivos.
+  const esHoy = t.starts_at.length >= 10 && arDateString(new Date(t.starts_at).getTime(), 0) === arDateString(Date.now(), 0)
+  const vivo = item.estadoEfectivo === 'proximo' || item.estadoEfectivo === 'atendido'
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -72,7 +77,27 @@ export function TurnoPopover({ item, onClose, onAccion }: Props) {
           </p>
           {t.notas && <p>{t.notas}</p>}
           {t.origen === 'panel' && <p className="text-xs text-[var(--color-muted-foreground)]">cargado a mano</p>}
+          {t.checkin_at && (
+            <p className="text-xs font-medium text-emerald-600 flex items-center gap-2">
+              🟢 En sala desde las {fmtHora(t.checkin_at)}
+              <button
+                className="underline text-[var(--color-muted-foreground)] font-normal"
+                onClick={() => accion(() => marcarCheckin({ tipo: 'turno', id: t.id, deshacer: true }))}
+              >
+                deshacer
+              </button>
+            </p>
+          )}
         </div>
+
+        {!t.checkin_at && esHoy && vivo && (
+          <button
+            className="w-full rounded-xl bg-emerald-600 text-white py-2.5 text-sm font-semibold hover:bg-emerald-700 transition-colors"
+            onClick={() => accion(() => marcarCheckin({ tipo: 'turno', id: t.id, deshacer: false }))}
+          >
+            🚪 Llegó — marcar en sala
+          </button>
+        )}
 
         <div className="flex gap-2 pt-1">
           {item.estadoEfectivo === 'proximo' && (

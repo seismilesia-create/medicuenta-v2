@@ -13,7 +13,7 @@ describe('sanitizarReplyCobro', () => {
     const texto = 'Pagá acá: https://mercadopago.com.ar/checkout/v1/redirect?preference-id=75999db3-uuid-de-receta'
     const out = sanitizarReplyCobro(texto, [])
     expect(out).not.toContain('mercadopago')
-    expect(out).toBe('Tuve un problema para generar el link de pago. Escribime "quiero pagar mi receta" y lo intento de nuevo 🙏')
+    expect(out).toBe('Tuve un problema para generar el link de pago. Decime de nuevo qué querés pagar y lo intento otra vez 🙏')
   })
 
   it('cobro real + el modelo incluyó el link real → pasa tal cual', () => {
@@ -45,7 +45,7 @@ describe('sanitizarReplyCobro', () => {
 
   it('texto vacío con cobro real → solo el bloque determinístico', () => {
     const out = sanitizarReplyCobro('', [{ link: LINK_REAL, monto: 5000 }])
-    expect(out).toBe(`Tu receta cuesta $5.000. Pagá acá: ${LINK_REAL}\nApenas se acredite el pago te la mando por acá 📄`)
+    expect(out).toBe(`El pago es de $5.000. Pagá acá: ${LINK_REAL}\nApenas se acredite, seguimos por este chat ✓`)
   })
 })
 

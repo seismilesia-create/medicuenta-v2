@@ -44,7 +44,7 @@ export async function runAgentTurn(opts: {
   let fallbackConEfecto = ''
   for (const step of result.steps) {
     for (const tr of step.toolResults) {
-      if (tr.toolName === 'cobrar_receta') {
+      if (tr.toolName === 'cobrar_receta' || tr.toolName === 'cobrar_turno_hoy') {
         const out = tr.output as { link?: string; monto?: number } | undefined
         if (out?.link) cobros.push({ link: out.link, monto: Number(out.monto ?? 0) })
       }

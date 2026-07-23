@@ -258,6 +258,23 @@ export async function guardarAsistente(input: z.infer<typeof agenteSchema>) {
   return { ok: true as const }
 }
 
+/** Plus default que el bot cobra en el check-in ("llegué"). NULL = deriva al mostrador.
+ *  Operativa (la puede tocar la secretaria), upsert parcial como el precio de receta. */
+export async function guardarMontoPlus(monto: number | null) {
+  const c = await ctxOperativo()
+  if ('error' in c) return c
+  if (monto !== null && (!Number.isFinite(monto) || monto < 0)) return { error: 'Monto inválido' }
+  const supabase = createServiceClient()
+  const { error } = await supabase
+    .from('wa_config_agente')
+    .upsert(
+      { medico_id: c.medicoId, monto_plus_default: monto, updated_at: new Date().toISOString() },
+      { onConflict: 'medico_id' },
+    )
+  if (error) return { error: error.message }
+  return { ok: true as const }
+}
+
 /** Precio de gestión de receta (operativa: lo puede tocar la secretaria). Upsert parcial:
  *  escribe SOLO precio_receta_default, sin tocar la personalidad de la misma fila. */
 export async function guardarPrecioReceta(precio: number | null) {
@@ -289,7 +306,8 @@ export interface ConfigVista {
   osSuspendidas: ConfigConsultorio['osSuspendidas']
   diasParticulares: ConfigConsultorio['diasParticulares']
   precioReceta: number | null
-  agente: Omit<NonNullable<ConfigConsultorio['agente']>, 'precio_receta_default'> | null
+  montoPlus: number | null
+  agente: Omit<NonNullable<ConfigConsultorio['agente']>, 'precio_receta_default' | 'monto_plus_default'> | null
   conexiones: ConfigConsultorio['conexiones'] | null
   secretarias: ConfigConsultorio['secretarias'] | null
 }
@@ -302,7 +320,7 @@ export async function cargarConfigConsultorio(): Promise<ConfigVista | { error: 
   const ctx = c as { medicoId: string; userId: string; esDueño: boolean }
   const cfg = await getConfig(createServiceClient(), ctx.medicoId)
   const personalidad = cfg.agente
-    ? (({ precio_receta_default: _p, ...rest }) => rest)(cfg.agente)
+    ? (({ precio_receta_default: _p, monto_plus_default: _m, ...rest }) => rest)(cfg.agente)
     : null
   return {
     esDueño: ctx.esDueño,
@@ -314,6 +332,7 @@ export async function cargarConfigConsultorio(): Promise<ConfigVista | { error: 
     osSuspendidas: cfg.osSuspendidas,
     diasParticulares: cfg.diasParticulares,
     precioReceta: cfg.agente?.precio_receta_default ?? null,
+    montoPlus: cfg.agente?.monto_plus_default ?? null,
     agente: ctx.esDueño ? personalidad : null,
     conexiones: ctx.esDueño ? cfg.conexiones : null,
     secretarias: ctx.esDueño ? cfg.secretarias : null,

@@ -13,6 +13,8 @@ export interface TurnoDia {
   paciente_telefono: string | null
   notas: string | null
   origen: string
+  /** Check-in de recepción: cuándo llegó el paciente hoy (null = no llegó aún). */
+  checkin_at: string | null
 }
 
 export interface SlotLibre {

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MEDIOS_COBRO } from '@/features/cobros/types/cobros'
 
 // --- Enums ---
 
@@ -177,15 +178,6 @@ export interface OrdenFilters {
   busqueda?: string
 }
 
-// --- Dashboard Stats ---
-
-export interface DashboardStats {
-  facturado: number
-  cobrado: number
-  pendiente: number
-  perdido: number
-}
-
 // --- Zod Schemas ---
 
 export const ordenBaseSchema = z.object({
@@ -239,6 +231,13 @@ export const ordenBaseSchema = z.object({
   rol_medico: z.enum(ROLES_MEDICO).optional(),
   // Correlación 3C: id del turno vinculado (uuid). '' del form → undefined.
   turno_id: z.preprocess(
+    (v) => (v === '' || v == null ? undefined : v),
+    z.string().uuid().optional(),
+  ),
+  // Cobro asociado (plus / consulta particular). NO son columnas de `ordenes`:
+  // alimentan el ledger `cobros` vía src/lib/cobros/sync.ts.
+  cobro_medio: z.enum(MEDIOS_COBRO).optional(),
+  cobro_id: z.preprocess(
     (v) => (v === '' || v == null ? undefined : v),
     z.string().uuid().optional(),
   ),

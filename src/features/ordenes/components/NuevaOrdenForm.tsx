@@ -25,6 +25,8 @@ import { SugerenciaTurnoCard } from './SugerenciaTurnoCard'
 import { evaluarRiesgoOrden, FALTANTE_LABELS } from '@/lib/ordenes/riesgo-debito'
 import { OCR_ORDEN_PROMPT_VERSION, etiquetaCampoOcr } from '@/lib/ai/ocr-orden'
 import { estadoCampoOcr } from '@/lib/ordenes/estado-campo-ocr'
+import { PlusCard, type CobroVinculado } from '@/features/cobros/components/PlusCard'
+import type { EstadoCobro, MedioCobro } from '@/features/cobros/types/cobros'
 
 const inputBase = 'w-full px-4 py-3 rounded-lg text-sm'
 const inputStyle = {
@@ -199,6 +201,34 @@ export function NuevaOrdenForm() {
   // Correlación turno→orden (3C)
   const [sugerencias, setSugerencias] = useState<SugerenciaTurno[]>([])
   const [turnoAplicado, setTurnoAplicado] = useState<SugerenciaTurno | null>(null)
+  // Cobro suelto del turno (plus cobrado en el check-in): prellena la tarjeta
+  // de plus y se ancla a la orden al guardar (no se duplica).
+  const [cobroTurno, setCobroTurno] = useState<CobroVinculado | null>(null)
+
+  useEffect(() => {
+    let vivo = true
+    async function cargarCobroTurno() {
+      if (turnoAplicado?.tipo !== 'turno') {
+        setCobroTurno(null)
+        return
+      }
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('cobros')
+        .select('id, monto, medio, estado')
+        .eq('turno_id', turnoAplicado.id)
+        .in('estado', ['pendiente', 'cobrado'])
+        .is('orden_id', null)
+        .maybeSingle()
+      if (!vivo) return
+      const c = data as { id: string; monto: number; medio: MedioCobro; estado: EstadoCobro } | null
+      setCobroTurno(c ? { id: c.id, monto: Number(c.monto), medio: c.medio, estado: c.estado } : null)
+    }
+    cargarCobroTurno()
+    return () => {
+      vivo = false
+    }
+  }, [turnoAplicado])
   const [aviso15, setAviso15] = useState<ConflictoQuinceMin[] | null>(null)
 
   /** Busca turnos atendidos de un DNI para proponer fecha/horario reales. */
@@ -360,6 +390,9 @@ export function NuevaOrdenForm() {
       datos_ocr: ocr ? { version: OCR_ORDEN_PROMPT_VERSION, datos: ocr } : undefined,
       // Correlación 3C: solo los turnos (no sobreturnos) tienen FK a la agenda.
       turno_id: turnoAplicado?.tipo === 'turno' ? turnoAplicado.id : undefined,
+      // Ledger de cobros: medio elegido y cobro MP generado en la tarjeta de plus.
+      cobro_medio: str('cobro_medio') as MedioCobro | undefined,
+      cobro_id: str('cobro_id'),
     }
 
     const formData: OrdenFormData = tipo === 'obra_social'
@@ -457,6 +490,18 @@ export function NuevaOrdenForm() {
           <div className="p-3 rounded-lg text-sm bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400" style={{ border: '1px solid var(--color-error)' }}>
             {error}
           </div>
+        )}
+
+        {/* Plus (privado) — PRIMERO: el OCR nunca lo trae (no figura en el papel)
+            y al fondo del form se olvidaba. Solo obra social; en particulares el
+            monto de la prestación ES el cobro privado. */}
+        {tipo === 'obra_social' && (
+          <PlusCard
+            key={`${formKey}-${cobroTurno?.id ?? 'sin-cobro'}`}
+            cobroDelTurno={cobroTurno}
+            pacienteNombre={ocr?.paciente || undefined}
+            turnoId={turnoAplicado?.tipo === 'turno' ? turnoAplicado.id : undefined}
+          />
         )}
 
         {/* Tipo de atencion */}
@@ -746,20 +791,6 @@ export function NuevaOrdenForm() {
               <input name="monto_particular" type="number" required min="0" step="0.01" placeholder="0.00" className={`${inputBase} font-mono`} style={inputStyle} />
             </div>
           </section>
-        )}
-
-        {/* Plus (solo Obra Social) */}
-        {tipo === 'obra_social' && (
-          <div className="p-6 rounded-xl" style={{ background: 'var(--color-surface)', border: '1px dashed var(--color-border)' }}>
-            <div className="flex items-center gap-2 mb-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--color-warning)' }}>
-                <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--color-warning)' }}>Plus (privado)</h3>
-            </div>
-            <p className="text-xs mb-3" style={{ color: 'var(--color-muted-foreground)' }}>Este dato es estrictamente privado. Solo vos podes verlo.</p>
-            <input name="monto_plus" type="number" min="0" step="0.01" defaultValue="0" placeholder="0.00" className={`${inputBase} font-mono`} style={inputStyle} />
-          </div>
         )}
 
         {/* Observaciones */}

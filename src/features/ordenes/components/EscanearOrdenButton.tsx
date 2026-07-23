@@ -6,7 +6,7 @@ import type { OrdenExtraida } from '@/lib/ai/ocr-orden'
 // El tipo de la orden escaneada es el inferido del schema OCR compartido.
 export type OrdenEscaneada = OrdenExtraida
 
-async function compressImage(file: File, maxWidth = 1400, quality = 0.75): Promise<string> {
+export async function compressImage(file: File, maxWidth = 1400, quality = 0.75): Promise<string> {
   const bitmap = await createImageBitmap(file)
   const scale = Math.min(1, maxWidth / bitmap.width)
   const w = Math.round(bitmap.width * scale)

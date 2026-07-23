@@ -26,10 +26,11 @@ export interface SobreturnoRow {
   cobro: 'particular' | 'sin_cargo'
   estado: string
   notas: string | null
+  checkin_at: string | null
 }
 
 const COLS_TURNO =
-  'id, starts_at, ends_at, estado, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, paciente_telefono, notas, origen'
+  'id, starts_at, ends_at, estado, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, paciente_telefono, notas, origen, checkin_at'
 
 export interface JornadaDia {
   desdeMin: number // minutos desde medianoche AR
@@ -85,7 +86,7 @@ export async function getDia(db: SupabaseClient, medicoId: string, fecha: string
       .then(ok),
     db
       .from('wa_sobreturnos')
-      .select('id, fecha, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, cobro, estado, notas')
+      .select('id, fecha, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, cobro, estado, notas, checkin_at')
       .eq('medico_id', medicoId)
       .eq('fecha', fecha)
       .neq('estado', 'cancelado')
@@ -520,7 +521,7 @@ export async function getFicha(db: SupabaseClient, medicoId: string, pacienteId:
       .then(ok),
     db
       .from('wa_sobreturnos')
-      .select('id, fecha, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, cobro, estado, notas')
+      .select('id, fecha, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, cobro, estado, notas, checkin_at')
       .eq('medico_id', medicoId)
       .eq('paciente_dni', p.dni)
       .order('fecha', { ascending: false })
@@ -585,6 +586,7 @@ export interface ConfigConsultorio {
     saludo: string | null
     faqs: { pregunta: string; respuesta: string }[]
     precio_receta_default: number | null
+    monto_plus_default: number | null
   } | null
   // MercadoPago no es un booleano: 'reconectar' (se venció el permiso, el cobro está pausado)
   // se vería igual que "nunca conectó" y el médico no entendería por qué dejó de cobrar.
@@ -620,7 +622,7 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
     db.from('wa_os_suspendidas').select('id, nombre_os, nota, motivo').eq('medico_id', medicoId).order('nombre_os').then(ok),
     db
       .from('wa_config_agente')
-      .select('nombre_medico, especialidad, tono, saludo, faqs, precio_receta_default')
+      .select('nombre_medico, especialidad, tono, saludo, faqs, precio_receta_default, monto_plus_default')
       .eq('medico_id', medicoId)
       .maybeSingle()
       .then(ok),
@@ -642,7 +644,9 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
     db.from('wa_dias_particulares').select('id, tipo, dia_semana, fecha').eq('medico_id', medicoId).then(ok),
   ])
   const servicio = ((serviciosRes.data as { id: string; duracion_min: number }[] | null) ?? [])[0] ?? null
-  const agente = agenteRes.data as ConfigConsultorio['agente'] & { precio_receta_default: unknown } | null
+  const agente = agenteRes.data as
+    | (ConfigConsultorio['agente'] & { precio_receta_default: unknown; monto_plus_default: unknown })
+    | null
   return {
     horarios: (horariosRes.data as ConfigConsultorio['horarios'] | null) ?? [],
     duracionMin: servicio?.duracion_min ?? 30,
@@ -651,7 +655,11 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
     osSuspendidas: (osRes.data as ConfigConsultorio['osSuspendidas'] | null) ?? [],
     diasParticulares: (diasPartRes.data as ConfigConsultorio['diasParticulares'] | null) ?? [],
     agente: agente
-      ? { ...agente, precio_receta_default: agente.precio_receta_default != null ? Number(agente.precio_receta_default) : null }
+      ? {
+          ...agente,
+          precio_receta_default: agente.precio_receta_default != null ? Number(agente.precio_receta_default) : null,
+          monto_plus_default: agente.monto_plus_default != null ? Number(agente.monto_plus_default) : null,
+        }
       : null,
     conexiones: {
       whatsapp: (() => {

@@ -158,7 +158,11 @@ export function TimelineDia({
             </span>
             {!compacto && altoBloque >= 34 && (
               <span className="block truncate text-[11px] opacity-75 leading-tight">
-                {[item.turno.paciente_obra_social, item.turno.origen === 'panel' ? 'a mano' : null]
+                {[
+                  item.turno.checkin_at ? '🟢 en sala' : null,
+                  item.turno.paciente_obra_social,
+                  item.turno.origen === 'panel' ? 'a mano' : null,
+                ]
                   .filter(Boolean)
                   .join(' · ')}
               </span>

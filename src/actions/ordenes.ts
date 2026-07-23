@@ -10,6 +10,27 @@ import {
   type EstadoOrden,
 } from '@/features/ordenes/types/ordenes'
 import { evaluarCompletitud } from '@/lib/ordenes/completitud'
+import { syncCobroAlCrearOrden, syncCobroAlEditarOrden, type SyncOrdenInput } from '@/lib/cobros/sync'
+
+/** Mapea la orden validada al input del sync del ledger de cobros. */
+function syncInputDeOrden(
+  data: OrdenFormData,
+  args: { medicoId: string; ordenId: string },
+): SyncOrdenInput {
+  const esOs = data.tipo === 'obra_social'
+  return {
+    medicoId: args.medicoId,
+    ordenId: args.ordenId,
+    concepto: esOs ? 'plus' : 'consulta_particular',
+    monto: esOs ? (data.monto_plus ?? 0) : data.monto_particular,
+    medio: data.cobro_medio,
+    cobroId: data.cobro_id,
+    turnoId: data.turno_id ?? null,
+    pacienteNombre: data.nombre_paciente,
+    registradoPor: args.medicoId,
+    fechaAtencion: data.fecha_atencion,
+  }
+}
 
 export async function createOrden(formData: OrdenFormData) {
   const supabase = await createClient()
@@ -109,13 +130,18 @@ export async function createOrden(formData: OrdenFormData) {
     estado: 'borrador',
   }
 
-  const { error } = await supabase
+  const { data: creada, error } = await supabase
     .from('ordenes')
     .insert(insertData)
+    .select('id')
+    .single()
 
   if (error) {
     return { error: error.message }
   }
+
+  // Ledger de cobros (plus / particular). No-fatal: la orden ya está guardada.
+  await syncCobroAlCrearOrden(supabase, syncInputDeOrden(data, { medicoId: user.id, ordenId: creada.id }))
 
   redirect('/ordenes')
 }
@@ -230,6 +256,9 @@ export async function updateOrden(ordenId: string, formData: OrdenFormData) {
     return { error: error.message }
   }
 
+  // Ledger de cobros (plus / particular). No-fatal: la orden ya está actualizada.
+  await syncCobroAlEditarOrden(supabase, syncInputDeOrden(data, { medicoId: user.id, ordenId }))
+
   redirect(`/ordenes/${ordenId}`)
 }
 
@@ -296,6 +325,24 @@ export async function deleteOrden(ordenId: string) {
   if (ordenActual.estado !== 'borrador') {
     return { error: 'Solo se pueden eliminar órdenes en borrador. Esta orden ya fue presentada.' }
   }
+
+  // El cobro que nació de esta orden se anula con ella: si sobreviviera suelto,
+  // recargar la orden duplicaría la caja del día en silencio. Un cobro MP
+  // acreditado NO se toca (la plata es real, quede o no la orden). Dos updates
+  // separados: .or() en UPDATE rompe PostgREST (gotcha a9e3699).
+  await supabase
+    .from('cobros')
+    .update({ estado: 'anulado', updated_at: new Date().toISOString() })
+    .eq('medico_id', user.id)
+    .eq('orden_id', ordenId)
+    .eq('estado', 'pendiente')
+  await supabase
+    .from('cobros')
+    .update({ estado: 'anulado', updated_at: new Date().toISOString() })
+    .eq('medico_id', user.id)
+    .eq('orden_id', ordenId)
+    .eq('estado', 'cobrado')
+    .neq('medio', 'mercadopago')
 
   const { error } = await supabase
     .from('ordenes')

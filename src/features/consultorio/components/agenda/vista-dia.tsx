@@ -3,11 +3,18 @@
 import { CalendarOff } from 'lucide-react'
 import type { DiaAgenda } from '@/features/consultorio/services/panelService'
 import { setEstadoSobreturno, desbloquearDias } from '@/actions/consultorio-agenda'
+import { marcarCheckin, type EstadoCheckinItem } from '@/actions/consultorio-checkin'
+import { arDateString } from '@/lib/turnos/slots'
+import { fmtHora } from '@/lib/turnos/formato'
 import { TimelineDia, type TurnoItem } from './timeline-dia'
+import { SalaEspera } from './sala-espera'
 
 interface Props {
   fecha: string
   dia: DiaAgenda
+  checkins: EstadoCheckinItem[]
+  onCobrar: (item: EstadoCheckinItem) => void
+  onOrden: (item: EstadoCheckinItem) => void
   onSlotClick: (fecha: string, hora: string) => void
   onTurnoClick: (item: TurnoItem) => void
   onAccion: (fn: () => Promise<{ error?: string } | { ok: true }>) => Promise<void>
@@ -16,8 +23,10 @@ interface Props {
 }
 
 /** Timeline del día + panel de sobreturnos al costado (pedido explícito del dueño: sin horario). */
-export function VistaDia({ fecha, dia, onSlotClick, onTurnoClick, onAccion, onNuevoSobreturno, onBloquearDia }: Props) {
+export function VistaDia({ fecha, dia, checkins, onCobrar, onOrden, onSlotClick, onTurnoClick, onAccion, onNuevoSobreturno, onBloquearDia }: Props) {
   return (
+    <div className="space-y-4">
+    <SalaEspera items={checkins} onCobrar={onCobrar} onOrden={onOrden} />
     <div className="grid gap-4 lg:grid-cols-[7fr_3fr]">
       <div className="rounded-2xl border border-border p-4 space-y-3">
         {dia.bloqueado && (
@@ -74,8 +83,19 @@ export function VistaDia({ fecha, dia, onSlotClick, onTurnoClick, onAccion, onNu
               {s.cobro === 'sin_cargo' ? 'Sin cargo' : 'Particular efectivo'}
               {s.notas ? ` — ${s.notas}` : ''}
             </p>
+            {s.checkin_at && (
+              <p className="text-xs font-medium text-emerald-600">🟢 En sala desde las {fmtHora(s.checkin_at)}</p>
+            )}
             {s.estado === 'pendiente' ? (
               <div className="flex gap-3 text-xs">
+                {!s.checkin_at && fecha === arDateString(Date.now(), 0) && (
+                  <button
+                    className="underline text-emerald-600"
+                    onClick={() => onAccion(() => marcarCheckin({ tipo: 'sobreturno', id: s.id, deshacer: false }))}
+                  >
+                    🚪 llegó
+                  </button>
+                )}
                 <button className="underline" onClick={() => onAccion(() => setEstadoSobreturno(s.id, 'atendido'))}>
                   ✓ atendido
                 </button>
@@ -107,6 +127,7 @@ export function VistaDia({ fecha, dia, onSlotClick, onTurnoClick, onAccion, onNu
           </button>
         )}
       </div>
+    </div>
     </div>
   )
 }

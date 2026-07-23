@@ -12,6 +12,7 @@ import {
   quitarOsSuspendida,
   guardarAsistente,
   guardarPrecioReceta,
+  guardarMontoPlus,
   agregarDiaSemanalParticular,
   agregarFechaParticular,
   quitarDiaParticular,
@@ -145,6 +146,7 @@ export function ConfigView({ esDueño }: { esDueño: boolean }) {
   const [agenteSaving, setAgenteSaving] = useState(false)
   const [agenteOk, setAgenteOk] = useState(false)
   const [precioOk, setPrecioOk] = useState(false)
+  const [plusOk, setPlusOk] = useState(false)
   const [emailSec, setEmailSec] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [catalogoOs, setCatalogoOs] = useState<OsCatalogoItem[]>([])
@@ -296,6 +298,15 @@ export function ConfigView({ esDueño }: { esDueño: boolean }) {
     const ok = await onAccion(() => guardarPrecioReceta(raw ? parseMontoArs(raw) : null))
     setPrecioOk(ok)
     if (ok) setTimeout(() => setPrecioOk(false), 3000)
+  }
+
+  async function guardarPlus(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    const raw = String(fd.get('monto_plus') ?? '').trim()
+    const ok = await onAccion(() => guardarMontoPlus(raw ? parseMontoArs(raw) : null))
+    setPlusOk(ok)
+    if (ok) setTimeout(() => setPlusOk(false), 3000)
   }
 
   if (!cfg)
@@ -494,6 +505,21 @@ export function ConfigView({ esDueño }: { esDueño: boolean }) {
           <button className="rounded-xl bg-primary text-white px-4 py-2 text-sm font-medium">Guardar precio</button>
         </form>
         {precioOk && <p className="text-sm text-emerald-600 font-medium">Guardado ✓</p>}
+      </Seccion>
+
+      <Seccion titulo="Plus de la consulta (cobro al llegar)">
+        <p className="text-xs text-[var(--color-muted-foreground)]">
+          Cuando el paciente le escribe &quot;llegué&quot; al asistente el día del turno, le cobra este plus con un link
+          de MercadoPago (y la consulta particular usa el precio del servicio). Dejalo vacío para que el pago se maneje
+          solo en el mostrador. Es estrictamente privado.
+        </p>
+        <form onSubmit={guardarPlus} className="flex items-end gap-2">
+          <Campo label="Monto en pesos" ayuda="Ej: 8.000">
+            <input name="monto_plus" defaultValue={cfg.montoPlus ?? ''} placeholder="8.000" className={input + ' !w-36'} />
+          </Campo>
+          <button className="rounded-xl bg-primary text-white px-4 py-2 text-sm font-medium">Guardar plus</button>
+        </form>
+        {plusOk && <p className="text-sm text-emerald-600 font-medium">Guardado ✓</p>}
       </Seccion>
 
       {esDueño && (

@@ -215,7 +215,14 @@ export async function marcarPagada(
 ): Promise<void> {
   await db
     .from('recetas')
-    .update({ estado: 'pagada', mp_payment_id: paymentId, updated_at: new Date().toISOString() })
+    .update({
+      estado: 'pagada',
+      mp_payment_id: paymentId,
+      // Marca propia del pago: updated_at se pisa con la entrega y el corte
+      // diario del Cierre del día necesita el momento real de la acreditación.
+      pagada_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
     .eq('medico_id', medicoId)
     .eq('id', recetaId)
     .eq('estado', 'pendiente_pago')

@@ -16,6 +16,8 @@ import { OsAutocomplete } from '@/features/catalogo/components/OsAutocomplete'
 import { getCatalogoOs, getMisOsSuspendidas, getArancelVigente, getMiCategoriaArancel } from '@/actions/catalogo'
 import { estaSuspendida, type OsCatalogoItem } from '@/lib/catalogo/obras-sociales'
 import { calcularHonorarioConsulta, type MiCategoriaArancel } from '@/lib/catalogo/honorario'
+import { PlusCard, type CobroVinculado } from '@/features/cobros/components/PlusCard'
+import type { MedioCobro } from '@/features/cobros/types/cobros'
 
 const inputBase = 'w-full px-4 py-3 rounded-lg text-sm'
 const inputStyle = {
@@ -67,9 +69,11 @@ function Campo({
 
 interface Props {
   orden: Orden
+  /** Cobro vivo anclado a la orden (lo trae la page con el client del médico). */
+  cobroVinculado?: CobroVinculado | null
 }
 
-export function EditarOrdenForm({ orden }: Props) {
+export function EditarOrdenForm({ orden, cobroVinculado }: Props) {
   const [tipo, setTipo] = useState<TipoAtencion>(orden.tipo)
   const [obraSocial, setObraSocial] = useState(orden.obra_social ?? '')
   const [agenteFacturador, setAgenteFacturador] = useState<AgenteFacturador>(orden.agente_facturador ?? 'circulo_medico')
@@ -168,6 +172,9 @@ export function EditarOrdenForm({ orden }: Props) {
       profesional: str('profesional'),
       entidad: str('entidad'),
       responsable: str('responsable'),
+      // Ledger de cobros: medio elegido y cobro MP generado en la tarjeta de plus.
+      cobro_medio: str('cobro_medio') as MedioCobro | undefined,
+      cobro_id: str('cobro_id'),
     }
 
     const formData: OrdenFormData = tipo === 'obra_social'
@@ -412,16 +419,12 @@ export function EditarOrdenForm({ orden }: Props) {
 
       {/* Plus (solo Obra Social) */}
       {tipo === 'obra_social' && (
-        <div className="p-6 rounded-xl" style={{ background: 'var(--color-surface)', border: '1px dashed var(--color-border)' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--color-warning)' }}>
-              <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--color-warning)' }}>Plus (privado)</h3>
-          </div>
-          <p className="text-xs mb-3" style={{ color: 'var(--color-muted-foreground)' }}>Este dato es estrictamente privado. Solo vos podes verlo.</p>
-          <input name="monto_plus" type="number" min="0" step="0.01" defaultValue={orden.monto_plus} placeholder="0.00" className={`${inputBase} font-mono`} style={inputStyle} />
-        </div>
+        <PlusCard
+          cobroExistente={cobroVinculado}
+          montoInicial={Number(orden.monto_plus) || 0}
+          pacienteNombre={orden.nombre_paciente}
+          turnoId={orden.turno_id ?? undefined}
+        />
       )}
 
       {/* Observaciones */}
