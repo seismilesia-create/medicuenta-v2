@@ -177,15 +177,6 @@ export interface OrdenFilters {
   busqueda?: string
 }
 
-// --- Dashboard Stats ---
-
-export interface DashboardStats {
-  facturado: number
-  cobrado: number
-  pendiente: number
-  perdido: number
-}
-
 // --- Zod Schemas ---
 
 export const ordenBaseSchema = z.object({

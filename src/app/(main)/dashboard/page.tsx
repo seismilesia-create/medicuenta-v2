@@ -28,7 +28,7 @@ export default async function DashboardPage() {
   }
 
   const [ordenesRes, debitosRes, liquidacionesRes, cirugiasRes, perfilRes, asignacionRes] = await Promise.all([
-    supabase.from('ordenes').select('estado, honorario_calculado, monto_particular, monto_plus, fecha_atencion'),
+    supabase.from('ordenes').select('estado, honorario_calculado, monto_particular, fecha_atencion'),
     supabase.from('debitos').select('monto, fecha, refacturable, refacturado'),
     supabase.from('liquidaciones').select('estado'),
     supabase.from('cirugias').select('estado, total_calculado'),
@@ -160,7 +160,7 @@ function getGreeting(): string {
 }
 
 function computeTrendData(
-  ordenes: { estado: string; honorario_calculado: number; monto_particular: number; monto_plus: number; fecha_atencion: string }[],
+  ordenes: { estado: string; honorario_calculado: number; monto_particular: number; fecha_atencion: string }[],
   debitos: { monto: number; fecha: string }[],
 ): TrendDataPoint[] {
   const now = new Date()
@@ -180,7 +180,8 @@ function computeTrendData(
 
     for (const orden of ordenes) {
       if (orden.fecha_atencion.startsWith(key)) {
-        const monto = Number(orden.honorario_calculado) + Number(orden.monto_particular) + Number(orden.monto_plus)
+        // El plus es privado (efectivo en mano): fuera de facturado/cobrado, igual que las KPI.
+        const monto = Number(orden.honorario_calculado) + Number(orden.monto_particular)
         months[months.length - 1].facturado += monto
         if (orden.estado === 'aprobada') months[months.length - 1].cobrado += monto
       }

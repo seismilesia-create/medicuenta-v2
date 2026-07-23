@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
-import type { Orden, OrdenFilters, DashboardStats, Prestacion } from '../types/ordenes'
+import type { Orden, OrdenFilters, Prestacion } from '../types/ordenes'
 
 const supabase = createClient()
 
@@ -32,45 +32,6 @@ export async function getOrdenes(filters?: OrdenFilters): Promise<Orden[]> {
 
   if (error) throw error
   return data ?? []
-}
-
-export async function getDashboardStats(): Promise<DashboardStats> {
-  const { data: ordenes, error } = await supabase
-    .from('ordenes')
-    .select('estado, honorario_calculado, monto_particular, monto_plus')
-
-  if (error) throw error
-
-  const stats: DashboardStats = {
-    facturado: 0,
-    cobrado: 0,
-    pendiente: 0,
-    perdido: 0,
-  }
-
-  for (const orden of ordenes ?? []) {
-    const monto =
-      Number(orden.honorario_calculado) +
-      Number(orden.monto_particular) +
-      Number(orden.monto_plus)
-
-    stats.facturado += monto
-
-    switch (orden.estado) {
-      case 'aprobada':
-        stats.cobrado += monto
-        break
-      case 'debitada':
-        stats.perdido += monto
-        break
-      case 'borrador':
-      case 'presentada':
-        stats.pendiente += monto
-        break
-    }
-  }
-
-  return stats
 }
 
 export async function buscarPrestaciones(
