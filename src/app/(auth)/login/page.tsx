@@ -31,11 +31,14 @@ export default async function LoginPage({
       </p>
 
       {/*
-        Instalar la PWA antes de loguearse. Acá SIN `only-phone`: si alguien
-        entra desde la compu también puede dejarla como app de escritorio.
-        El botón se oculta solo si el navegador no ofrece instalación.
+        Instalar la PWA antes de loguearse. `only-phone` igual que en el
+        asistente: instalarla es algo del celular, en la compu el médico
+        trabaja con la pestaña abierta. Además se oculta solo si el navegador
+        no ofrece instalación (ej. incógnito, donde Chrome la deshabilita).
       */}
-      <InstallAppButton variant="auth" />
+      <div className="only-phone text-center">
+        <InstallAppButton variant="auth" />
+      </div>
     </div>
   )
 }

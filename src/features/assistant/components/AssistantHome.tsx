@@ -129,15 +129,9 @@ export function AssistantHome({ nombre }: Props) {
         queda en el asistente (justo el más rehacio) nunca lo vería.
         Absoluto para no correr el centrado vertical del micrófono; `only-phone`
         porque en la compu no aporta nada instalarla.
-        OJO: `only-phone` es un `display: none` de misma especificidad que las
-        utilidades de Tailwind, así que NO puede compartir elemento con `flex`
-        (o `grid`, `block`…): la utilidad gana y deja de ocultarse. Por eso el
-        flex va en un div interno.
       */}
-      <div className="only-phone absolute inset-x-0 top-0 z-10">
-        <div className="flex justify-center pt-3">
-          <InstallAppButton variant="pill" />
-        </div>
+      <div className="only-phone absolute inset-x-0 top-0 z-10 text-center pt-3">
+        <InstallAppButton variant="pill" />
       </div>
 
       {/* Orbes decorativos */}
