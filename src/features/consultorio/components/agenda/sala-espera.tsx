@@ -1,6 +1,7 @@
 'use client'
 
-import type { EstadoCheckinItem } from '@/actions/consultorio-checkin'
+import { useState } from 'react'
+import { llamarPaciente, type EstadoCheckinItem } from '@/actions/consultorio-checkin'
 import { MEDIO_LABELS } from '@/features/cobros/types/cobros'
 
 interface Props {
@@ -18,6 +19,26 @@ function haceMin(iso: string): string {
 
 /** "EN SALA": quién llegó, hace cuánto, y qué falta (orden / cobro) para completarlo ahí mismo. */
 export function SalaEspera({ items, onCobrar, onOrden }: Props) {
+  // Estado local del llamado (enviando / hora del último aviso / error) por paciente.
+  const [llamados, setLlamados] = useState<Record<string, 'enviando' | 'ok'>>({})
+  const [errorLlamado, setErrorLlamado] = useState<string | null>(null)
+
+  async function llamar(it: EstadoCheckinItem) {
+    const clave = `${it.tipo}-${it.id}`
+    setErrorLlamado(null)
+    setLlamados((p) => ({ ...p, [clave]: 'enviando' }))
+    const r = await llamarPaciente({ tipo: it.tipo, id: it.id })
+    if ('error' in r) {
+      setErrorLlamado(r.error)
+      setLlamados((p) => {
+        const { [clave]: _x, ...rest } = p
+        return rest
+      })
+      return
+    }
+    setLlamados((p) => ({ ...p, [clave]: 'ok' }))
+  }
+
   if (items.length === 0) return null
   return (
     <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-3">
@@ -89,17 +110,33 @@ export function SalaEspera({ items, onCobrar, onOrden }: Props) {
               </button>
             )}
 
-            {/* Llamado por WhatsApp: se habilita en la Fase C (bot + ventana 24h). */}
-            <button
-              disabled
-              title="Disponible cuando el paciente paga con el bot (próximamente)"
-              className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-border opacity-40 cursor-not-allowed"
-            >
-              📣 Llamar
-            </button>
+            {/* Llamado por WhatsApp (texto libre, gratis): requiere ventana de 24h abierta —
+                se abre sola cuando el paciente le escribe "llegué" al bot para pagar. */}
+            {(() => {
+              const clave = `${it.tipo}-${it.id}`
+              const estado = llamados[clave]
+              if (estado === 'ok') {
+                return <span className="text-xs font-medium text-emerald-600">📣 Llamado ✓</span>
+              }
+              return (
+                <button
+                  onClick={() => llamar(it)}
+                  disabled={!it.puedeLlamar || estado === 'enviando'}
+                  title={
+                    it.puedeLlamar
+                      ? 'Avisarle por WhatsApp que pase al consultorio'
+                      : 'Pedile al paciente que le escriba "llegué" al asistente para poder llamarlo'
+                  }
+                  className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-border disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--color-muted)]"
+                >
+                  {estado === 'enviando' ? 'Enviando…' : '📣 Llamar'}
+                </button>
+              )
+            })()}
           </div>
         ))}
       </div>
+      {errorLlamado && <p className="text-sm text-red-500">{errorLlamado}</p>}
     </div>
   )
 }

@@ -547,6 +547,7 @@ export interface ConfigConsultorio {
     saludo: string | null
     faqs: { pregunta: string; respuesta: string }[]
     precio_receta_default: number | null
+    monto_plus_default: number | null
   } | null
   // MercadoPago no es un booleano: 'reconectar' (se venció el permiso, el cobro está pausado)
   // se vería igual que "nunca conectó" y el médico no entendería por qué dejó de cobrar.
@@ -582,7 +583,7 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
     db.from('wa_os_suspendidas').select('id, nombre_os, nota, motivo').eq('medico_id', medicoId).order('nombre_os').then(ok),
     db
       .from('wa_config_agente')
-      .select('nombre_medico, especialidad, tono, saludo, faqs, precio_receta_default')
+      .select('nombre_medico, especialidad, tono, saludo, faqs, precio_receta_default, monto_plus_default')
       .eq('medico_id', medicoId)
       .maybeSingle()
       .then(ok),
@@ -604,7 +605,9 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
     db.from('wa_dias_particulares').select('id, tipo, dia_semana, fecha').eq('medico_id', medicoId).then(ok),
   ])
   const servicio = ((serviciosRes.data as { id: string; duracion_min: number }[] | null) ?? [])[0] ?? null
-  const agente = agenteRes.data as ConfigConsultorio['agente'] & { precio_receta_default: unknown } | null
+  const agente = agenteRes.data as
+    | (ConfigConsultorio['agente'] & { precio_receta_default: unknown; monto_plus_default: unknown })
+    | null
   return {
     horarios: (horariosRes.data as ConfigConsultorio['horarios'] | null) ?? [],
     duracionMin: servicio?.duracion_min ?? 30,
@@ -613,7 +616,11 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
     osSuspendidas: (osRes.data as ConfigConsultorio['osSuspendidas'] | null) ?? [],
     diasParticulares: (diasPartRes.data as ConfigConsultorio['diasParticulares'] | null) ?? [],
     agente: agente
-      ? { ...agente, precio_receta_default: agente.precio_receta_default != null ? Number(agente.precio_receta_default) : null }
+      ? {
+          ...agente,
+          precio_receta_default: agente.precio_receta_default != null ? Number(agente.precio_receta_default) : null,
+          monto_plus_default: agente.monto_plus_default != null ? Number(agente.monto_plus_default) : null,
+        }
       : null,
     conexiones: {
       whatsapp: (() => {

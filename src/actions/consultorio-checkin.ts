@@ -13,6 +13,16 @@ import { crearCobro, getCobroVivoDeTurno, vincularOrden, anularCobro } from '@/f
 import { CONCEPTOS_COBRO, MEDIOS_COBRO, type ConceptoCobro, type EstadoCobro, type MedioCobro } from '@/features/cobros/types/cobros'
 import { getConexionActiva } from '@/features/whatsapp/services/mpConexiones'
 import { buildPreferenciaBodyCobro, crearPreferencia } from '@/lib/mercadopago/client'
+import { ventanaAbierta } from '@/lib/consultorio/semaforo'
+import { resolverSaliente } from '@/features/whatsapp/services/nodos'
+import { sendWhatsAppText } from '@/lib/whatsapp/client'
+import { addMensaje } from '@/features/whatsapp/services/conversaciones'
+import { registrarEvento } from '@/features/whatsapp/services/bitacora'
+
+/** Variantes 54…/549… de un teléfono AR (los formatos conviven: gotcha de últimos 10 dígitos). */
+function variantesTelefono(tel: string): string[] {
+  return tel.startsWith('549') ? [tel, `54${tel.slice(3)}`] : [tel, `549${tel.slice(2)}`]
+}
 
 // Check-in de recepción (Fase B): la secretaria (o el médico) marca la llegada
 // del paciente, registra el cobro y la orden presentada. Molde de autorización
@@ -84,6 +94,8 @@ export interface EstadoCheckinItem {
   /** Solo turnos (ordenes.turno_id no aplica a sobreturnos). */
   orden: { id: string; estado: string; sinFoto: boolean } | null
   cobro: { id: string; concepto: ConceptoCobro; monto: number; medio: MedioCobro; estado: EstadoCobro } | null
+  /** Ventana de 24h de WhatsApp abierta ⇒ se lo puede llamar con texto libre. */
+  puedeLlamar: boolean
 }
 
 /**
@@ -153,6 +165,28 @@ export async function getEstadoCheckins(fecha: string): Promise<{ items: EstadoC
           .in('sobreturno_id', sobreIds)
       : Promise.resolve({ data: [] }),
   ])
+  // Ventana de 24h por teléfono (para habilitar el "Llamar"): una sola query de
+  // conversaciones matcheando las variantes 54…/549… de todos los llegados.
+  const telefonos = [...turnos, ...sobres].map((r) => r.paciente_telefono).filter((t): t is string => Boolean(t))
+  const variantes = [...new Set(telefonos.flatMap(variantesTelefono))]
+  const ventanaPorTel = new Map<string, string | null>()
+  if (variantes.length) {
+    const { data: convRows } = await db
+      .from('wa_conversaciones')
+      .select('last_paciente_at, wa_contactos!inner(telefono)')
+      .eq('medico_id', c.medicoId)
+      .in('wa_contactos.telefono', variantes)
+    for (const row of (convRows ?? []) as unknown as { last_paciente_at: string | null; wa_contactos: { telefono: string } }[]) {
+      const clave = row.wa_contactos.telefono.slice(-10)
+      const previa = ventanaPorTel.get(clave)
+      if (!previa || (row.last_paciente_at && row.last_paciente_at > previa)) {
+        ventanaPorTel.set(clave, row.last_paciente_at)
+      }
+    }
+  }
+  const puedeLlamarTel = (tel: string | null) =>
+    Boolean(tel) && ventanaAbierta(ventanaPorTel.get((tel as string).slice(-10)) ?? null, Date.now())
+
   type OrdenLite = { id: string; estado: string; imagen_comprobante: string | null; turno_id: string }
   type CobroLite = {
     id: string
@@ -186,6 +220,7 @@ export async function getEstadoCheckins(fecha: string): Promise<{ items: EstadoC
         esParticular: normalizarOs(t.paciente_obra_social ?? '') === 'particular',
         orden: o ? { id: o.id, estado: o.estado, sinFoto: !o.imagen_comprobante } : null,
         cobro: cobroLite(cobroPorTurno.get(t.id)),
+        puedeLlamar: puedeLlamarTel(t.paciente_telefono),
       }
     }),
     ...sobres.map((s): EstadoCheckinItem => ({
@@ -199,6 +234,7 @@ export async function getEstadoCheckins(fecha: string): Promise<{ items: EstadoC
       esParticular: s.cobro === 'particular' || normalizarOs(s.paciente_obra_social ?? '') === 'particular',
       orden: null,
       cobro: cobroLite(cobroPorSobre.get(s.id)),
+      puedeLlamar: puedeLlamarTel(s.paciente_telefono),
     })),
   ].sort((a, b) => a.checkinAt.localeCompare(b.checkinAt))
 
@@ -465,6 +501,83 @@ export async function crearOrdenCheckin(
   }
 
   return { ok: true, ordenId: creada.id }
+}
+
+const llamarSchema = z.object({
+  tipo: z.enum(['turno', 'sobreturno']),
+  id: z.string().uuid(),
+})
+
+/**
+ * "Pase al consultorio": texto libre por WhatsApp al paciente EN SALA. Solo
+ * funciona con la ventana de 24h abierta (el paciente le escribió al bot al
+ * llegar — p.ej. "llegué" para pagar); si está cerrada, Meta lo rechazaría y
+ * se corta antes con un error accionable. Patrón responderComoHumano.
+ */
+export async function llamarPaciente(
+  input: z.infer<typeof llamarSchema>,
+): Promise<{ ok: true } | { error: string }> {
+  const c = await ctxCheckin()
+  if (!c) return { error: 'No autenticado' }
+  const parsed = llamarSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  const d = parsed.data
+
+  const tabla = d.tipo === 'turno' ? 'wa_turnos' : 'wa_sobreturnos'
+  const { data: fila } = await c.supabase
+    .from(tabla)
+    .select('id, paciente_telefono')
+    .eq('medico_id', c.medicoId)
+    .eq('id', d.id)
+    .maybeSingle()
+  if (!fila) return { error: 'Ese turno no corresponde a este consultorio' }
+  const tel = (fila.paciente_telefono as string | null) ?? ''
+  if (!tel) return { error: 'El turno no tiene teléfono de WhatsApp' }
+
+  const db = createServiceClient()
+  const { data: convRows } = await db
+    .from('wa_conversaciones')
+    .select('id, last_paciente_at, wa_contactos!inner(telefono)')
+    .eq('medico_id', c.medicoId)
+    .in('wa_contactos.telefono', variantesTelefono(tel))
+    .order('last_paciente_at', { ascending: false })
+    .limit(1)
+  const conv = ((convRows ?? []) as unknown as { id: string; last_paciente_at: string | null }[])[0]
+  if (!conv || !ventanaAbierta(conv.last_paciente_at, Date.now())) {
+    return {
+      error:
+        'La ventana de WhatsApp está cerrada: pedile al paciente que le escriba "llegué" al asistente y probá de nuevo.',
+    }
+  }
+
+  const canal = await resolverSaliente(db, c.medicoId)
+  if (!canal) return { error: 'WhatsApp no está conectado' }
+  const texto = '👨‍⚕️ Es su turno: por favor pase al consultorio.'
+  const enviado = await sendWhatsAppText({
+    phoneNumberId: canal.phoneNumberId,
+    accessToken: canal.accessToken,
+    to: tel,
+    text: texto,
+  })
+  if (!enviado) {
+    return { error: 'Meta rechazó el envío. Pedile al paciente que le escriba "llegué" al asistente y probá de nuevo.' }
+  }
+  await addMensaje(db, {
+    medicoId: c.medicoId,
+    conversacionId: conv.id,
+    direccion: 'saliente',
+    origen: 'humano',
+    contenido: texto,
+  })
+  await registrarEvento(db, {
+    medicoId: c.medicoId,
+    origen: 'panel',
+    nivel: 'info',
+    evento: 'llamado_paciente',
+    detalle: { tipo: d.tipo, id: d.id, actor: c.userId },
+    conversacionId: conv.id,
+  })
+  return { ok: true }
 }
 
 const fotoOrdenSchema = z.object({
