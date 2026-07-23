@@ -25,8 +25,8 @@ import { SugerenciaTurnoCard } from './SugerenciaTurnoCard'
 import { evaluarRiesgoOrden, FALTANTE_LABELS } from '@/lib/ordenes/riesgo-debito'
 import { OCR_ORDEN_PROMPT_VERSION, NUCLEO_LABELS, type CampoNucleo } from '@/lib/ai/ocr-orden'
 import { estadoCampoOcr } from '@/lib/ordenes/estado-campo-ocr'
-import { PlusCard } from '@/features/cobros/components/PlusCard'
-import type { MedioCobro } from '@/features/cobros/types/cobros'
+import { PlusCard, type CobroVinculado } from '@/features/cobros/components/PlusCard'
+import type { EstadoCobro, MedioCobro } from '@/features/cobros/types/cobros'
 
 const inputBase = 'w-full px-4 py-3 rounded-lg text-sm'
 const inputStyle = {
@@ -201,6 +201,34 @@ export function NuevaOrdenForm() {
   // Correlación turno→orden (3C)
   const [sugerencias, setSugerencias] = useState<SugerenciaTurno[]>([])
   const [turnoAplicado, setTurnoAplicado] = useState<SugerenciaTurno | null>(null)
+  // Cobro suelto del turno (plus cobrado en el check-in): prellena la tarjeta
+  // de plus y se ancla a la orden al guardar (no se duplica).
+  const [cobroTurno, setCobroTurno] = useState<CobroVinculado | null>(null)
+
+  useEffect(() => {
+    let vivo = true
+    async function cargarCobroTurno() {
+      if (turnoAplicado?.tipo !== 'turno') {
+        setCobroTurno(null)
+        return
+      }
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('cobros')
+        .select('id, monto, medio, estado')
+        .eq('turno_id', turnoAplicado.id)
+        .in('estado', ['pendiente', 'cobrado'])
+        .is('orden_id', null)
+        .maybeSingle()
+      if (!vivo) return
+      const c = data as { id: string; monto: number; medio: MedioCobro; estado: EstadoCobro } | null
+      setCobroTurno(c ? { id: c.id, monto: Number(c.monto), medio: c.medio, estado: c.estado } : null)
+    }
+    cargarCobroTurno()
+    return () => {
+      vivo = false
+    }
+  }, [turnoAplicado])
   const [aviso15, setAviso15] = useState<ConflictoQuinceMin[] | null>(null)
 
   /** Busca turnos atendidos de un DNI para proponer fecha/horario reales. */
@@ -466,7 +494,8 @@ export function NuevaOrdenForm() {
             monto de la prestación ES el cobro privado. */}
         {tipo === 'obra_social' && (
           <PlusCard
-            key={formKey}
+            key={`${formKey}-${cobroTurno?.id ?? 'sin-cobro'}`}
+            cobroDelTurno={cobroTurno}
             pacienteNombre={ocr?.paciente || undefined}
             turnoId={turnoAplicado?.tipo === 'turno' ? turnoAplicado.id : undefined}
           />

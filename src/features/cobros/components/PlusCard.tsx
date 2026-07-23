@@ -46,6 +46,12 @@ export interface CobroVinculado {
 interface Props {
   /** Cobro ya anclado a la orden (modo edición). Bloquea el medio; si es MP acreditado, también el monto. */
   cobroExistente?: CobroVinculado | null
+  /**
+   * Cobro suelto del turno (registrado en el check-in, aún sin orden). Prellena
+   * monto y medio, bloquea ambos y emite `cobro_id` para que el guardado lo
+   * ancle a la orden — así el cobro de la secretaria no se duplica.
+   */
+  cobroDelTurno?: CobroVinculado | null
   montoInicial?: number
   pacienteNombre?: string
   turnoId?: string
@@ -57,10 +63,14 @@ interface Props {
  * form `monto_plus`, `cobro_medio` y `cobro_id` (este último solo si se generó
  * un link en esta sesión) — el guardado real lo hace la action de la orden.
  */
-export function PlusCard({ cobroExistente, montoInicial, pacienteNombre, turnoId }: Props) {
-  const mpAcreditadoPrevio = cobroExistente?.medio === 'mercadopago' && cobroExistente.estado === 'cobrado'
-  const [monto, setMonto] = useState(montoInicial && montoInicial > 0 ? String(montoInicial) : '')
-  const [medio, setMedio] = useState<MedioCobro>(cobroExistente?.medio ?? 'efectivo')
+export function PlusCard({ cobroExistente, cobroDelTurno, montoInicial, pacienteNombre, turnoId }: Props) {
+  const mpAcreditadoPrevio =
+    (cobroExistente?.medio === 'mercadopago' && cobroExistente.estado === 'cobrado') ||
+    (cobroDelTurno?.medio === 'mercadopago' && cobroDelTurno.estado === 'cobrado')
+  const [monto, setMonto] = useState(
+    cobroDelTurno ? String(cobroDelTurno.monto) : montoInicial && montoInicial > 0 ? String(montoInicial) : '',
+  )
+  const [medio, setMedio] = useState<MedioCobro>(cobroDelTurno?.medio ?? cobroExistente?.medio ?? 'efectivo')
   const [recientes, setRecientes] = useState<number[]>([])
   const [mpConectado, setMpConectado] = useState<boolean | null>(null)
   const [linkInfo, setLinkInfo] = useState<{ cobroId: string; link: string } | null>(null)
@@ -82,10 +92,11 @@ export function PlusCard({ cobroExistente, montoInicial, pacienteNombre, turnoId
   }, [medio, mpConectado])
 
   const montoNum = Number(monto) || 0
-  // Un cobro MP acreditado es plata real: su monto no se toca más.
-  const montoBloqueado = acreditado
+  // Un cobro MP acreditado es plata real: su monto no se toca más. El cobro del
+  // check-in también manda: la verdad es lo que se registró en el mostrador.
+  const montoBloqueado = acreditado || Boolean(cobroDelTurno)
   // El medio de un cobro ya registrado no se cambia desde acá (anular y recargar).
-  const medioBloqueado = Boolean(cobroExistente) || acreditado
+  const medioBloqueado = Boolean(cobroExistente) || Boolean(cobroDelTurno) || acreditado
 
   async function generar() {
     setError(null)
@@ -209,9 +220,19 @@ export function PlusCard({ cobroExistente, montoInicial, pacienteNombre, turnoId
       </div>
 
       <input type="hidden" name="cobro_medio" value={medio} />
-      {linkInfo && <input type="hidden" name="cobro_id" value={linkInfo.cobroId} />}
+      {(linkInfo || cobroDelTurno) && (
+        <input type="hidden" name="cobro_id" value={linkInfo?.cobroId ?? cobroDelTurno!.id} />
+      )}
 
-      {medio === 'mercadopago' && !acreditado && (
+      {cobroDelTurno && !acreditado && (
+        <p className="text-sm font-medium" style={{ color: cobroDelTurno.estado === 'cobrado' ? 'var(--color-success)' : 'var(--color-warning)' }}>
+          {cobroDelTurno.estado === 'cobrado'
+            ? `✓ Cobrado en el check-in (${MEDIO_LABELS[cobroDelTurno.medio]}) — queda anclado a esta orden.`
+            : '⏳ Link de MercadoPago del check-in pendiente de pago — queda anclado a esta orden.'}
+        </p>
+      )}
+
+      {medio === 'mercadopago' && !acreditado && !cobroDelTurno && (
         <div className="space-y-3">
           {mpConectado === false && (
             <p className="text-sm" style={{ color: 'var(--color-warning)' }}>

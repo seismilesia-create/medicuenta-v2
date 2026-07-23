@@ -62,7 +62,13 @@ export function SalaEspera({ items, onCobrar, onOrden }: Props) {
             {it.tipo === 'turno' &&
               (it.orden ? (
                 it.orden.sinFoto ? (
-                  <span className="text-xs font-medium text-amber-600">📄 orden sin foto</span>
+                  <button
+                    onClick={() => onOrden(it)}
+                    className="text-xs font-medium text-amber-600 underline underline-offset-2"
+                    title="Completar la foto de la orden"
+                  >
+                    📄 orden sin foto
+                  </button>
                 ) : (
                   <span className="text-xs font-medium text-emerald-600">📄 orden ✓</span>
                 )

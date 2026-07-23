@@ -8,7 +8,7 @@ import { normalizarOs } from '@/lib/consultorio/osSuspendidas'
 import { catalogoVigente, type ArancelOsRow } from '@/lib/catalogo/obras-sociales'
 import { elegirArancelVigente, calcularHonorarioConsulta, type CategoriaArancel } from '@/lib/catalogo/honorario'
 import { ordenExtraidaSchema, OCR_ORDEN_PROMPT_VERSION, type OrdenExtraida } from '@/lib/ai/ocr-orden'
-import { ordenDesdeOcr } from '@/lib/ordenes/desde-ocr'
+import { mergeOcrEnOrden, ordenDesdeOcr } from '@/lib/ordenes/desde-ocr'
 import { crearCobro, getCobroVivoDeTurno, vincularOrden, anularCobro } from '@/features/cobros/services/cobrosService'
 import { CONCEPTOS_COBRO, MEDIOS_COBRO, type ConceptoCobro, type EstadoCobro, type MedioCobro } from '@/features/cobros/types/cobros'
 import { getConexionActiva } from '@/features/whatsapp/services/mpConexiones'
@@ -465,4 +465,66 @@ export async function crearOrdenCheckin(
   }
 
   return { ok: true, ordenId: creada.id }
+}
+
+const fotoOrdenSchema = z.object({
+  ordenId: z.string().uuid(),
+  imagenDataUrl: z.string().startsWith('data:image/'),
+  ocr: ordenExtraidaSchema.optional(),
+})
+
+/**
+ * Completa la foto de una orden "sin foto" (lote del mostrador). El OCR solo
+ * rellena campos VACÍOS (mergeOcrEnOrden): lo tipeado en el check-in no se pisa.
+ * La usan el médico (sección "Órdenes sin foto") y la secretaria (sala de espera).
+ */
+export async function completarFotoOrden(
+  input: z.infer<typeof fotoOrdenSchema>,
+): Promise<{ ok: true } | { error: string }> {
+  const c = await ctxCheckin()
+  if (!c) return { error: 'No autenticado' }
+  const parsed = fotoOrdenSchema.safeParse(input)
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
+  const d = parsed.data
+
+  const db = createServiceClient()
+  const { data: orden } = await db
+    .from('ordenes')
+    .select('*')
+    .eq('id', d.ordenId)
+    .eq('medico_id', c.medicoId)
+    .maybeSingle()
+  if (!orden) return { error: 'Orden no encontrada' }
+  if (orden.estado !== 'borrador') return { error: 'Solo se completan órdenes en borrador' }
+
+  let imagenPath: string
+  try {
+    const base64 = d.imagenDataUrl.slice(d.imagenDataUrl.indexOf(',') + 1)
+    imagenPath = `${c.medicoId}/${crypto.randomUUID()}.jpg`
+    const { error: upErr } = await db.storage
+      .from('comprobantes')
+      .upload(imagenPath, Buffer.from(base64, 'base64'), { contentType: 'image/jpeg', upsert: false })
+    if (upErr) return { error: `No se pudo subir la foto: ${upErr.message}` }
+  } catch {
+    return { error: 'No se pudo subir la foto' }
+  }
+
+  const update: Record<string, unknown> = { imagen_comprobante: imagenPath, updated_at: new Date().toISOString() }
+  if (d.ocr) {
+    Object.assign(update, mergeOcrEnOrden(orden as Record<string, unknown>, ordenDesdeOcr(d.ocr as OrdenExtraida)))
+    if (!orden.datos_ocr) update.datos_ocr = { version: OCR_ORDEN_PROMPT_VERSION, datos: d.ocr }
+  }
+  // Si la carga mínima no pudo valorizar (OS libre sin match), reintenta con la OS final.
+  if (Number(orden.honorario_calculado) === 0) {
+    const os = (update.obra_social as string | undefined) ?? (orden.obra_social as string | null) ?? ''
+    if (os) {
+      const r = await resolverOsYHonorario(db, c.medicoId, os, orden.fecha_atencion as string)
+      if (r.honorario > 0) update.honorario_calculado = r.honorario
+      if (r.codigoOs != null && orden.codigo_os == null) update.codigo_os = r.codigoOs
+    }
+  }
+
+  const { error } = await db.from('ordenes').update(update).eq('id', d.ordenId).eq('medico_id', c.medicoId)
+  if (error) return { error: error.message }
+  return { ok: true }
 }

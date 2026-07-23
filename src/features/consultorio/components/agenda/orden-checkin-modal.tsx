@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { crearOrdenCheckin, type EstadoCheckinItem } from '@/actions/consultorio-checkin'
+import { completarFotoOrden, crearOrdenCheckin, type EstadoCheckinItem } from '@/actions/consultorio-checkin'
 import { EscanearOrdenButton, type OrdenEscaneada } from '@/features/ordenes/components/EscanearOrdenButton'
 import { arDateString } from '@/lib/turnos/slots'
 
@@ -20,7 +20,9 @@ interface Props {
  * — "Foto": el flujo OCR completo de siempre, para quien puede.
  */
 export function OrdenCheckinModal({ item, onClose, onDone }: Props) {
-  const [modo, setModo] = useState<'tipear' | 'foto'>('tipear')
+  // Si la orden ya existe pero está "sin foto", el modal solo completa la foto.
+  const ordenSinFotoId = item.orden?.sinFoto ? item.orden.id : null
+  const [modo, setModo] = useState<'tipear' | 'foto'>(ordenSinFotoId ? 'foto' : 'tipear')
   const [obraSocial, setObraSocial] = useState(item.obraSocial ?? '')
   const [nro, setNro] = useState('')
   const [token, setToken] = useState('')
@@ -32,6 +34,22 @@ export function OrdenCheckinModal({ item, onClose, onDone }: Props) {
 
   async function guardar() {
     setError(null)
+    if (ordenSinFotoId) {
+      if (!ocr || !imagen) {
+        setError('Primero escaneá la orden.')
+        return
+      }
+      setLoading(true)
+      const res = await completarFotoOrden({ ordenId: ordenSinFotoId, imagenDataUrl: imagen, ocr })
+      setLoading(false)
+      if ('error' in res) {
+        setError(res.error)
+        return
+      }
+      onDone()
+      onClose()
+      return
+    }
     if (modo === 'tipear' && obraSocial.trim().length < 2) {
       setError('Indicá la obra social.')
       return
@@ -68,7 +86,7 @@ export function OrdenCheckinModal({ item, onClose, onDone }: Props) {
       >
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h2 className="font-semibold">Registrar orden presentada</h2>
+            <h2 className="font-semibold">{ordenSinFotoId ? 'Completar foto de la orden' : 'Registrar orden presentada'}</h2>
             <p className="text-sm text-[var(--color-muted-foreground)]">{item.paciente}</p>
           </div>
           <button onClick={onClose} aria-label="Cerrar">
@@ -76,6 +94,7 @@ export function OrdenCheckinModal({ item, onClose, onDone }: Props) {
           </button>
         </div>
 
+        {!ordenSinFotoId && (
         <div className="flex gap-2">
           {(['tipear', 'foto'] as const).map((m) => (
             <button
@@ -91,8 +110,9 @@ export function OrdenCheckinModal({ item, onClose, onDone }: Props) {
             </button>
           ))}
         </div>
+        )}
 
-        {modo === 'tipear' ? (
+        {modo === 'tipear' && !ordenSinFotoId ? (
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-medium mb-1.5">Obra social *</label>
@@ -137,10 +157,12 @@ export function OrdenCheckinModal({ item, onClose, onDone }: Props) {
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-medium mb-1.5">Fecha de atención</label>
-          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputCls} />
-        </div>
+        {!ordenSinFotoId && (
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Fecha de atención</label>
+            <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputCls} />
+          </div>
+        )}
 
         {error && <p className="text-sm text-red-500">{error}</p>}
         <button
