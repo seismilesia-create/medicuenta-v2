@@ -5,6 +5,7 @@ import { getServiciosActivos, getDisponibilidad } from '@/features/whatsapp/serv
 import { armarDia, type ItemDia, type TurnoDia, type SlotLibre } from '@/lib/consultorio/armarDia'
 import { semaforoConversacion, msRestantesVentana, VENTANA_24H_MS, type Semaforo } from '@/lib/consultorio/semaforo'
 import { esDiaParticular, type DiaParticular } from '@/lib/consultorio/diasParticulares'
+import type { LugarAtencion } from '@/lib/consultorio/lugaresAtencion'
 import { siteUrl } from '@/lib/site-url'
 
 /** supabase-js devuelve errores en vez de lanzarlos: acá los convertimos en throw
@@ -579,6 +580,7 @@ export interface ConfigConsultorio {
   excepciones: { id: string; start_date: string; end_date: string; kind: string; note: string | null }[]
   osSuspendidas: { id: string; nombre_os: string; nota: string | null; motivo: 'suspendida' | 'no_atiende' }[]
   diasParticulares: { id: string; tipo: 'semanal' | 'fecha'; dia_semana: number | null; fecha: string | null }[]
+  lugares: LugarAtencion[]
   agente: {
     nombre_medico: string | null
     especialidad: string | null
@@ -609,7 +611,19 @@ export interface ConfigConsultorio {
 
 export async function getConfig(db: SupabaseClient, medicoId: string): Promise<ConfigConsultorio> {
   const hoy = arDateString(Date.now(), 0)
-  const [horariosRes, serviciosRes, excepcionesRes, osRes, agenteRes, asigRes, canalRes, mpRes, secretariasRes, diasPartRes] = await Promise.all([
+  const [
+    horariosRes,
+    serviciosRes,
+    excepcionesRes,
+    osRes,
+    agenteRes,
+    asigRes,
+    canalRes,
+    mpRes,
+    secretariasRes,
+    diasPartRes,
+    lugaresRes,
+  ] = await Promise.all([
     db.from('wa_horarios').select('id, weekday, open_time, close_time').eq('medico_id', medicoId).order('weekday').then(ok),
     db.from('wa_servicios').select('id, duracion_min').eq('medico_id', medicoId).eq('activo', true).limit(1).then(ok),
     db
@@ -642,6 +656,12 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
       .order('invited_at')
       .then(ok),
     db.from('wa_dias_particulares').select('id, tipo, dia_semana, fecha').eq('medico_id', medicoId).then(ok),
+    db
+      .from('wa_lugares_atencion')
+      .select('id, nombre, direccion, consultorio, piso, dias')
+      .eq('medico_id', medicoId)
+      .order('created_at')
+      .then(ok),
   ])
   const servicio = ((serviciosRes.data as { id: string; duracion_min: number }[] | null) ?? [])[0] ?? null
   const agente = agenteRes.data as
@@ -654,6 +674,7 @@ export async function getConfig(db: SupabaseClient, medicoId: string): Promise<C
     excepciones: (excepcionesRes.data as ConfigConsultorio['excepciones'] | null) ?? [],
     osSuspendidas: (osRes.data as ConfigConsultorio['osSuspendidas'] | null) ?? [],
     diasParticulares: (diasPartRes.data as ConfigConsultorio['diasParticulares'] | null) ?? [],
+    lugares: (lugaresRes.data as LugarAtencion[] | null) ?? [],
     agente: agente
       ? {
           ...agente,

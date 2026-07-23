@@ -48,7 +48,10 @@ export async function entregarReceta(db: SupabaseClient, canal: CanalResuelto, r
     to: receta.paciente_telefono,
     mediaId,
     filename,
-    caption: '✅ Pago confirmado. Acá está tu receta.',
+    caption:
+      receta.forma_pago === 'orden_consulta'
+        ? '✅ Orden de consulta recibida. Acá está tu receta.'
+        : '✅ Pago confirmado. Acá está tu receta.',
   })
   if (!ok) {
     // p.ej. ventana de 24h cerrada → vuelve a 'pagada', se reintenta al próximo mensaje

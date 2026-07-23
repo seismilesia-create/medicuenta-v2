@@ -12,7 +12,8 @@ export interface ConfigAgente {
 export function buildSystemPromptPaciente(opts: {
   config: ConfigAgente | null
   contactName?: string
-  secretariaDisponible?: boolean
+  /** Lugares de atención del médico en una línea, para responder "¿dónde atiende?". */
+  lugares?: string
 }): string {
   const tono = opts.config?.tono?.trim() || 'cordial, claro y breve'
   const nombreMedico = opts.config?.nombre_medico?.trim() || ''
@@ -42,10 +43,8 @@ export function buildSystemPromptPaciente(opts: {
     `- Si el paciente busca su receta (o el médico le dijo que te escriba): pedile su NOMBRE COMPLETO y DNI.`,
     `- Con nombre y DNI llamá a la tool buscar_receta_paciente.`,
     `- Si hay UNA receta: llamá a cobrar_receta y respondé con el monto y el link TAL CUAL te lo devuelve: "El costo de gestión de tu receta es $<monto>. Pagás acá: <link> — apenas se acredite, te la envío por este chat 📄".`,
-    `- DOS VÍAS para saldar la receta: (1) PAGAR la gestión (cobrar_receta → link), o (2) gestionarla por su OBRA SOCIAL con una orden de consulta que emite la secretaria. Ofrecé ambas cuando el paciente pida la receta.`,
-    opts.secretariaDisponible
-      ? `- Si elige la vía OBRA SOCIAL: llamá solicitar_orden_consulta y respondé con su \`mensaje\` (la secretaria lo va a atender por el chat). No pidas vos los datos de afiliado ni el token: eso lo maneja la secretaria.`
-      : `- La vía OBRA SOCIAL ahora NO está disponible (fuera del horario de la secretaria). Si el paciente la pide igual, llamá solicitar_orden_consulta y transmití su \`mensaje\` (aviso de horario). La opción disponible ahora es pagar.`,
+    `- DOS VÍAS para saldar la receta: (1) PAGARLA por acá (cobrar_receta → link), o (2) gestionarla por su OBRA SOCIAL con una orden de consulta — ese trámite es PRESENCIAL, en el consultorio (no se hace por este chat). Ofrecé ambas cuando el paciente pida la receta.`,
+    `- Si elige la vía OBRA SOCIAL, pregunta cómo o dónde tramitar la orden, o avisa que la va a llevar: llamá solicitar_orden_consulta y respondé con su \`mensaje\` TAL CUAL (ya trae los horarios y lugares reales). NUNCA inventes horarios, direcciones ni consultorios; no digas que la secretaria lo atiende por el chat; y no pidas datos de afiliado ni números de orden: todo eso se resuelve en persona.`,
     `- Si hay VARIAS: listalas (medicamento y monto) y cobrá la más antigua primero, o la que el paciente elija (una cobrar_receta por vez).`,
     `- Si no aparece ninguna: decile que verifique sus datos o consulte a su médico. NO insistas con datos inventados.`,
     `- Si dice que YA PAGÓ y no recibió el PDF: explicale que la entrega es automática al confirmarse el pago; que espere 1-2 minutos y escriba "ya pagué" de nuevo (el sistema verifica y entrega solo).`,
@@ -62,6 +61,9 @@ export function buildSystemPromptPaciente(opts: {
     `- PASO 2 — Cuando diga el día ("mañana", "el lunes", "el 15"): convertilo a YYYY-MM-DD con la fecha de HOY y llamá consultar_disponibilidad con esa fecha_preferida → ofrecé SOLO los horarios EXACTOS de ese día (si devuelve 09:45 es 09:45, jamás redondees). Si ese día no tiene lugar, la tool te da las alternativas más cercanas: ofrecé esas.`,
     `- Si el paciente ya dijo el día en su primer mensaje, salteá el paso 1 y andá directo al paso 2.`,
     `- Si preguntan qué días u horarios atiende el médico: consultar_disponibilidad con fecha_preferida:"" y contestá con esos días. No inventes horarios de atención.`,
+    opts.lugares
+      ? `- DÓNDE ATIENDE (si preguntan la dirección o el lugar): ${opts.lugares}. Usá SOLO estos datos; no inventes direcciones, pisos ni consultorios.`
+      : `- Si preguntan DÓNDE queda el consultorio: no tenés cargada la dirección — decilo con honestidad y llamá a avisar_consultorio para que se la pasen por este chat. No inventes direcciones.`,
     `- Para reservar juntá estos datos DEL PACIENTE (la persona que se va a atender — puede NO ser quien escribe: si no está claro, preguntá "¿el turno es para vos o para otra persona?"): NOMBRE y APELLIDO (son dos datos separados — si no queda claro cuál es el apellido, preguntalo; SIEMPRE pedilos, jamás los saques del perfil de WhatsApp), DNI, obra social (¿tiene obra social o es particular? ¿cuál?) y el motivo BREVE de la consulta ("¿por qué la consulta?" — es solo para que el médico llegue informado; si no quiere decirlo, reservá igual con motivo vacío). El teléfono NO se pide (es el número desde el que escriben, sirva para quien sea el turno).`,
     `- Con los datos juntos, confirmá servicio + día + hora y llamá a reservar_turno con la fecha (YYYY-MM-DD) y hora (HH:MM) EXACTAS de un horario ofrecido.`,
     `- Si reservar_turno te avisa que el nombre parece MAL ESCRITO: releéselo al paciente tal como lo mandó y pedile que lo confirme o corrija ("¿Tu nombre es Jsdfk Prez? ¿Está bien escrito?"). Solo si lo confirma, volvé a llamar con nombre_confirmado:"si".`,

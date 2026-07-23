@@ -27,6 +27,7 @@ import { getCatalogoOs } from '@/actions/catalogo'
 import { OsAutocomplete } from '@/features/catalogo/components/OsAutocomplete'
 import type { OsCatalogoItem } from '@/lib/catalogo/obras-sociales'
 import { HorariosEditor } from './horarios-editor'
+import { LugaresConfig } from './lugares-config'
 
 function Seccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
@@ -335,6 +336,10 @@ export function ConfigView({ esDueño }: { esDueño: boolean }) {
 
       <Seccion titulo="Horarios de atención">
         <HorariosEditor inicial={cfg.horarios} onSaved={refetch} />
+      </Seccion>
+
+      <Seccion titulo="Lugares de atención">
+        <LugaresConfig lugares={cfg.lugares} onAccion={onAccion} />
       </Seccion>
 
       <Seccion titulo="Duración de la consulta">
