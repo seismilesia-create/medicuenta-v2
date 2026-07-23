@@ -56,6 +56,21 @@ export default function RootLayout({
             __html: `(function(){try{var c=window.matchMedia('(pointer: coarse)').matches;var s=Math.min(window.screen.width,window.screen.height);document.documentElement.classList.add(c&&s<=600?'is-phone':'is-web');}catch(e){document.documentElement.classList.add('is-web');}})();`,
           }}
         />
+        {/*
+          Captura del evento de instalación de la PWA. Chrome dispara
+          `beforeinstallprompt` MUY temprano, casi siempre ANTES de que monte el
+          primer componente de React: si el listener viviera en un `useEffect`
+          el evento ya habría pasado y el botón "Instalar app" nunca se
+          habilitaría. Por eso se engancha acá, en el HTML, y se guarda el
+          evento en `window` para que `useInstallPWA` lo levante después.
+          El `preventDefault()` evita el mini-infobar propio de Chrome: la
+          instalación la ofrecemos nosotros desde el menú.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__mcInstallPrompt=e;window.dispatchEvent(new Event('mc:installable'));});window.addEventListener('appinstalled',function(){window.__mcInstallPrompt=null;window.dispatchEvent(new Event('mc:installed'));});}catch(e){}})();`,
+          }}
+        />
         <ThemeProvider>
           {children}
         </ThemeProvider>

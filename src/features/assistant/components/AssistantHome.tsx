@@ -6,6 +6,7 @@ import { useAssistantChat } from '../hooks/useAssistantChat'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { AssistantMessages } from './AssistantMessages'
 import { SUGGESTED_QUESTIONS } from '../types/assistant'
+import { InstallAppButton } from '@/features/pwa/components'
 
 interface Props {
   /** Nombre del médico para el saludo (ej: "Héctor"). null si no hay perfil cargado. */
@@ -122,6 +123,17 @@ export function AssistantHome({ nombre }: Props) {
 
   return (
     <div className="relative h-full w-full overflow-y-auto bg-background">
+      {/*
+        Instalar la PWA. Va acá porque en celular esta pantalla es el home del
+        médico y NO tiene menú: si el chip viviera en el menú lateral, el que se
+        queda en el asistente (justo el más rehacio) nunca lo vería.
+        Absoluto para no correr el centrado vertical del micrófono; `only-phone`
+        porque en la compu no aporta nada instalarla.
+      */}
+      <div className="only-phone absolute inset-x-0 top-0 z-10 flex justify-center pt-3">
+        <InstallAppButton variant="pill" />
+      </div>
+
       {/* Orbes decorativos */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-3xl" />

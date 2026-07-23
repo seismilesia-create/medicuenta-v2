@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Logo } from '@/shared/components/logo'
 import { LoginForm } from '@/features/auth/components'
+import { InstallAppButton } from '@/features/pwa/components'
 
 export default async function LoginPage({
   searchParams,
@@ -28,6 +29,13 @@ export default async function LoginPage({
           Regístrate
         </Link>
       </p>
+
+      {/*
+        Instalar la PWA antes de loguearse. Acá SIN `only-phone`: si alguien
+        entra desde la compu también puede dejarla como app de escritorio.
+        El botón se oculta solo si el navegador no ofrece instalación.
+      */}
+      <InstallAppButton variant="auth" />
     </div>
   )
 }
