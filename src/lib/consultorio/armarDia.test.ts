@@ -15,6 +15,7 @@ const turno = (h: string, estado = 'reservado', extra = {}) => ({
   paciente_telefono: '543834222049',
   notas: null,
   origen: 'bot',
+  checkin_at: null,
   ...extra,
 })
 

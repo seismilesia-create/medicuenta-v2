@@ -3,6 +3,9 @@
 import { CalendarOff } from 'lucide-react'
 import type { DiaAgenda } from '@/features/consultorio/services/panelService'
 import { setEstadoSobreturno, desbloquearDias } from '@/actions/consultorio-agenda'
+import { marcarCheckin } from '@/actions/consultorio-checkin'
+import { arDateString } from '@/lib/turnos/slots'
+import { fmtHora } from '@/lib/turnos/formato'
 import { TimelineDia, type TurnoItem } from './timeline-dia'
 
 interface Props {
@@ -74,8 +77,19 @@ export function VistaDia({ fecha, dia, onSlotClick, onTurnoClick, onAccion, onNu
               {s.cobro === 'sin_cargo' ? 'Sin cargo' : 'Particular efectivo'}
               {s.notas ? ` — ${s.notas}` : ''}
             </p>
+            {s.checkin_at && (
+              <p className="text-xs font-medium text-emerald-600">🟢 En sala desde las {fmtHora(s.checkin_at)}</p>
+            )}
             {s.estado === 'pendiente' ? (
               <div className="flex gap-3 text-xs">
+                {!s.checkin_at && fecha === arDateString(Date.now(), 0) && (
+                  <button
+                    className="underline text-emerald-600"
+                    onClick={() => onAccion(() => marcarCheckin({ tipo: 'sobreturno', id: s.id, deshacer: false }))}
+                  >
+                    🚪 llegó
+                  </button>
+                )}
                 <button className="underline" onClick={() => onAccion(() => setEstadoSobreturno(s.id, 'atendido'))}>
                   ✓ atendido
                 </button>

@@ -26,10 +26,11 @@ export interface SobreturnoRow {
   cobro: 'particular' | 'sin_cargo'
   estado: string
   notas: string | null
+  checkin_at: string | null
 }
 
 const COLS_TURNO =
-  'id, starts_at, ends_at, estado, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, paciente_telefono, notas, origen'
+  'id, starts_at, ends_at, estado, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, paciente_telefono, notas, origen, checkin_at'
 
 export interface JornadaDia {
   desdeMin: number // minutos desde medianoche AR
@@ -85,7 +86,7 @@ export async function getDia(db: SupabaseClient, medicoId: string, fecha: string
       .then(ok),
     db
       .from('wa_sobreturnos')
-      .select('id, fecha, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, cobro, estado, notas')
+      .select('id, fecha, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, cobro, estado, notas, checkin_at')
       .eq('medico_id', medicoId)
       .eq('fecha', fecha)
       .neq('estado', 'cancelado')
@@ -481,7 +482,7 @@ export async function getFicha(db: SupabaseClient, medicoId: string, pacienteId:
       .then(ok),
     db
       .from('wa_sobreturnos')
-      .select('id, fecha, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, cobro, estado, notas')
+      .select('id, fecha, paciente_nombre, paciente_apellido, paciente_dni, paciente_obra_social, cobro, estado, notas, checkin_at')
       .eq('medico_id', medicoId)
       .eq('paciente_dni', p.dni)
       .order('fecha', { ascending: false })
