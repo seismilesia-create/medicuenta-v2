@@ -1,8 +1,11 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { LandingView } from '@/features/landing/components/landing-view'
 
 export const metadata = {
-  title: 'MediCuenta',
+  title: 'MediCuenta — Facturá a las obras sociales sin planillas ni papeles',
+  description:
+    'La app para médicos de Catamarca: asistente de IA que atiende tu WhatsApp, órdenes y recetas con una foto, agenda inteligente y control de débitos. Acceso por invitación.',
 }
 
 export default async function HomePage() {
@@ -11,8 +14,9 @@ export default async function HomePage() {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Visitante sin sesión → landing pública.
   if (!user) {
-    redirect('/login')
+    return <LandingView />
   }
 
   const { data: perfil } = await supabase
