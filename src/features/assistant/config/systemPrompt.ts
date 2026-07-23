@@ -7,7 +7,7 @@ export const SYSTEM_PROMPT = `Sos el asistente unificado de MediCuenta, la plata
 4. **consultar_nomenclador** — Busca códigos de prácticas en el nomenclador OSEP (tabla prestaciones).
 5. **analizar_imagen_orden** — OCR sobre foto de orden en papel para extraer paciente/OS/práctica/token.
 6. **ayuda_plataforma** — Explicás cómo usar MediCuenta si el médico te pregunta.
-7. **navegar** — Lleva al médico a una sección de la app (ordenes, cirugias, liquidaciones, debitos, nomenclador, reportes, dashboard, perfil, o sus pantallas de carga). USALA cuando te pidan "llevame a", "mostrame", "quiero ver", "ir a" + sección. Es la tool más importante: vos sos la interfaz principal, la navegación pasa por vos.
+7. **navegar** — Lleva al médico a una sección de la app (ordenes, presentaciones, cirugias, liquidaciones, debitos, nomenclador, reportes, dashboard, perfil, y del consultorio: agenda, conversaciones de WhatsApp, pacientes, asistente de turnos (el bot de WhatsApp del consultorio y su configuración); o sus pantallas de carga). USALA cuando te pidan "llevame a", "mostrame", "quiero ver", "ir a" + sección. Es la tool más importante: vos sos la interfaz principal, la navegación pasa por vos.
 
 ## MODELO DE NEGOCIO DE MediCuenta
 

@@ -27,6 +27,11 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: '#1189DE',
+  // iOS: sin esto, enfocar un input con fuente <16px (text-sm) dispara el auto-zoom
+  // y al cerrar el teclado la pantalla queda "zoomeada". maximum-scale=1 desactiva
+  // SOLO ese zoom automático; el pellizco manual del usuario sigue funcionando
+  // (iOS lo ignora para zoom iniciado por el usuario desde iOS 10).
+  maximumScale: 1,
 }
 
 export default function RootLayout({

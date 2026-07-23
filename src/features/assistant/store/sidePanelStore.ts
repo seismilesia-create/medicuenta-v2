@@ -14,11 +14,15 @@ interface SidePanelState {
 /**
  * Estado del panel lateral del asistente.
  * Persiste en localStorage para que el médico no tenga que reabrirlo en cada navegación.
+ *
+ * Arranca CERRADO: en la primera entrada (sin localStorage) el asistente no debe
+ * aparecer abierto encima del dashboard — el médico lo abre con el botón/FAB cuando
+ * quiere. La pantalla asistente-first vive en `/asistente`, no en este panel.
  */
 export const useSidePanelStore = create<SidePanelState>()(
   persist(
     (set) => ({
-      isOpen: true,
+      isOpen: false,
       open: () => set({ isOpen: true }),
       close: () => set({ isOpen: false }),
       toggle: () => set((s) => ({ isOpen: !s.isOpen })),

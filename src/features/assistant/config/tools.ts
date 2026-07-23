@@ -1,7 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import { openrouter, MODELS } from '@/lib/ai/openrouter'
+import { getVisionModel } from '@/lib/ai/openrouter'
 import { generateObject } from 'ai'
 import { NAVIGATION_DESTINATIONS } from './navigation'
 import { ordenExtraidaSchema, OCR_ORDEN_PROMPT } from '@/lib/ai/ocr-orden'
@@ -514,7 +514,7 @@ Devuelve estructura con nivel de confianza y lista de campos dudosos.`,
   execute: async (input) => {
     try {
       const { object } = await generateObject({
-        model: openrouter(MODELS.vision),
+        model: getVisionModel(),
         schema: ordenExtraidaSchema,
         messages: [
           {
@@ -596,6 +596,10 @@ Ejemplos:
 - "Quiero cargar una orden nueva" → navegar({ destino: 'nueva_orden' })
 - "Mostrame el dashboard" → navegar({ destino: 'dashboard' })
 - "Abrí el nomenclador" → navegar({ destino: 'nomenclador' })
+- "Llevame a mis conversaciones" → navegar({ destino: 'conversaciones' })
+- "Mostrame la agenda" → navegar({ destino: 'agenda' })
+- "Abrí mis pacientes" → navegar({ destino: 'pacientes' })
+- "Llevame a mi asistente de turnos" / "configurá el bot de turnos" → navegar({ destino: 'asistente_turnos' })
 
 Después de navegar se abre la sección: en escritorio el chat queda como panel lateral; en el celular la sección ocupa la pantalla en modo app (con el menú abajo y el asistente como botón flotante). NO confirmes antes de navegar, hacelo directo. Sí podés agregar una frase corta de contexto al responder (ej: "Listo, te llevo a tus órdenes").`,
   inputSchema: z.object({

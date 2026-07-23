@@ -19,3 +19,20 @@ export function fechaEnArgentina(d: Date): string {
 export function hoyArgentina(): string {
   return fechaEnArgentina(new Date())
 }
+
+/**
+ * Hora del día (0–23) en horario de Argentina, sin depender del huso del server.
+ * Para lógica por franja horaria (saludos, etc.): `new Date().getHours()` usa la
+ * hora del server (UTC en producción → +3 h respecto de Catamarca), así que a las
+ * 17:00 de acá daría las 20 y saludaría "buenas noches".
+ */
+export function horaEnArgentina(d: Date): number {
+  const parte = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/Argentina/Catamarca',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  })
+    .formatToParts(d)
+    .find((p) => p.type === 'hour')
+  return Number(parte?.value ?? '0')
+}

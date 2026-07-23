@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { hoyArgentina } from '@/shared/lib/fechas'
+import { hoyArgentina, horaEnArgentina } from '@/shared/lib/fechas'
 import { siteUrl } from '@/lib/site-url'
 import { Activity, FileText, CheckCircle2, Clock, AlertTriangle, Wallet } from 'lucide-react'
 import {
@@ -222,7 +222,7 @@ export default async function DashboardPage() {
 // ---------------------------------------------------------------------------
 
 function getGreeting(): string {
-  const hour = new Date().getHours()
+  const hour = horaEnArgentina(new Date())
   if (hour < 12) return 'Buenos dias'
   if (hour < 18) return 'Buenas tardes'
   return 'Buenas noches'

@@ -16,7 +16,9 @@ export default async function AsistentePage() {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect('/login')
+    // El PWA abre acá (start_url). Si la sesión venció, guardamos el destino para
+    // volver a `/asistente` después de loguear en vez de caer en `/dashboard`.
+    redirect('/login?next=/asistente')
   }
 
   const { data: perfil } = await supabase

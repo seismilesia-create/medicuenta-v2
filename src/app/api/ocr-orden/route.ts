@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { generateObject } from 'ai'
-import { openrouter, MODELS } from '@/lib/ai/openrouter'
+import { getVisionModel } from '@/lib/ai/openrouter'
 import { createClient } from '@/lib/supabase/server'
 import { ordenExtraidaSchema, OCR_ORDEN_PROMPT } from '@/lib/ai/ocr-orden'
 
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     }
 
     const { object } = await generateObject({
-      model: openrouter(MODELS.vision),
+      model: getVisionModel(),
       schema: ordenExtraidaSchema,
       messages: [
         {

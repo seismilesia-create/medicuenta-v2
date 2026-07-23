@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { generateObject } from 'ai'
-import { openrouter, MODELS } from '@/lib/ai/openrouter'
+import { getVisionModel } from '@/lib/ai/openrouter'
 import { normalizarDni, normalizarNombre } from '@/lib/recetas/normalizar'
 
 // Estilo "anti-Claude" como ocr-orden.ts: campos string requeridos, "" cuando falta
@@ -44,7 +44,7 @@ Reglas:
 /** Corre el OCR sobre el PDF de la receta (probado en spike: content-part 'file' + Claude Haiku 4.5). */
 export async function extraerRecetaDePdf(pdf: Buffer): Promise<RecetaExtraida> {
   const { object } = await generateObject({
-    model: openrouter(MODELS.vision),
+    model: getVisionModel(),
     schema: recetaExtraidaSchema,
     messages: [
       {

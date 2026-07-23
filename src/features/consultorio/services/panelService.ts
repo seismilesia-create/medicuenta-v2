@@ -3,7 +3,7 @@ import { arDateString, AR_OFFSET, weekdayOf } from '@/lib/turnos/slots'
 import { addDias, diasDesdeHoy, gridMes, minutosAR, minutosDeHora } from '@/lib/consultorio/calendario'
 import { getServiciosActivos, getDisponibilidad } from '@/features/whatsapp/services/turnosService'
 import { armarDia, type ItemDia, type TurnoDia, type SlotLibre } from '@/lib/consultorio/armarDia'
-import { semaforoConversacion, msRestantesVentana, type Semaforo } from '@/lib/consultorio/semaforo'
+import { semaforoConversacion, msRestantesVentana, VENTANA_24H_MS, type Semaforo } from '@/lib/consultorio/semaforo'
 import { esDiaParticular, type DiaParticular } from '@/lib/consultorio/diasParticulares'
 import { siteUrl } from '@/lib/site-url'
 
@@ -302,14 +302,53 @@ export interface ConversacionItem {
   msVentana: number
 }
 
-export async function getBandeja(db: SupabaseClient, medicoId: string): Promise<ConversacionItem[]> {
-  const { data: convs } = ok(await db
+export interface BandejaFiltro {
+  /** 'activas' = alertas + ventana de 24 h abierta (default). 'todas' = sin filtro de estado. */
+  estado?: 'activas' | 'todas'
+  /** Búsqueda por nombre o teléfono del contacto. Si viene, ignora `estado` (busca en todas). */
+  q?: string
+}
+
+export async function getBandeja(
+  db: SupabaseClient,
+  medicoId: string,
+  filtro: BandejaFiltro = {},
+): Promise<ConversacionItem[]> {
+  const estado = filtro.estado ?? 'activas'
+  const term = (filtro.q ?? '').trim()
+
+  let query = db
     .from('wa_conversaciones')
     .select('id, bot_pausado, necesita_humano, last_message_at, last_paciente_at, contacto:wa_contactos(nombre, telefono)')
     .eq('medico_id', medicoId)
     .eq('es_medico', false)
+
+  if (term) {
+    // Buscar: resolvemos primero los contactos que matchean (nombre/teléfono) y filtramos
+    // por contacto_id. La búsqueda ignora el estado (busca en TODAS). PostgREST trata , ( ) "
+    // como sintaxis del filtro .or(): los limpiamos del término.
+    const safe = term.replace(/[,()"]/g, ' ').replace(/\s+/g, ' ').trim()
+    if (!safe) return []
+    const { data: cts } = ok(await db
+      .from('wa_contactos')
+      .select('id')
+      .eq('medico_id', medicoId)
+      .or(`nombre.ilike.%${safe}%,telefono.ilike.%${safe}%`)
+      .limit(200))
+    const ids = ((cts as { id: string }[] | null) ?? []).map((c) => c.id)
+    if (ids.length === 0) return []
+    query = query.in('contacto_id', ids)
+  } else if (estado === 'activas') {
+    // Activas = necesita humano (alerta) O ventana de 24 h abierta (viva). El OR trae las
+    // alertas SIEMPRE, sin importar su antigüedad: sin esto, el .limit por last_message_at
+    // podía dejar una alerta vieja fuera de la lista y no verse nunca (spec D13).
+    const hace24h = new Date(Date.now() - VENTANA_24H_MS).toISOString()
+    query = query.or(`necesita_humano.eq.true,last_paciente_at.gte.${hace24h}`)
+  }
+
+  const { data: convs } = ok(await query
     .order('last_message_at', { ascending: false })
-    .limit(50))
+    .limit(!term && estado === 'todas' ? 50 : 100))
   const rows =
     (convs as unknown as
       | {
