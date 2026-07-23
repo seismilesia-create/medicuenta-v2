@@ -10,6 +10,26 @@ import {
   type EstadoOrden,
 } from '@/features/ordenes/types/ordenes'
 import { evaluarCompletitud } from '@/lib/ordenes/completitud'
+import { syncCobroAlCrearOrden, syncCobroAlEditarOrden, type SyncOrdenInput } from '@/lib/cobros/sync'
+
+/** Mapea la orden validada al input del sync del ledger de cobros. */
+function syncInputDeOrden(
+  data: OrdenFormData,
+  args: { medicoId: string; ordenId: string },
+): SyncOrdenInput {
+  const esOs = data.tipo === 'obra_social'
+  return {
+    medicoId: args.medicoId,
+    ordenId: args.ordenId,
+    concepto: esOs ? 'plus' : 'consulta_particular',
+    monto: esOs ? (data.monto_plus ?? 0) : data.monto_particular,
+    medio: data.cobro_medio,
+    cobroId: data.cobro_id,
+    turnoId: data.turno_id ?? null,
+    pacienteNombre: data.nombre_paciente,
+    registradoPor: args.medicoId,
+  }
+}
 
 export async function createOrden(formData: OrdenFormData) {
   const supabase = await createClient()
@@ -105,13 +125,18 @@ export async function createOrden(formData: OrdenFormData) {
     estado: 'borrador',
   }
 
-  const { error } = await supabase
+  const { data: creada, error } = await supabase
     .from('ordenes')
     .insert(insertData)
+    .select('id')
+    .single()
 
   if (error) {
     return { error: error.message }
   }
+
+  // Ledger de cobros (plus / particular). No-fatal: la orden ya está guardada.
+  await syncCobroAlCrearOrden(supabase, syncInputDeOrden(data, { medicoId: user.id, ordenId: creada.id }))
 
   redirect('/ordenes')
 }
@@ -221,6 +246,9 @@ export async function updateOrden(ordenId: string, formData: OrdenFormData) {
   if (error) {
     return { error: error.message }
   }
+
+  // Ledger de cobros (plus / particular). No-fatal: la orden ya está actualizada.
+  await syncCobroAlEditarOrden(supabase, syncInputDeOrden(data, { medicoId: user.id, ordenId }))
 
   redirect(`/ordenes/${ordenId}`)
 }
