@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
     // túnel el login (signInWithPassword) se bloquea en silencio y la página solo se recarga.
     serverActions: {
       allowedOrigins: ['*.trycloudflare.com', '*.loca.lt', 'localhost:3000'],
+      // La foto de la orden (data URL ~200-500 KB comprimida) viaja dentro de la
+      // action crearOrdenCheckin/completarFotoOrden; el default de 1mb quedaba justo.
+      bodySizeLimit: '3mb',
     },
   },
 }

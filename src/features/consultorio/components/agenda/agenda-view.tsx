@@ -12,6 +12,7 @@ import {
   type DiaMesContador,
 } from '@/features/consultorio/services/panelService'
 import { bloquearDias } from '@/actions/consultorio-agenda'
+import { getEstadoCheckins, type EstadoCheckinItem } from '@/actions/consultorio-checkin'
 import { arDateString, AR_OFFSET, AR_TZ } from '@/lib/turnos/slots'
 import { addDias, inicioSemana } from '@/lib/consultorio/calendario'
 import { fmtFechaLarga } from '@/lib/turnos/formato'
@@ -22,6 +23,8 @@ import { VistaMes } from './vista-mes'
 import { TurnoManualForm } from './turno-manual-form'
 import { SobreturnoForm } from './sobreturno-form'
 import { TurnoPopover } from './turno-popover'
+import { CobroCheckinModal } from './cobro-checkin-modal'
+import { OrdenCheckinModal } from './orden-checkin-modal'
 import type { TurnoItem } from './timeline-dia'
 
 const POLL_MS = 15_000
@@ -54,6 +57,9 @@ export function AgendaView({ medicoId }: { medicoId: string }) {
   const [slotElegido, setSlotElegido] = useState<{ fecha: string; hora: string } | null>(null)
   const [sobreturnoOpen, setSobreturnoOpen] = useState(false)
   const [turnoElegido, setTurnoElegido] = useState<TurnoItem | null>(null)
+  const [checkins, setCheckins] = useState<EstadoCheckinItem[]>([])
+  const [cobroItem, setCobroItem] = useState<EstadoCheckinItem | null>(null)
+  const [ordenItem, setOrdenItem] = useState<EstadoCheckinItem | null>(null)
   const seq = useRef(0)
 
   const refetch = useCallback(async () => {
@@ -61,9 +67,15 @@ export function AgendaView({ medicoId }: { medicoId: string }) {
     const supabase = createClient()
     try {
       if (vista === 'dia') {
-        const d = await getDia(supabase, medicoId, fecha)
+        // La sala de espera solo aplica al día de HOY (el check-in es del presente).
+        const esHoy = fecha === arDateString(Date.now(), 0)
+        const [d, ck] = await Promise.all([
+          getDia(supabase, medicoId, fecha),
+          esHoy ? getEstadoCheckins(fecha) : Promise.resolve({ items: [] as EstadoCheckinItem[] }),
+        ])
         if (id !== seq.current) return
         setDia(d)
+        setCheckins('items' in ck ? ck.items : [])
       } else if (vista === 'semana') {
         const s = await getAgendaSemana(supabase, medicoId, inicioSemana(fecha))
         if (id !== seq.current) return
@@ -163,6 +175,9 @@ export function AgendaView({ medicoId }: { medicoId: string }) {
         <VistaDia
           fecha={fecha}
           dia={dia}
+          checkins={checkins}
+          onCobrar={setCobroItem}
+          onOrden={setOrdenItem}
           onSlotClick={(f, h) => setSlotElegido({ fecha: f, hora: h })}
           onTurnoClick={setTurnoElegido}
           onAccion={onAccion}
@@ -207,6 +222,8 @@ export function AgendaView({ medicoId }: { medicoId: string }) {
         />
       )}
       {turnoElegido && <TurnoPopover item={turnoElegido} onClose={() => setTurnoElegido(null)} onAccion={onAccion} />}
+      {cobroItem && <CobroCheckinModal item={cobroItem} onClose={() => setCobroItem(null)} onDone={refetch} />}
+      {ordenItem && <OrdenCheckinModal item={ordenItem} onClose={() => setOrdenItem(null)} onDone={refetch} />}
     </div>
   )
 }

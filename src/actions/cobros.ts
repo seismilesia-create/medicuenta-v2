@@ -1,7 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { resolverConsultorio } from '@/features/consultorio/access/contexto'
 import { getConexionActiva } from '@/features/whatsapp/services/mpConexiones'
 import { buildPreferenciaBodyCobro, crearPreferencia } from '@/lib/mercadopago/client'
 import {
@@ -93,28 +94,31 @@ export async function generarLinkCobro(
   return { cobroId, link: pref.initPoint }
 }
 
-/** Para el poll de la UI: ¿ya se acreditó? */
+/**
+ * Para el poll de la UI: ¿ya se acreditó? Autoriza con resolverConsultorio (no
+ * con la sesión cruda): la SECRETARIA también polea desde el check-in, y la RLS
+ * de `cobros` es médico-only — tras el authz se lee con service acotado al
+ * médico operado.
+ */
 export async function estadoCobro(
   cobroId: string,
 ): Promise<{ estado: EstadoCobro; monto: number; medio: MedioCobro } | { error: string }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'No autenticado' }
+  const r = await resolverConsultorio()
+  if (!r || !r.ctx.medicoActivoId) return { error: 'No autenticado' }
   if (!uuidSchema.safeParse(cobroId).success) return { error: 'Cobro inválido' }
 
-  const cobro = await getCobroById(supabase, user.id, cobroId)
+  const cobro = await getCobroById(createServiceClient(), r.ctx.medicoActivoId, cobroId)
   if (!cobro) return { error: 'Cobro no encontrado' }
   return { estado: cobro.estado, monto: Number(cobro.monto), medio: cobro.medio }
 }
 
-/** Anula un cobro PENDIENTE (el paciente no pagó y se desistió del link). */
+/** Anula un cobro PENDIENTE (el paciente no pagó y se desistió del link). Mismo authz que estadoCobro. */
 export async function anularCobroPendiente(cobroId: string): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'No autenticado' }
+  const r = await resolverConsultorio()
+  if (!r || !r.ctx.medicoActivoId) return { error: 'No autenticado' }
   if (!uuidSchema.safeParse(cobroId).success) return { error: 'Cobro inválido' }
 
-  const ok = await anularCobroService(supabase, user.id, cobroId)
+  const ok = await anularCobroService(createServiceClient(), r.ctx.medicoActivoId, cobroId)
   if (!ok) return { error: 'Solo se anulan cobros pendientes.' }
   return { ok: true }
 }

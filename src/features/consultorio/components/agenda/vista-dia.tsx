@@ -3,14 +3,18 @@
 import { CalendarOff } from 'lucide-react'
 import type { DiaAgenda } from '@/features/consultorio/services/panelService'
 import { setEstadoSobreturno, desbloquearDias } from '@/actions/consultorio-agenda'
-import { marcarCheckin } from '@/actions/consultorio-checkin'
+import { marcarCheckin, type EstadoCheckinItem } from '@/actions/consultorio-checkin'
 import { arDateString } from '@/lib/turnos/slots'
 import { fmtHora } from '@/lib/turnos/formato'
 import { TimelineDia, type TurnoItem } from './timeline-dia'
+import { SalaEspera } from './sala-espera'
 
 interface Props {
   fecha: string
   dia: DiaAgenda
+  checkins: EstadoCheckinItem[]
+  onCobrar: (item: EstadoCheckinItem) => void
+  onOrden: (item: EstadoCheckinItem) => void
   onSlotClick: (fecha: string, hora: string) => void
   onTurnoClick: (item: TurnoItem) => void
   onAccion: (fn: () => Promise<{ error?: string } | { ok: true }>) => Promise<void>
@@ -19,8 +23,10 @@ interface Props {
 }
 
 /** Timeline del día + panel de sobreturnos al costado (pedido explícito del dueño: sin horario). */
-export function VistaDia({ fecha, dia, onSlotClick, onTurnoClick, onAccion, onNuevoSobreturno, onBloquearDia }: Props) {
+export function VistaDia({ fecha, dia, checkins, onCobrar, onOrden, onSlotClick, onTurnoClick, onAccion, onNuevoSobreturno, onBloquearDia }: Props) {
   return (
+    <div className="space-y-4">
+    <SalaEspera items={checkins} onCobrar={onCobrar} onOrden={onOrden} />
     <div className="grid gap-4 lg:grid-cols-[7fr_3fr]">
       <div className="rounded-2xl border border-border p-4 space-y-3">
         {dia.bloqueado && (
@@ -121,6 +127,7 @@ export function VistaDia({ fecha, dia, onSlotClick, onTurnoClick, onAccion, onNu
           </button>
         )}
       </div>
+    </div>
     </div>
   )
 }
