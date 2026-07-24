@@ -10,15 +10,19 @@ const PANTALLAS = [
   {
     id: 'movil',
     marco: 'telefono' as const,
-    imagenes: ['/capturas/asistente-movil-claro.png', '/capturas/asistente-movil-oscuro.png'],
-    alt: 'El asistente de MediCuenta en el celular del médico, en tema claro y oscuro',
+    imagenes: [
+      '/capturas/asistente-movil-claro.webp',
+      '/capturas/agenda-movil.webp',
+      '/capturas/cierre-movil.webp',
+    ],
+    alt: 'MediCuenta en el celular: el asistente, la agenda del día y la rendición',
     rotulo: '[Captura: app en el celular]',
-    caption: 'En tu celular, de día y de noche: pedile lo que necesites por voz o por texto',
+    caption: 'Toda la app en tu celular: pedile lo que necesites por voz o por texto',
   },
   {
     id: 'agenda',
     marco: 'navegador' as const,
-    imagenes: ['/capturas/agenda-claro.png', '/capturas/agenda-oscuro.png'],
+    imagenes: ['/capturas/agenda-claro.webp', '/capturas/agenda-oscuro.webp'],
     alt: 'Agenda del día con sala de espera, turnos y sobreturnos',
     rotulo: '[Captura: agenda]',
     caption: 'La agenda del día: quién está en sala, quién pagó y quién falta',
@@ -26,8 +30,12 @@ const PANTALLAS = [
   {
     id: 'reportes',
     marco: 'navegador' as const,
-    imagenes: ['/capturas/reportes-claro.png', '/capturas/reportes-oscuro.png'],
-    alt: 'Reportes de facturación, cobros y débitos',
+    imagenes: [
+      '/capturas/reportes-claro.webp',
+      '/capturas/reportes-graficos.webp',
+      '/capturas/reportes-tabla.webp',
+    ],
+    alt: 'Reportes: facturación, cobros, débitos y comparativa de los últimos 12 meses',
     rotulo: '[Captura: reportes]',
     caption: 'Cuánto facturaste, cuánto te pagaron y qué te debitaron',
   },

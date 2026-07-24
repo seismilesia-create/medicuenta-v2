@@ -26,7 +26,7 @@ const PASOS = [
     titulo: 'Sacale una foto a la orden',
     detalle:
       'La app la lee y la carga sola: paciente, obra social, fecha y código. Vos solo confirmás.',
-    imagenes: ['/capturas/ordenes-claro.png', '/capturas/ordenes-oscuro.png'],
+    imagenes: ['/capturas/ordenes-claro.webp'],
     alt: 'Listado de órdenes cargadas, con las que todavía no tienen foto',
     rotulo: '[Captura: órdenes]',
   },
@@ -35,7 +35,7 @@ const PASOS = [
     titulo: 'El asistente atiende tu WhatsApp',
     detalle:
       'Da turnos según tu agenda real, entrega recetas y cobra por MercadoPago. Las 24 horas, con tus reglas.',
-    imagenes: ['/capturas/conversaciones-claro.png', '/capturas/conversaciones-oscuro.png'],
+    imagenes: ['/capturas/conversaciones-claro.webp', '/capturas/conversaciones-oscuro.webp'],
     alt: 'Bandeja de conversaciones de WhatsApp con los pacientes',
     rotulo: '[Captura: conversaciones]',
   },
@@ -44,7 +44,7 @@ const PASOS = [
     titulo: 'La presentación se arma sola',
     detalle:
       'MediCuenta genera la planilla de cada obra social lista para presentar, y controlás los débitos desde los reportes.',
-    imagenes: ['/capturas/cierre-claro.png', '/capturas/cierre-oscuro.png'],
+    imagenes: ['/capturas/cierre-claro.webp'],
     alt: 'Rendición del día con las órdenes por obra social y la caja',
     rotulo: '[Captura: cierre del día]',
   },

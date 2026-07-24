@@ -68,7 +68,9 @@ export function Captura({ imagenes, alt, marco, rotulo, retrasoMs = 0, prioridad
     }
   }, [alterna, disponibles.length, retrasoMs])
 
-  const aspecto = marco === 'telefono' ? 'aspect-[9/19.5]' : 'aspect-[16/10]'
+  // Proporciones tomadas de las capturas reales (escritorio 1800×~980 tras quitar la barra
+  // del navegador; celular 736×1600) para que object-cover no recorte nada visible.
+  const aspecto = marco === 'telefono' ? 'aspect-[9/19.5]' : 'aspect-[11/6]'
 
   const contenido =
     disponibles.length === 0 ? (
