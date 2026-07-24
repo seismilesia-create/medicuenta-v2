@@ -10,9 +10,8 @@ ninguno, la tarjeta cae al placeholder rotulado y la página no se rompe.
 
 | Archivo | Pantalla | Dónde aparece |
 |---|---|---|
-| `asistente-movil-claro.webp` | Asistente IA en el celular | Demo · teléfono (rota con las 2 de abajo) |
-| `agenda-movil.webp` | Agenda del día en el celular | ídem |
-| `cierre-movil.webp` | Rendición del día en el celular | ídem |
+| `asistente-movil-claro.webp` / `asistente-movil-oscuro.webp` | Inicio en el celular (el asistente) | Demo · teléfono · **crossfade claro/oscuro** |
+| `agenda-movil.webp` · `cierre-movil.webp` | Agenda y rendición en el celular | **sin usar** — disponibles por si se quiere rotar pantallas |
 | `agenda-claro.webp` / `agenda-oscuro.webp` | Agenda con sala de espera | Demo · **crossfade claro/oscuro** |
 | `reportes-claro.webp` | Reportes: los 6 indicadores | Demo (rota con las 2 de abajo) |
 | `reportes-graficos.webp` | Descuentos, plus e institución pendiente | ídem |
@@ -23,8 +22,7 @@ ninguno, la tarjeta cae al placeholder rotulado y la página no se rompe.
 
 ## Falta (para completar los crossfades)
 
-`ordenes-oscuro`, `cierre-oscuro`, `reportes-oscuro` y `asistente-movil-oscuro` (esta última con la
-cuenta del Dr. Juan Pérez: la que había decía "Dr. Admin MediCuenta").
+`ordenes-oscuro`, `cierre-oscuro` y `reportes-oscuro`.
 
 ## Cómo procesarlas
 

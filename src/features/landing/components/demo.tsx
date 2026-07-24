@@ -10,14 +10,12 @@ const PANTALLAS = [
   {
     id: 'movil',
     marco: 'telefono' as const,
-    imagenes: [
-      '/capturas/asistente-movil-claro.webp',
-      '/capturas/agenda-movil.webp',
-      '/capturas/cierre-movil.webp',
-    ],
-    alt: 'MediCuenta en el celular: el asistente, la agenda del día y la rendición',
+    // El par claro/oscuro de la MISMA pantalla: el crossfade se lee como un cambio de tema.
+    // (Quedan sin usar agenda-movil y cierre-movil, por si más adelante se quiere rotar pantallas.)
+    imagenes: ['/capturas/asistente-movil-claro.webp', '/capturas/asistente-movil-oscuro.webp'],
+    alt: 'MediCuenta en el celular del médico, en tema claro y oscuro',
     rotulo: '[Captura: app en el celular]',
-    caption: 'Toda la app en tu celular: pedile lo que necesites por voz o por texto',
+    caption: 'En tu celular, de día y de noche: pedile lo que necesites por voz o por texto',
   },
   {
     id: 'agenda',
