@@ -6,6 +6,9 @@ Nombre de fantasía elegido a propósito para las capturas. La cuenta sigue sien
 iaceleratech@gmail.com: **el email no se cambió** porque es la credencial de acceso — si sacás
 capturas de la pantalla de perfil, ese dato se ve.
 **Secretaria vinculada:** María — `4c663576-c85c-46ea-9a50-29dc73a2484b` (hector.visiondeportes@gmail.com)
+**Asistente:** Hermes. El nombre vive dentro del saludo de `wa_config_agente` y lo elige cada
+médico, así que es el asistente *de este consultorio*, no el nombre del producto: la landing sigue
+hablando de "el asistente" en genérico.
 
 Todos los datos son **inventados**. No hay ningún paciente real. Los nombres, DNIs y teléfonos
 fueron generados para las capturas.
