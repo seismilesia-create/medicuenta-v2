@@ -1,7 +1,9 @@
 import { CalendarCheck2, Camera, FileSpreadsheet } from 'lucide-react'
+import { Captura } from './captura'
 import { Reveal } from './reveal'
 
-/** Sección "el problema" (empatía) + los 3 pasos de cómo funciona. */
+/** Sección "el problema" (empatía) + los 3 pasos de cómo funciona, cada uno con la
+ *  pantalla real que le corresponde (en zigzag, para que el scroll no sea una lista). */
 
 const DOLORES = [
   {
@@ -24,18 +26,27 @@ const PASOS = [
     titulo: 'Sacale una foto a la orden',
     detalle:
       'La app la lee y la carga sola: paciente, obra social, fecha y código. Vos solo confirmás.',
+    imagenes: ['/capturas/ordenes-claro.png', '/capturas/ordenes-oscuro.png'],
+    alt: 'Listado de órdenes cargadas, con las que todavía no tienen foto',
+    rotulo: '[Captura: órdenes]',
   },
   {
     icono: CalendarCheck2,
     titulo: 'El asistente atiende tu WhatsApp',
     detalle:
       'Da turnos según tu agenda real, entrega recetas y cobra por MercadoPago. Las 24 horas, con tus reglas.',
+    imagenes: ['/capturas/conversaciones-claro.png', '/capturas/conversaciones-oscuro.png'],
+    alt: 'Bandeja de conversaciones de WhatsApp con los pacientes',
+    rotulo: '[Captura: conversaciones]',
   },
   {
     icono: FileSpreadsheet,
     titulo: 'La presentación se arma sola',
     detalle:
       'MediCuenta genera la planilla de cada obra social lista para presentar, y controlás los débitos desde los reportes.',
+    imagenes: ['/capturas/cierre-claro.png', '/capturas/cierre-oscuro.png'],
+    alt: 'Rendición del día con las órdenes por obra social y la caja',
+    rotulo: '[Captura: cierre del día]',
   },
 ]
 
@@ -75,21 +86,35 @@ export function ComoFunciona() {
             </h2>
           </Reveal>
 
-          <div className="mt-12 grid gap-5 md:grid-cols-3">
+          {/* Zigzag: el texto y la pantalla cambian de lado en cada paso. */}
+          <div className="mt-14 space-y-16 lg:space-y-24">
             {PASOS.map((p, i) => (
-              <Reveal key={p.titulo} delayMs={i * 120}>
-                <div className="relative h-full rounded-2xl border border-border bg-card p-6 transition-shadow hover:shadow-lg hover:shadow-primary-900/5">
-                  <span
-                    aria-hidden="true"
-                    className="absolute right-5 top-4 text-5xl font-bold leading-none text-primary-100 dark:text-primary-900/60"
-                  >
-                    {i + 1}
-                  </span>
-                  <div className="gradient-medical grid h-12 w-12 place-items-center rounded-xl text-white shadow-md shadow-primary/20">
-                    <p.icono className="h-6 w-6" aria-hidden="true" />
+              <Reveal key={p.titulo}>
+                <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
+                  <div className={i % 2 === 1 ? 'lg:order-2' : undefined}>
+                    <div className="flex items-center gap-3">
+                      <div className="gradient-medical grid h-12 w-12 shrink-0 place-items-center rounded-xl text-white shadow-md shadow-primary/20">
+                        <p.icono className="h-6 w-6" aria-hidden="true" />
+                      </div>
+                      <span
+                        aria-hidden="true"
+                        className="text-5xl font-bold leading-none text-primary-100 dark:text-primary-900/60"
+                      >
+                        {i + 1}
+                      </span>
+                    </div>
+                    <h3 className="mt-4 text-xl font-semibold tracking-tight">{p.titulo}</h3>
+                    <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">{p.detalle}</p>
                   </div>
-                  <h3 className="mt-4 text-lg font-semibold">{p.titulo}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{p.detalle}</p>
+                  <div className={i % 2 === 1 ? 'lg:order-1' : undefined}>
+                    <Captura
+                      imagenes={p.imagenes}
+                      alt={p.alt}
+                      marco="navegador"
+                      rotulo={p.rotulo}
+                      retrasoMs={i * 700}
+                    />
+                  </div>
                 </div>
               </Reveal>
             ))}

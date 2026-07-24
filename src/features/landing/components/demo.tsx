@@ -1,58 +1,37 @@
-import { ImageIcon, MonitorSmartphone, Smartphone } from 'lucide-react'
+import { Captura } from './captura'
 import { Reveal } from './reveal'
 
 /**
- * Demo visual con HUECOS ROTULADOS para pegar capturas reales de la app
- * (guardrail del spec: no inventar capturas). Cuando estén las imágenes,
- * cada placeholder se reemplaza por un <Image> dentro del mismo marco.
+ * Demo con capturas REALES de la app (nada de maquetas). Las pantallas que existen en
+ * tema claro y oscuro alternan solas: el mismo producto, sus dos modos, sin duplicar espacio.
+ * Los archivos viven en /public/capturas — si alguno falta, la tarjeta muestra su rótulo.
  */
-
-const CAPTURAS = [
+const PANTALLAS = [
   {
-    id: 'demo-chat',
-    marco: 'phone' as const,
-    icono: Smartphone,
-    rotulo: '[Captura: chat del agente]',
-    caption: 'El asistente dando un turno real por WhatsApp',
+    id: 'movil',
+    marco: 'telefono' as const,
+    imagenes: ['/capturas/asistente-movil-claro.png', '/capturas/asistente-movil-oscuro.png'],
+    alt: 'El asistente de MediCuenta en el celular del médico, en tema claro y oscuro',
+    rotulo: '[Captura: app en el celular]',
+    caption: 'En tu celular, de día y de noche: pedile lo que necesites por voz o por texto',
   },
   {
-    id: 'demo-agenda',
-    marco: 'browser' as const,
-    icono: MonitorSmartphone,
+    id: 'agenda',
+    marco: 'navegador' as const,
+    imagenes: ['/capturas/agenda-claro.png', '/capturas/agenda-oscuro.png'],
+    alt: 'Agenda del día con sala de espera, turnos y sobreturnos',
     rotulo: '[Captura: agenda]',
-    caption: 'Tu agenda con turnos, días particulares y excepciones',
+    caption: 'La agenda del día: quién está en sala, quién pagó y quién falta',
   },
   {
-    id: 'demo-reportes',
-    marco: 'browser' as const,
-    icono: MonitorSmartphone,
+    id: 'reportes',
+    marco: 'navegador' as const,
+    imagenes: ['/capturas/reportes-claro.png', '/capturas/reportes-oscuro.png'],
+    alt: 'Reportes de facturación, cobros y débitos',
     rotulo: '[Captura: reportes]',
-    caption: 'Reportes de facturación y control de débitos',
+    caption: 'Cuánto facturaste, cuánto te pagaron y qué te debitaron',
   },
 ]
-
-function MarcoPlaceholder({
-  marco,
-  icono: Icono,
-  rotulo,
-}: {
-  marco: 'phone' | 'browser'
-  icono: typeof Smartphone
-  rotulo: string
-}) {
-  return (
-    <div
-      className={`grid w-full place-items-center rounded-xl border-2 border-dashed border-primary-200 bg-primary-50/50 dark:border-primary-800 dark:bg-primary-900/20 ${
-        marco === 'phone' ? 'aspect-[9/16] max-w-[220px]' : 'aspect-video'
-      }`}
-    >
-      <div className="px-4 text-center">
-        <Icono className="mx-auto h-8 w-8 text-primary-300 dark:text-primary-700" aria-hidden="true" />
-        <p className="mt-2 font-mono text-xs font-medium text-primary-600 dark:text-primary-400">{rotulo}</p>
-      </div>
-    </div>
-  )
-}
 
 export function Demo() {
   return (
@@ -68,14 +47,20 @@ export function Demo() {
           </p>
         </Reveal>
 
-        <div className="mt-12 grid items-start gap-5 md:grid-cols-3">
-          {CAPTURAS.map((c, i) => (
-            <Reveal key={c.id} delayMs={i * 120}>
-              <figure className="flex h-full flex-col items-center gap-3 rounded-2xl border border-border bg-card p-5">
-                <MarcoPlaceholder marco={c.marco} icono={c.icono} rotulo={c.rotulo} />
-                <figcaption className="flex items-center gap-1.5 text-center text-xs text-muted-foreground">
-                  <ImageIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  {c.caption}
+        <div className="mt-12 grid items-start gap-6 md:grid-cols-3">
+          {PANTALLAS.map((p, i) => (
+            <Reveal key={p.id} delayMs={i * 120}>
+              <figure className="flex h-full flex-col items-center gap-4">
+                <Captura
+                  imagenes={p.imagenes}
+                  alt={p.alt}
+                  marco={p.marco}
+                  rotulo={p.rotulo}
+                  retrasoMs={i * 900}
+                  prioridad={i === 0}
+                />
+                <figcaption className="text-balance text-center text-xs leading-relaxed text-muted-foreground">
+                  {p.caption}
                 </figcaption>
               </figure>
             </Reveal>
