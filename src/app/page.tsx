@@ -2,11 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { LandingView } from '@/features/landing/components/landing-view'
 
-export const metadata = {
-  title: 'MediCuenta — Facturá a las obras sociales sin planillas ni papeles',
-  description:
-    'La app para médicos de Catamarca: asistente de IA que atiende tu WhatsApp, órdenes y recetas con una foto, agenda inteligente y control de débitos. Acceso por invitación.',
-}
+// El título, la descripción y la vista previa del link viven en el layout raíz
+// (una sola fuente de verdad, y así la card de WhatsApp es la misma en toda la app).
 
 export default async function HomePage() {
   const supabase = await createClient()

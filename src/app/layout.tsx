@@ -1,11 +1,19 @@
 import type { Metadata, Viewport } from 'next'
 import { ThemeProvider } from '@/shared/components/theme-provider'
 import PWARegister from '@/shared/components/pwa-register'
+import { siteUrl } from '@/lib/site-url'
 import './globals.css'
 
+const TITULO = 'MediCuenta — Facturá a las obras sociales sin planillas ni papeles'
+const DESCRIPCION =
+  'Un asistente con IA atiende tu WhatsApp las 24 horas: da turnos, entrega recetas y cobra. Sacás una foto de la orden y la presentación de cada obra social se arma sola.'
+
 export const metadata: Metadata = {
-  title: 'MediCuenta | Facturación Médica Inteligente',
-  description: 'Sistema de facturación y liquidación para médicos del Círculo Médico de Catamarca.',
+  // Ancla de las URLs relativas (la imagen de vista previa). Sin esto, al compartir el
+  // link la card sale sin imagen: og:image queda como ruta relativa y no resuelve.
+  metadataBase: new URL(siteUrl()),
+  title: TITULO,
+  description: DESCRIPCION,
   applicationName: 'MediCuenta',
   manifest: '/manifest.json',
   appleWebApp: {
@@ -16,12 +24,19 @@ export const metadata: Metadata = {
   // El favicon lo aporta el file-convention `src/app/icon.svg` (logo de marca).
   // El apple-touch-icon lo detecta iOS solo en `/apple-touch-icon.png`. NO definir
   // `icons.icon` acá: taparía el favicon de marca en la pestaña.
+  // La imagen la aporta `src/app/opengraph-image.tsx` (file-convention).
   openGraph: {
-    title: 'MediCuenta | Facturación Médica Inteligente',
-    description: 'Control total de órdenes, liquidaciones y débitos para profesionales de la salud.',
+    title: TITULO,
+    description: DESCRIPCION,
     locale: 'es_AR',
     siteName: 'MediCuenta',
     type: 'website',
+    url: '/',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITULO,
+    description: DESCRIPCION,
   },
 }
 

@@ -39,9 +39,11 @@ export function LandingView() {
             <span className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground md:inline-flex">
               <span aria-hidden="true">🇦🇷</span> Hecho en Catamarca
             </span>
+            {/* En celular no entran las tres cosas en la barra (el CTA quedaba cortado):
+                se prioriza el botón de conversión. "Iniciar sesión" sigue en el pie. */}
             <Link
               href="/login"
-              className="rounded-lg px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="hidden whitespace-nowrap rounded-lg px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:inline-block"
             >
               Iniciar sesión
             </Link>
@@ -83,6 +85,20 @@ export function LandingView() {
             >
               Iniciar sesión
             </Link>
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-muted-foreground">
+              <Link
+                href="/terminos"
+                className="transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+              >
+                Términos
+              </Link>
+              <Link
+                href="/privacidad"
+                className="transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+              >
+                Privacidad
+              </Link>
+            </div>
           </div>
         </div>
         <div className="border-t border-border/60">
