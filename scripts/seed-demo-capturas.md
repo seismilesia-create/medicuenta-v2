@@ -1,7 +1,10 @@
 # Seed de demo para capturas (landing + tutoriales)
 
 **Fecha:** 2026-07-23 · **Aplicado en:** producción (Supabase)
-**Médico de demo:** Pedro Ariel Medina Vazquez — `1bee7847-e33a-4aca-af5f-1d43383af540` (iaceleratech@gmail.com, Traumatología)
+**Médico de demo:** Dr. Juan Pérez — `1bee7847-e33a-4aca-af5f-1d43383af540` (Traumatología).
+Nombre de fantasía elegido a propósito para las capturas. La cuenta sigue siendo
+iaceleratech@gmail.com: **el email no se cambió** porque es la credencial de acceso — si sacás
+capturas de la pantalla de perfil, ese dato se ve.
 **Secretaria vinculada:** María — `4c663576-c85c-46ea-9a50-29dc73a2484b` (hector.visiondeportes@gmail.com)
 
 Todos los datos son **inventados**. No hay ningún paciente real. Los nombres, DNIs y teléfonos
