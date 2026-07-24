@@ -20,7 +20,8 @@ const PANTALLAS = [
   {
     id: 'agenda',
     marco: 'navegador' as const,
-    imagenes: ['/capturas/agenda-claro.webp', '/capturas/agenda-oscuro.webp'],
+    // Solo la versión clara: el escritorio se queda fijo en tema claro (sin flasheo de fondo).
+    imagenes: ['/capturas/agenda-claro.webp'],
     alt: 'Agenda del día con sala de espera, turnos y sobreturnos',
     rotulo: '[Captura: agenda]',
     caption: 'La agenda del día: quién está en sala, quién pagó y quién falta',
@@ -28,6 +29,7 @@ const PANTALLAS = [
   {
     id: 'reportes',
     marco: 'navegador' as const,
+    // Todas claras: rota entre vistas (KPIs → gráficos → tabla), sin cambiar el fondo.
     imagenes: [
       '/capturas/reportes-claro.webp',
       '/capturas/reportes-graficos.webp',

@@ -35,7 +35,8 @@ const PASOS = [
     titulo: 'El asistente atiende tu WhatsApp',
     detalle:
       'Da turnos según tu agenda real, entrega recetas y cobra por MercadoPago. Las 24 horas, con tus reglas.',
-    imagenes: ['/capturas/conversaciones-claro.webp', '/capturas/conversaciones-oscuro.webp'],
+    // Solo la versión clara: los pasos se quedan fijos en tema claro (sin flasheo de fondo).
+    imagenes: ['/capturas/conversaciones-claro.webp'],
     alt: 'Bandeja de conversaciones de WhatsApp con los pacientes',
     rotulo: '[Captura: conversaciones]',
   },

@@ -2,32 +2,35 @@
 
 Las tarjetas de la landing aceptan **varias imágenes** y alternan entre ellas con un crossfade
 suave (solo mientras el bloque está a la vista, y nunca si el visitante pidió reducir el
-movimiento). Sirve para dos cosas: mostrar la misma pantalla en **tema claro y oscuro**, o rotar
-**varias vistas** de una misma sección. Si un archivo falta, se usa el que haya; si no hay
-ninguno, la tarjeta cae al placeholder rotulado y la página no se rompe.
+movimiento). Si un archivo falta, se usa el que haya; si no hay ninguno, la tarjeta cae al
+placeholder rotulado y la página no se rompe.
 
-## Lo que hay hoy
+**Regla de tema (decisión de Héctor):** la ÚNICA imagen que pasa de fondo claro a oscuro es la del
+celular. Todo el resto de la landing queda fijo en **tema claro** — nada de flasheo blanco↔negro en
+las pantallas de escritorio. El movimiento que sí se permite ahí es rotar entre vistas que son
+**todas claras** (p. ej. reportes), porque no cambia el fondo.
+
+## Lo que se usa hoy
 
 | Archivo | Pantalla | Dónde aparece |
 |---|---|---|
-| `asistente-movil-claro.webp` / `asistente-movil-oscuro.webp` | Inicio en el celular (el asistente) | Demo · teléfono · **crossfade claro/oscuro** |
-| `agenda-movil.webp` · `cierre-movil.webp` | Agenda y rendición en el celular | **sin usar** — disponibles por si se quiere rotar pantallas |
-| `agenda-claro.webp` / `agenda-oscuro.webp` | Agenda con sala de espera | Demo · **crossfade claro/oscuro** |
-| `reportes-claro.webp` | Reportes: los 6 indicadores | Demo (rota con las 2 de abajo) |
-| `reportes-graficos.webp` | Descuentos, plus e institución pendiente | ídem |
-| `reportes-tabla.webp` | Comparativa de 12 meses | ídem |
-| `ordenes-claro.webp` | Listado de órdenes | Cómo funciona · paso 1 |
-| `conversaciones-claro.webp` / `conversaciones-oscuro.webp` | Bandeja de WhatsApp | Cómo funciona · paso 2 · **crossfade** |
-| `cierre-claro.webp` | Rendición del día | Cómo funciona · paso 3 |
+| `asistente-movil-claro.webp` / `asistente-movil-oscuro.webp` | Inicio en el celular (el asistente) | Demo · teléfono · **único crossfade claro/oscuro** |
+| `agenda-claro.webp` | Agenda con sala de espera | Demo · fija en claro |
+| `reportes-claro.webp` · `reportes-graficos.webp` · `reportes-tabla.webp` | Reportes (KPIs → gráficos → tabla 12 meses) | Demo · rota entre vistas claras |
+| `ordenes-claro.webp` | Listado de órdenes | Cómo funciona · paso 1 · fija |
+| `conversaciones-claro.webp` | Bandeja de WhatsApp | Cómo funciona · paso 2 · fija |
+| `cierre-claro.webp` | Rendición del día | Cómo funciona · paso 3 · fija |
 
-## Falta (para completar los crossfades)
+## Guardadas pero sin usar
 
-`ordenes-oscuro`, `cierre-oscuro` y `reportes-oscuro`.
+`agenda-oscuro.webp`, `conversaciones-oscuro.webp` (versiones oscuras que ya no van, porque el
+escritorio queda en claro fijo) y `agenda-movil.webp`, `cierre-movil.webp` (por si se quiere rotar
+pantallas en el teléfono en vez del crossfade de tema). No estorban; se pueden borrar si molestan.
 
 ## Cómo procesarlas
 
 Las capturas de escritorio vienen con la barra del navegador, que hay que quitar porque la landing
-dibuja la suya. El recorte se detecta solo buscando dónde termina el color de esa barra:
+dibuja la suya. El corte se detecta solo buscando dónde termina el color de esa barra:
 
 ```bash
 # corte = última fila de la barra del navegador + 1
@@ -43,8 +46,8 @@ Quedan entre 30 y 70 KB cada una. Next las vuelve a optimizar al servirlas.
 
 ## Al capturar
 
-- Que el par claro/oscuro sea de la **misma pantalla y el mismo scroll**, o el cambio de tema se
-  ve como un salto.
+- El único par claro/oscuro que hace falta es el del **celular** (misma pantalla, mismo scroll, con
+  la cuenta del Dr. Juan Pérez). El resto va en claro.
 - Sin tooltips, menús abiertos ni el cursor encima de un gráfico.
 - Ojo con el badge flotante de SaaS Factory sobre el sidebar: aparecía en dos capturas y hubo que
   descartarlas.
